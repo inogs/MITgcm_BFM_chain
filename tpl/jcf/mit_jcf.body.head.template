@@ -1,0 +1,11 @@
+{ ### start redirection of output/error to @@(S:MIT_JOB_EO_FILE)
+export RT_MIT_RUNDATE="@@(S:MIT_RUNDATE)"
+export RT_MIT_BATCH="@@(S:MIT_BATCH)"
+export RT_MIT_RUNID="@@(S:MIT_RUNID)"
+
+olj_command="@@(S:MIT_SCRDIR)/mit_log_job.ksh begin"
+echo ">>> command '$olj_command' starting..."
+eval $olj_command ; olj_ec=$?
+echo "<<< command '$olj_command' completed [${olj_ec}]"
+
+exit_code=0

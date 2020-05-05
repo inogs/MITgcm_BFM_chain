@@ -1,0 +1,8 @@
+#!/bin/ksh
+# 	*** definition of SLURM keywords ***
+#SBATCH --job-name=@@(S:MIT_JOB_NAME)
+#SBATCH --mail-user=@@(S:MIT_NOTIFY_ADDRESS)
+#SBATCH --mail-type=BEGIN,END,FAIL
+#
+#SBATCH -o @@(S:MIT_RM_EO_FILE)
+#

@@ -1,0 +1,3 @@
+command=@@(S:MIT_RUNLOGDIR)/@@(S:MIT_STEP_SCRIPT_BASE).${MIT_RUNTIME_STEP}
+echo ">>> $command"
+$command ; exit_code=$?

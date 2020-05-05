@@ -1,0 +1,8 @@
+olj_command="@@(S:MIT_SCRDIR)/mit_log_job.ksh end --exit-code '$exit_code'"
+echo ">>> command '$olj_command' starting..."
+eval $olj_command ; olj_ec=$?
+echo "<<< command '$olj_command' completed [${olj_ec}]"
+
+
+} 1>"@@(S:MIT_JOB_EO_FILE)" 2>&1
+exit $exit_code
