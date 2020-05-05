@@ -1,0 +1,636 @@
+#!/bin/ksh
+# This script downloads, decompresses and eventually checks
+# the input files.
+# Input files are located at INGV ftp server; data are
+# downloaded using http with the config file
+# $MIT_ETCDIR/http-config/.ingv.httpconfig
+# 
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+
+typeset -i _errors=0
+mit_prex "source $MIT_VENV_1/bin/activate"
+
+
+
+DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
+DOWNSTART=$( date -d "${MIT_RUNDATE}  -  8  days " +%Y%m%d-%H:%M:%S )
+DOWN__END=$( date -d "${MIT_RUNDATE}             " +%Y%m%d-%H:%M:%S )
+
+LOCALDIR=$MIT_WRKDIR/METEO/DOWNLOAD
+METEODIR=$MIT_WRKDIR/METEO
+
+DOWNTIMELISTFILE=$METEODIR/to_download_timelist.txt
+
+mit_prex "cd $MIT_BC_IC_FROM_OGSTM"
+
+mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END -d \"days = 1 \" > $DOWNTIMELISTFILE "
+
+CONFIG_FILE=$MIT_ETCDIR/nc-config/.aladin.ncconfig
+
+for I in `cat $DOWNTIMELISTFILE`; do
+  YYYYMMDD=${I:0:8}
+  FILENAME=asogsasc_${YYYYMMDD}00.tar.gz
+  mit_prex_or_die "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $LOCALDIR /ALADIN_SI/$FILENAME"
+done
+
+
+mit_exit "$errors"
+
+###################################################################
+
+
+_FORCE_DOWNLOAD=${MIT_FORCE_DOWNLOAD}		# If true, downloads remote files even if they are already on local filesystem
+
+function print_help {
+  cat <<EofCat
+Usage: $MIT_PROGNAME [options]
+[options]
+$(mit_set_default_run__print_options)
+	--help|-h			show this help
+	--force-download		do not try to resume download
+					["$_FORCE_DOWNLOAD"]
+	--try-resume			try to resume download
+					["! $_FORCE_DOWNLOAD"]
+	--dry-run			show only required files
+					["$_DRY_RUN"]
+	--enable-abort-on-errors|-a	abort download in case of errors (missing files)	
+					["$_ABORT_ON_ERRORS"]
+	--disable-abort-on-errors|-A	continue download of remaining files in case of errors
+					["! $_ABORT_ON_ERRORS"]
+	--enable-input-timeout|-z	enable timeout on input data
+					["$_INPUT_TIMEOUT_ENABLED"]
+	--disable-input-timeout|-Z	disable timeout on input data
+					["! $_INPUT_TIMEOUT_ENABLED"]
+	--without-timeout		disable timeout and abort on errors
+	--with-timeout			dummy option: enable timeout and abort on errors as default
+	--delay|-d			delay in seconds after dowlonad errors
+					["$_DELAY"]
+	--max-tries|-m			max number of tries
+					["$_MAX_TRIES"]
+	--disable-download		disable download from remote site;
+					useful for recovery
+					["$_DISABLE_DOWNLOAD"]
+	--recovery			actually => --disable-download
+					["$_RECOVERY"]
+        --emerg|-e                      emergency run: use the backup repository to download files
+
+EofCat
+}
+
+mit_set_default_run_options=' '
+_ABORT_ON_ERRORS=true
+_DRY_RUN=false
+_EMERG=false
+_INPUT_TIMEOUT_ENABLED="$MIT_INPUT_TIMEOUT_ENABLED"
+_DELAY=5
+_MAX_TRIES=$MIT_INPUT_TIMEOUT_COUNT_MAX
+_DISABLE_DOWNLOAD="$MIT_UNDEFINED"
+_RECOVERY="$MIT_UNDEFINED"
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+      mit_set_default_run_options="${mit_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --dry-run)
+      _DRY_RUN=true
+      ;;
+    --force-download)
+      _FORCE_DOWNLOAD=true
+      ;;
+    --try-resume)
+      _FORCE_DOWNLOAD=false
+      ;;
+    --enable-abort-on-errors|-a)
+      _ABORT_ON_ERRORS=true
+      ;;
+    --disable-abort-on-errors|-A)
+      _ABORT_ON_ERRORS=false
+      ;;
+    --enable-input-timeout|-z)
+      _INPUT_TIMEOUT_ENABLED=true
+      ;;
+    --disable-input-timeout|-Z)
+      _INPUT_TIMEOUT_ENABLED=false
+      ;;
+    --without-timeout)
+      _ABORT_ON_ERRORS=false
+      _INPUT_TIMEOUT_ENABLED=false
+      ;;
+    --with-timeout)
+      ;;
+    --delay|-d)
+      _DELAY="$1"
+      shift 1
+      ;;
+    --max-tries|-m)
+      _MAX_TRIES="$1"
+      shift 1
+      ;;
+    --disable-download)
+      _DISABLE_DOWNLOAD=true
+      ;;
+    --recovery)
+      _RECOVERY=true
+      ;;
+    --emerg|-e)
+      _EMERG=true
+      ;;
+    *)
+      echo "ERROR: wrong command line option <$arg>" 1>&2
+      exit 2
+      ;;
+  esac
+done
+
+# Rundate definition
+mit_prex "mit_set_default_run $mit_set_default_run_options"
+mit_prex "mit_set_run $MIT_DEFAULT_RUNDATE"
+
+# Default
+if [[ "$_RECOVERY" == "$MIT_UNDEFINED" ]] ; then
+  _RECOVERY="$MIT_RECOVERY_MODE"
+fi
+if [[ "$_DISABLE_DOWNLOAD" == "$MIT_UNDEFINED" ]] ; then
+  _DISABLE_DOWNLOAD="$_RECOVERY"
+fi
+
+cat <<EOFCAT
+RECOVERY:		$_RECOVERY
+DISABLE_DOWNLOAD:	$_DISABLE_DOWNLOAD
+EOFCAT
+
+# start
+mit_start
+
+# Get the name of MITOPER_A wind input files
+mit_set_input_files__mitoper_a
+mit_print_input_files__mitoper_a
+
+# Get the name of MITOPER_F data input files
+mit_set_input_files__mitoper_f
+mit_print_input_files__mitoper_f
+
+if [[ -f $MIT_ACTUAL_INPUT_DESCRIPTION_FILE ]] ; then
+  . $MIT_ACTUAL_INPUT_DESCRIPTION_FILE
+fi
+
+
+function mit_check_input_file {
+  # This function checks if the input file is correct
+  # !!!WARNING!!! this is not implemented yet
+  # input file name is: yymmdd_variable.nc
+
+  #typeset _input_file="$1"
+  #typeset _date=$( echo "$_input_file" | cut -c1-6 )			# yymmdd
+  #typeset _var=$( echo "$_input_file" | cut -d_ -f2 | cut -d. -f1 ) 	# Variable name
+  return 0
+}
+
+function mit_copy_attributes {
+  typeset _source="$1"
+  typeset _target="$2"
+  # time:
+  $MIT_BINDIR/touch -t $($MIT_BINDIR/date --date="1970-01-01 $($MIT_BINDIR/stat -c %Z "$_source") sec UTC" +'%Y%m%d%H%M.%S')    "$_target"
+  $MIT_BINDIR/touch -t $($MIT_BINDIR/date --date="1970-01-01 $($MIT_BINDIR/stat -c %X "$_source") sec UTC" +'%Y%m%d%H%M.%S') -a "$_target"
+  $MIT_BINDIR/touch -t $($MIT_BINDIR/date --date="1970-01-01 $($MIT_BINDIR/stat -c %Y "$_source") sec UTC" +'%Y%m%d%H%M.%S') -m "$_target"
+  # permissions:
+  $MIT_BINDIR/chmod $($MIT_BINDIR/stat -c %a "$_source") "$_target"
+}
+
+function mit_decompress {
+  typeset   _compress_mode="$1"
+  typeset   _compressed_file="$2"
+  typeset   _decompressed_file="$3"
+  typeset -i _ec
+  case "$_compress_mode" in
+    gzip)
+      mit_prex "gzip -dc '$_compressed_file' > '$_decompressed_file'" ; _ec=$?
+      if [[ $_ec -eq 2 ]] ; then
+        mit_log 1 "WARNING: command <gzip -dc '$_compressed_file' > '$_decompressed_file'> raised a warning! - warnings are ignored"
+        _ec=0
+      fi
+      mit_copy_attributes "$_compressed_file" "$_decompressed_file"
+      ;;
+    bzip2)
+      mit_prex "bzip2 -dc '$_compressed_file' > '$_decompressed_file'" ; _ec=$?
+      mit_copy_attributes "$_compressed_file" "$_decompressed_file"
+      ;;
+    none)
+      mit_copy_attributes "$_compressed_file" "$_decompressed_file"
+#       mit_prex "cp -p '$_compressed_file' '$_decompressed_file'" ; _ec=$?
+      ;;
+    *)
+      echo "INTERNAL ERROR: compress mode ${_compress_mode}" 1>&2
+      exit 1
+      ;;
+  esac
+  return $_ec
+}
+
+function mit_download {
+  typeset    _download_mode="$1"
+  typeset    _download_protocol=$(echo "$_download_mode" | cut -d: -f1)
+  typeset    _download_config=$(echo "$_download_mode" | cut -d: -f2-)
+  typeset    _ldir="$2"
+  typeset    _rfile="$3"
+  typeset -i _ec
+  case "$_download_protocol" in
+    ncftp)
+      mit_prex "$MIT_BINDIR/ncftpget -z -f $_download_config '$_ldir' '$_rfile'" ; _ec=$?
+      ;;
+    http)
+      typeset _keyword
+      typeset _value
+      typeset _host
+      typeset _user
+      typeset _pass
+      while read _keyword _value ; do
+        case "$_keyword" in
+          host)
+            _host="$_value"
+            ;;
+          user)
+            _user="$_value"
+            ;;
+          pass)
+            _pass="$_value"
+            ;;
+          *)
+            echo "INTERNAL ERROR: invalid key '${_keyword}'='${_value}'" 1>&2
+            ;;
+        esac
+      done < "$_download_config"
+      typeset _lfile="$_ldir/$(basename $_rfile)"
+      #mit_prex "$MIT_BINDIR/wget --continue --waitretry='3' --tries='10' --progress='dot:mega' --http-user='$_user' --http-passwd='$_pass' --output-document='$_lfile' 'http://$_host/$_rfile'" ; _ec=$?
+      mit_prex "$MIT_BINDIR/wget --continue --waitretry='3' --tries='10' --progress='dot:mega' --ftp-user='$_user' --ftp-password='$_pass' --output-document='$_lfile' '$_host/$_rfile'" ; _ec=$?
+      ;;
+    *)
+      echo "INTERNAL ERROR: invalid protocol ${_download_protocol}" 1>&2
+      exit 1
+      ;;
+  esac
+  return $_ec
+
+}
+
+set -A MISSING_FILES --
+typeset -i MISSING_FILES_NUM=0
+
+function mit_add_missing_files {
+  typeset _file
+  for _file in "$@" ; do
+    MISSING_FILES[MISSING_FILES_NUM]="$_file"
+    MISSING_FILES_NUM=$(( $MISSING_FILES_NUM + 1 ))
+  done
+}
+
+function mit_print_missing_files {
+  if [[ $MISSING_FILES_NUM -gt 0 ]] ; then
+    typeset _message
+    mit_log 1 "WARNING: $MISSING_FILES_NUM missing files:"
+    mit_log 2 "================================================================================"
+    typeset -i _index=0
+    while [[ $_index -lt $MISSING_FILES_NUM ]] ; do
+      _message=$(printf "%3d) %s\n" "$_index" "${MISSING_FILES[_index]}")
+      mit_log 2 "$_message"
+      _index=$(( $_index + 1 ))
+    done
+    mit_log 2 "================================================================================"
+  else
+    mit_log 1 "All files successfully downloaded!"
+  fi
+}
+
+function mit_set_difference {
+  typeset _a="$1"
+  typeset _b="$2"
+  typeset _item
+  typeset _d=" "
+  for _item in $_a ; do
+    if [[ $(echo " $_b " | grep -c " $_item ") -eq 0 ]] ; then
+      _d="$_d$_item "
+    fi
+  done
+  echo "$_d"
+}
+
+
+_DOWNLOADED_INDICES_A=" "
+_DOWNLOADED_INDICES_F=" "
+_DOWNLOADED_INDICES_D=" "
+
+function mit_get_files {
+  # Download input files $3... from remote directory $1 to local directory $2
+  # If files are not found on remote server, or checks fails on downloaded files,
+  # the function tries again to download the file, until the $MIT_INPUT_TIMEOUT__UTC
+  # time is reached
+  # For each input file, a loop is started;
+  #  - if the remote file is missing, 
+  #     - if the $MIT_INPUT_TIMEOUT__UTC is lasted, exits with an error code;
+  #       otherwise, tries again to download
+  #  - if the downloaded file cannot be decompressed, tries again to download;
+  #  - if the checks on the downloaded and decompressed file fails,
+  #       tries again to download
+  typeset _a_f_d="$1"
+  shift 1
+  typeset _lfile _decompressed_lfile
+  typeset _rfile _compressed_rfile 
+  typeset _compress_mode
+  typeset _download_mode
+  typeset -i _ec
+  typeset -i _errors=0
+  typeset _now
+  typeset _timeout=$(mit_date_day_offset "${MIT_RUNDATE} $MIT_INPUT_TIMEOUT__UTC" $MIT_SUBMIT_DAY_OFFSET "%Y%m%d %H:%M:%S")
+  typeset _timeout_s=$( $MIT_BINDIR/date --utc --date="$_timeout" +%s)
+  typeset _timeout_count_max=$_MAX_TRIES
+  typeset _timeout_delay=$_DELAY
+  typeset _file_found
+  typeset _abort_on_errors=$_ABORT_ON_ERRORS
+  set -A _input_lfiles
+  set -A _input_rfiles
+  set -A _input_compress_modes
+  set -A _input_download_modes
+  set -A _input_rdirs
+  typeset _input_files_indices
+  typeset -i _input_files_index
+  echo "@@@ [${0}]: _a_f_d=[${_a_f_d}]"
+  typeset _rdir		# remote directory
+  typeset _lidir	# local input directory
+  typeset _lwdir	# local working directory
+  cat <<EOFCAT
+timeout=[${_timeout}] [${_timeout_s}]
+EOFCAT
+  case "$_a_f_d" in
+    a)
+      _input_files_indices=$(mit_set_difference "${MIT_MITOPER_A_INPUT_FILES_INDICES}" "$_DOWNLOADED_INDICES_A")
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${MIT_MITOPER_A_INPUT_LFILES[_input_files_index]}"
+        _input_rfiles[_input_files_index]="${MIT_MITOPER_A_INPUT_RFILES[_input_files_index]}"
+        _input_compress_modes[_input_files_index]="${MIT_MITOPER_A_INPUT_COMPRESS_MODES[_input_files_index]}"
+        if $_EMERG ; then
+	  _input_download_modes[_input_files_index]="${MIT_MITOPER_A_INPUT_DOWNLOAD_MODES_EMERG[_input_files_index]}"
+	else
+          _input_download_modes[_input_files_index]="${MIT_MITOPER_A_INPUT_DOWNLOAD_MODES[_input_files_index]}"
+	fi
+        _input_rdirs[_input_files_index]="${MIT_MITOPER_A_INPUT_RDIRS[_input_files_index]}"
+      done
+      _lidir="$MIT_INPDIR/MITOPER_A"
+      _lwdir="$MIT_WRKDIR/MITOPER_A"
+      ;;
+    f)
+      _input_files_indices=$(mit_set_difference "${MIT_MITOPER_F_INPUT_FILES_INDICES}" "$_DOWNLOADED_INDICES_F")
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${MIT_MITOPER_F_INPUT_LFILES[_input_files_index]}"
+        _input_rfiles[_input_files_index]="${MIT_MITOPER_F_INPUT_RFILES[_input_files_index]}"
+        _input_compress_modes[_input_files_index]="${MIT_MITOPER_F_INPUT_COMPRESS_MODES[_input_files_index]}"
+	if $_EMERG ; then
+          _input_download_modes[_input_files_index]="${MIT_MITOPER_F_INPUT_DOWNLOAD_MODES_EMERG[_input_files_index]}"
+	else
+          _input_download_modes[_input_files_index]="${MIT_MITOPER_F_INPUT_DOWNLOAD_MODES[_input_files_index]}"
+	fi
+        _input_rdirs[_input_files_index]="${MIT_MITOPER_F_INPUT_RDIRS[_input_files_index]}"
+      done
+      _lidir="$MIT_INPDIR/MITOPER_F"
+      _lwdir="$MIT_WRKDIR/MITOPER_F"
+      ;;
+    d)
+      #_input_files_indices="${MIT_DA_SAT_INPUT_FILES_INDICES}"
+      _input_files_indices=$(mit_set_difference "${MIT_DA_SAT_INPUT_FILES_INDICES}" "$_DOWNLOADED_INDICES_D")
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${MIT_DA_SAT_INPUT_LFILES[_input_files_index]}"
+        _input_rfiles[_input_files_index]="${MIT_DA_SAT_INPUT_RFILES[_input_files_index]}"
+        _input_compress_modes[_input_files_index]="${MIT_DA_SAT_INPUT_COMPRESS_MODES[_input_files_index]}"
+        _input_download_modes[_input_files_index]="${MIT_DA_SAT_INPUT_DOWNLOAD_MODES[_input_files_index]}"
+        _input_rdirs[_input_files_index]="${MIT_DA_SAT_INPUT_RDIRS[_input_files_index]}"
+      done
+      _lidir="$MIT_INPDIR/DA_SAT"
+      _lwdir="$MIT_WRKDIR/DA/SAT"
+      ;;
+  esac
+  typeset _lidir_download="$_lidir/$(hostname).$$.$RANDOM"	# local directory for download
+  trap "rm -rf ${_lidir_download:-undefined}" 0
+
+  [[ -d $_lidir ]] || mit_mkdir $_lidir
+  [[ -d $_lidir_download ]] || mit_mkdir $_lidir_download
+  [[ -d $_lwdir ]] || mit_mkdir $_lwdir
+
+  echo "@@@ [${0}]: _input_files_indices=[${_input_files_indices}]"
+  for _input_files_index in $_input_files_indices ; do
+    echo "@@@ [${0}]: _input_files[${_input_files_index}]=[${_input_rfiles[_input_files_index]}] -> [${_input_lfiles[_input_files_index]}]"
+  done
+  
+  if $_DRY_RUN ; then
+    echo "WRN: DRY RUN, download is disabled!"
+    return 0
+  fi
+
+  typeset _timeout_count_exceeded
+  typeset _timeout_exceeded
+  for _input_files_index in $_input_files_indices ; do
+    _lfile="${_input_lfiles[_input_files_index]}"
+    _rfile="${_input_rfiles[_input_files_index]}"
+    _compress_mode="${_input_compress_modes[_input_files_index]}"
+    _download_mode="${_input_download_modes[_input_files_index]}"
+    _rdir="${_input_rdirs[_input_files_index]}"
+    _compressed_rfile="${_rfile}"
+    _decompressed_lfile="${_lfile}"
+    echo "@@@ [${0}] GET $_rdir/$_compressed_rfile -> $_lidir -> $_lfile"
+    _file_found=false
+    # check if file has already been downloaded:
+    #echo "CCC: $_lidir/$_compressed_rfile [$(test -f $_lidir/$_compressed_rfile; echo $?)]"
+    #echo "UUU: $_lidir/$_decompressed_rfile [$(test -f $_lidir/$_decompressed_rfile; echo $?)]"
+    if [[ -f "$_lidir/$_compressed_rfile" ]] ; then
+      echo "DEBUG: $_lidir/$_compressed_rfile esiste, _FORCE_DOWNLOAD=$_FORCE_DOWNLOAD"
+      if $_FORCE_DOWNLOAD ; then
+        echo "### file [${_compressed_rfile}] already exists, but FORCE_DOWNLOAD=true => try to download again"
+      else
+        echo "### file [${_compressed_rfile}] already exists, and FORCE_DOWNLOAD=false => try to resume download"
+        mit_cp -p $_lidir/$_compressed_rfile $_lidir_download
+        _file_found=true
+      fi
+    else
+      echo "### file [${_compressed_rfile}] does not exist => try to download"
+      echo "DEBUG: $_lidir/$_compressed_rfile non esiste"
+    fi
+
+    # file download:
+    typeset -i _timeout_count=0
+    while true ; do
+      if ! $_file_found ; then
+        #mit_prex "$MIT_BINDIR/ncftpget -z -f $nc_config '$_lidir_download' '$_rdir/$_compressed_rfile" ; _ec=$?
+        _timeout_count=$(( $_timeout_count + 1 ))
+        #mit_log 2 "[${_timeout_count}] trying to download '$_rdir/$_compressed_rfile'..."
+        if $_DISABLE_DOWNLOAD ; then
+          echo "### [${_timeout_count}] trying to recover file '$_lidir/$_compressed_rfile'..."
+          if [[ -f "$_lidir/$_compressed_rfile" ]] ; then
+            mit_cp $_lidir/$_compressed_rfile $_lidir_download/$_compressed_rfile
+          fi
+        else
+	  if [[ "$_a_f_d" == "d" ]] ; then
+              _compressed_rfile="${_rfile}"
+              _decompressed_lfile="${_lfile}"
+              echo "### [${_timeout_count}] trying to download '$_rdir/$_compressed_rfile'..."
+              mit_download "$_download_mode" "$_lidir_download" "$_rdir/$_compressed_rfile" ; _ec=$?
+              if [[ $_ec != 0 ]]; then
+                _compressed_rfile=$(echo ${_compressed_rfile}|sed -e "s/DT/NRT/")
+                _decompressed_lfile=$(echo ${_decompressed_lfile}|sed -e "s/DT/NRT/")
+                echo "### [${_timeout_count}] trying to download (NRT) '$_rdir/$_compressed_rfile'..."
+                mit_download "$_download_mode" "$_lidir_download" "$_rdir/$_compressed_rfile" ; _ec=$?
+              fi
+          else
+            echo "### [${_timeout_count}] trying to download '$_rdir/$_compressed_rfile'..."
+            mit_download "$_download_mode" "$_lidir_download" "$_rdir/$_compressed_rfile" ; _ec=$?
+          fi
+        fi
+        if [[ $_ec != 0 || ! -f "$_lidir_download/$_compressed_rfile" ]] ; then
+          if [[ -f "$_lidir_download/$_compressed_rfile" ]] ; then
+            mit_prex "rm -f $_lidir_download/$_compressed_rfile"
+          fi
+          # file not downloaded
+          _now=$( $MIT_BINDIR/date --utc +'%Y%m%d %H:%M:%S' )
+          _now_s=$( $MIT_BINDIR/date --utc --date="$_now" +'%s' )
+          _timeout_count_exceeded=false
+          if [[ $_timeout_count -gt $_timeout_count_max ]] ; then
+            _timeout_count_exceeded=true
+          fi
+          _timeout_exceeded=false
+          if [[ "$_now_s" -gt "$_timeout_s" ]] ; then
+            _timeout_exceeded=true
+          fi
+          printf "###DBG: now=[%s (%s)], timeout=[%s (%s)], exceeded=[%s]; count=[%s/%s], exceeded=[%s]\n" "$_now" "$_now_s" "$_timeout" "$_timeout_s" "$_timeout_exceeded" "$_timeout_count" "$_timeout_count_max" "$_timeout_count_exceeded"
+          if $_timeout_exceeded && $_timeout_count_exceeded ; then
+            # AFTER timeout! exit from function
+            mit_add_missing_files "$_rdir/$_compressed_rfile"
+            _errors=$(( $_errors + 1 ))
+            if $_abort_on_errors ; then
+              mit_log 0 "INPUT TIMEOUT - missing file [${_compressed_rfile}] - aborting"
+              return $_errors
+            else
+              mit_log 0 "INPUT TIMEOUT - missing file [${_compressed_rfile}] - file is skipped"
+              break
+            fi
+          else
+            # before timeout, continue to wait
+            echo "### missing file [${_compressed_rfile}] - waiting"
+            mit_wait "$_timeout_delay"
+            continue
+          fi
+        else
+          # file trovato
+          _file_found=true
+        fi 
+      fi
+
+      # file decompression (disable for V3C):
+      #   if gunzip fails, tries again to download forever;
+      #   this is to prevent downloading incomplete or corrupted files
+#       _decompressed_lfile="${_lfile}"
+#      if $_file_found ; then
+#	if ! mit_decompress "$_compress_mode" "$_lidir_download/$_compressed_rfile" "$_lidir_download/$_decompressed_lfile" ; then
+#          mit_log 1 "file [${_compressed_rfile}] : decompression[${_compress_mode}] failed!"
+#          _file_found=false
+#        fi
+#      fi
+
+      # file check:
+      #   if chec fails, tries again to download forever;
+      #   this is to prevent downloading incomplete or corrupted files
+      #   THIS CHECK HAS NOT BEEN IMPLEMENTED YET, AND WILL ALWAYS PASS!
+      if $_file_found ; then
+        # some code to check if $_decompressed_lfile is correct
+        if ! mit_check_input_file ${_decompressed_lfile} ; then
+          mit_log 1 "file [${_decompressed_lfile}] : check failed!"
+          _file_found=false
+        fi
+        mit_prex "mv    $_lidir_download/$_compressed_rfile $_lidir"
+        mit_cp -p $_lidir/$_compressed_rfile $_lwdir
+        mit_cp -p $_lidir/$_compressed_rfile $_lidir/$_decompressed_lfile
+        #mit_prex "mv    $_lidir_download/$_decompressed_lfile $_lidir"
+        mit_cp -p $_lidir/$_decompressed_lfile $_lwdir
+      fi
+
+      # exit from loop if file has been found
+      if $_file_found ; then
+        case "$_a_f_d" in
+          a)
+            _DOWNLOADED_INDICES_A="$_DOWNLOADED_INDICES_A$_input_files_index "
+            ;;
+          f)
+            _DOWNLOADED_INDICES_F="$_DOWNLOADED_INDICES_F$_input_files_index "
+            ;;
+          d)
+            _DOWNLOADED_INDICES_D="$_DOWNLOADED_INDICES_D$_input_files_index "
+            ;;
+        esac
+        break		# breaks the inner endless loop => try to download next file
+      else
+        mit_log 1 "file [${_decompressed_lfile}] not downloaded or corrupted - try again to download"
+      fi
+    done
+  done
+  unset _input_lfiles
+  unset _input_rfiles
+  return $_errors
+}
+
+errors=0
+
+mit_set_input_files__mitoper_a
+mit_set_input_files__mitoper_f
+if $MIT_DA_ENABLE ; then
+  mit_set_input_files__da_sat
+fi
+
+for i in $MIT_MITOPER_A_INPUT_FILES_INDICES ; do
+  printf "### A[%03d] %30s ::: %30s -> %30s\n" "$i" "${MIT_MITOPER_A_INPUT_RDIRS[i]}" "${MIT_MITOPER_A_INPUT_RFILES[i]}" "${MIT_MITOPER_A_INPUT_LFILES[i]}"
+done
+for i in $MIT_MITOPER_F_INPUT_FILES_INDICES ; do
+  printf "### F[%03d] %30s ::: %30s -> %30s\n" "$i" "${MIT_MITOPER_F_INPUT_RDIRS[i]}" "${MIT_MITOPER_F_INPUT_RFILES[i]}" "${MIT_MITOPER_F_INPUT_LFILES[i]}"
+done
+
+while true ; do
+  errors=0
+  mit_get_files 'a' || errors=$(( $errors + 1 ))
+
+  mit_get_files 'f' || errors=$(( $errors + 1 ))
+
+  mit_report "bio_transfer-tl-input_forcing" "$errors" "false"
+  typeset -i f_errors=$errors
+
+#  if $MIT_DA_ENABLE ; then
+#    mit_get_files 'd' || errors=$(( $errors + 1 ))
+#    typeset -i da_errors=$(( $errors - $f_errors ))
+#    mit_report "bio_transfer-tl-input_chl" "$da_errors" "false"
+#  fi
+
+  if [[ $errors -gt 0 ]] && ( ! $_INPUT_TIMEOUT_ENABLED ) ; then
+    mit_print_missing_files
+    mit_log 1 "Found $errors errors, timeout is disabled - continuing download"
+    continue
+  else
+    break
+  fi
+done
+
+mit_print_missing_files
+mit_report "bio_transfer-tl-input_available" "$errors" "false"
+mit_exit "$errors"
+
+
+
+

@@ -1,0 +1,43 @@
+#!/bin/ksh
+# This script creates some working directory (if missing),
+# and clean their content (if they already exist).
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+
+# start
+mit_start
+
+typeset -i errors=0
+
+
+METEODIRS="METEO METEO/DOWNLOAD"
+
+BC_IC_DIRS='BC_IC BC_IC/BIO/UNZIPPED/AVE/DAILY BC_IC/BIO/UNZIPPED/AVE/WEEKLY BC_IC/PHYS/UNZIPPED '
+MODELDIRS="MODEL MODEL/BC MODEL/FORCINGS MODEL/AVE_FREQ_1 MODEL/AVE_FREQ_2 MODEL/AVE_PHYS MODEL/RESTARTS MODEL/DA__FREQ_1 MODEL/KEXT"
+
+POSTPROCDIRS="POSTPROC POSTPROC/AVE_FREQ_1 POSTPROC/AVE_FREQ_1/TMP POSTPROC/AVE_FREQ_1/INTEGRALS \
+              POSTPROC/AVE_FREQ_1/STAT_PROFILES POSTPROC/AVE_FREQ_1/PROFILES POSTPROC/AVE_FREQ_2 \
+              POSTPROC/AVE_FREQ_2/TMP POSTPROC/AVE_FREQ_2/INTEGRALS POSTPROC/AVE_FREQ_2/STAT_PROFILES \
+              POSTPROC/AVE_FREQ_2/PROFILES"
+
+wrk_subdirs="$METEODIRS $BC_IC_DIRS " # $MODELDIRS   # $POSTPROCDIRS"
+
+# reset input directories
+for subdir in $wrk_subdirs ; do
+  dir="$MIT_WRKDIR/$subdir"
+  ec=0
+  mit_log 1 "cleaning directory [${subdir}] ..."
+  mit_prex "rm -rf '$dir'" ; ec=$?
+  errors=$(( $errors + $ec ))
+  mit_log 0 "cleaning directory [${subdir}] [$(mit_exitcode $ec)]"
+
+  mit_mkdir "$dir"
+  mit_log 0 "making directory [${subdir}] [$(mit_exitcode $ec)]"
+done
+
+mit_exit $errors

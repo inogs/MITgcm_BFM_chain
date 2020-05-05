@@ -1,0 +1,22 @@
+#!/bin/ksh
+# Checks if the crontab is not empty in the other cluster (backup/nominal)
+# 
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+
+_name="crontab/tail"
+for _login in $OPA_HOST_CRON_CHECK; do
+  echo "ssh $USER@$_login"
+  crontablist=$(ssh $USER@$_login 'crontab -l')
+  if test "${crontablist#*$_name}" != "$crontablist"; then
+    echo "crontab $_login OK!"
+    continue
+  else
+    echo "ERROR: crontab $_login empty"
+    subj="[CRONTAB NOT FOUND] login == $_login"
+    echo "Il crontab del login in oggetto e' vuoto."|mail -s "$subj" $OPA_NOTIFY_ADDRESSES
+  fi
+done
+

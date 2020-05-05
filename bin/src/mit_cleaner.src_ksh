@@ -1,0 +1,116 @@
+#!/bin/ksh
+# This command cleans input/archive/wrkdir for a specific rundate
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. $OPA_SCRDIR/opa_dates.inc
+
+
+function print_help {
+  cat <<EofHlp
+Usage: $OPA_PROGNAME [options] [<target0> [<target1> [...] ] ]
+Clean old directories.
+[options]
+$(opa_set_default_run__print_options)
+	--days|-d D				delete directories older than D days
+	--force|-f				force delete
+						[DEFAULT: ${force}]
+	--help|-h				show this help
+EofHlp
+}
+
+typeset -i days=15
+force=false
+  
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+	opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+	shift 1
+	;;
+    --days|-d)
+	days="$1"
+        shift 1
+	;;
+    --force|-f)
+	force=true
+	;;
+    --help|-h)
+	print_help
+	exit 0
+	;;
+    *)
+	add_target "$arg" || {
+	  echo "ERR: invalid target '$arg'" 1>&2
+	  exit 1
+	}
+	;;
+  esac
+done
+
+eval opa_set_default_run $opa_set_default_run_options
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+
+# delete inpdirs:
+opa_prex "cd $OPA_INPDIR_ROOT" || { 
+  echo "ERR: cannot find OPA_INPDIR_ROOT='$OPA_INPDIR_ROOT'" 1>&2
+  exit 1
+}
+
+typeset -i days_diff=0
+
+
+for dir in $(ls -1d ???????? | grep '[0-9]*') ; do
+  if [[ ! -d $dir ]] ; then
+    echo "WRN: skipping entry '$dir'" 1>&2
+    continue
+  fi
+  if [[ $dir -le $OPA_RUNDATE ]] ; then
+    date="$dir"
+    days_diff=$(dates_diff $dir $OPA_RUNDATE)
+    if [[ $days_diff -lt $days ]] ; then
+      echo "$dir is ${days_diff} days old - NOT removed"
+    else
+      echo "$dir is ${days_diff} days old - removed"
+      command="$OPA_BINDIR/rm -rf '$dir'"
+      execute=$force
+      if ! $execute ; then
+        force=false
+        while true ; do
+          printf "WARNING: do you *really* want to remove directory '$dir'? (y/N/a) "
+          read answer
+          case "$answer" in
+            y|Y|yes|YES|Yes)
+              execute=true
+              break
+              ;;
+            a|A|all|ALL|All)
+              force=true
+              execute=true
+              break
+              ;;
+            n|N|no|NO|No|'')
+              execute=false
+              break
+              ;;
+            *)
+              continue
+              ;;
+          esac
+        done
+      fi
+      if $execute ; then
+        opa_prex "$command"
+      else
+        echo "Command '$command' not executed"
+      fi
+    fi
+  fi
+done
+
+          
+

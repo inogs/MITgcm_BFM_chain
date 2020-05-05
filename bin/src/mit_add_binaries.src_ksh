@@ -1,0 +1,231 @@
+#!/bin/ksh
+# This command adds to the SVN[CVS] repositories all the binaries in $I_OPA_HOME/$I_OPA_ARCH
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+
+### svn:
+svn_internal_dir=".svn"
+
+function opa_dry_prex {
+  echo "PrEx-DRY> $*"
+}
+
+function svn_add_dir {
+  $opa_prex_fn "svn add --depth=empty '$1'"
+}
+
+function svn_add_files {
+  if [[ ${#@} -ne 0 ]] ; then
+    $opa_prex_fn "svn add $*"
+  fi
+}
+
+function svn_new_files {
+  if [[ ${#@} -ne 0 ]] ; then
+    svn status "$@" | grep '^\?' | grep -v ".*/$svn_internal_dir" | cut -c9-
+  fi
+}
+
+function svn_is_new_dir {
+  typeset _dir="$1"
+  if [[ $(svn status --depth=empty "$_dir" | grep -c '^\?' ) -ne 0 && $(basename $_dir) != "$svn_internal_dir" ]] ; then
+    # directory is new
+    return 0
+  else
+    return 1
+  fi
+}
+
+
+### cvs:
+
+cvs_internal_dir="CVS"
+function cvs_add_dir {
+  $opa_prex_fn "cvs add '$1'"
+}
+
+function cvs_add_files {
+  if [[ ${#@} -ne 0 ]] ; then
+    $opa_prex_fn "cvs add -kb $*"
+  fi
+}
+
+function cvs_new_files {
+  if [[ ${#@} -ne 0 ]] ; then
+    cvs status "$@" 2>/dev/null | grep '^File:.*Status:[ \t][ \t]*Unknown[ \t]*$' | awk '{print $2}'
+  fi
+}
+
+function cvs_is_new_dir {
+  typeset _dir="$1"
+  #echo ">>>>>>>> '$PWD/$_dir/$cvs_internal_dir'"
+  if [[ ! -d "$_dir/$cvs_internal_dir" ]] ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+
+function opa_indent {
+  typeset -i _level=${1:-0}
+  typeset    _indent='  '
+  typeset    _indentation=''
+  typeset -i _c=0
+  while [[ $_c -lt $_level ]] ; do
+    _indentation="$_indentation$_indent"
+    _c=$(( $_c + 1 ))
+  done
+  printf '%s' "$_indentation"
+}
+
+function opa_iterate {
+  echo "$*"
+}
+
+function opa_repo_add_dir {
+  typeset    _dir="$1"
+  typeset -i _level=${2:-0}
+  typeset -i _sublevel=$(( $_level + 1 ))
+  if $LIST ; then
+     typeset _indentation=$(opa_indent $_level)
+     echo "### ${_indentation}[Entering sub-directory '$_dir']"
+  fi
+  typeset   _entry
+  if [[ $(basename "$_dir") == "$vs_internal_dir" ]] ; then
+    return
+  fi
+  if $vs_is_new_dir "$_dir" ; then
+    #$vs_add_dir "$_dir"
+    opa_prex "$vs_add_dir '$_dir'"
+  fi
+  typeset _this_dir="$PWD"
+  cd $_dir
+  trap "cd $_this_dir" 0
+  #echo "::: $_dir -> $(ls -A1 | tr '\n' ' ')"
+  typeset    _files=" "
+  typeset -i _num_files=0
+  for _entry in $(ls -A1 2>/dev/null) ; do
+    if [[ -d $_entry ]] ; then
+      if [[ $(basename $_entry) != $vs_internal_dir ]] ; then
+        opa_repo_add_dir "$_entry" $_sublevel
+      fi
+    else
+      _files="$_files$_entry "
+      _num_files=$(( $_num_files + 1 ))
+    fi
+  done
+  if [[ $_num_files -gt 0 ]] ; then
+    typeset _fun_new_files
+    if $vs_is_new_dir "." ; then
+      #echo "NEW DIR $_dir"
+      _fun_new_files=opa_iterate
+    else
+      #echo "OLD DIR $_dir"
+      _fun_new_files=$vs_new_files
+    fi
+    #echo "::: '$_files' -> '$($_fun_new_files $_files)'"
+    #echo $vs_add_files $($_fun_new_files $_files)
+    $vs_add_files $($_fun_new_files $_files)
+  fi
+}
+
+vs_type=svn
+case $vs_type in
+  cvs)
+    vs_add_dir=cvs_add_dir
+    vs_add_files=cvs_add_files
+    vs_new_files=cvs_new_files
+    vs_is_new_dir=cvs_is_new_dir
+    vs_internal_dir="$cvs_internal_dir"
+    ;;
+  svn)
+    vs_add_dir=svn_add_dir
+    vs_add_files=svn_add_files
+    vs_new_files=svn_new_files
+    vs_is_new_dir=svn_is_new_dir
+    vs_internal_dir="$svn_internal_dir"
+    ;;
+  *)
+    echo "ERR: versioning system ${vs} not supported" 1>&2
+    exit 1
+    ;;
+esac
+
+function print_help {
+  cat <<EofHlp
+Usage: $ProgName [options]
+[options]
+	--force|-f		force add command
+	--directory|-D D	set base directory D
+				[DEFAULT: ${base_directory}]
+	--limit|-L L		limit to sub directory L [repeatable]
+				[DEFAULT: ${default_directories}]
+	--list|-l		list accessed sub-directories of base dir
+				[DEFAULT: ${LIST}]
+	--help|-h		show this help
+EofHlp
+}
+
+ProgName=$(basename $0)
+FORCE=false
+empty=" "
+base_directory="$I_OPA_HOME/HOST"
+default_directories=" $I_OPA_HOSTNAME "
+directories="$empty"
+LIST=false
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --force|-f)
+	FORCE=true
+	;;
+    --help|-h)
+	print_help
+        exit 0
+	;;
+    --base-directory|--directory|-D)
+	base_directory="$1"
+	shift 1
+	;;
+    --limit-directory|--limit|-L)
+	directories="$directories$1 "
+	shift 1
+	;;
+    --list|-l)
+	LIST=true
+	;;
+    *)
+	echo "ERR: invalid argument '$arg'" 1>&2
+	exit 1
+	;;
+  esac
+done
+
+if $FORCE ; then
+  opa_prex_fn=opa_prex
+else
+  opa_prex_fn=opa_dry_prex
+fi
+
+cd "$base_directory" || {
+  echo "ERR: missing base dir '$base_directory'" 1>&2
+  exit 1
+}
+
+if [[ "$directories" == "$empty" ]] ; then
+  directories="$default_directories"
+fi
+
+for directory in $directories ; do
+  echo "### Recursively adding directory '${directory}'"
+  if [[ -d "$directory" ]] ; then
+    opa_repo_add_dir "$directory"
+  else
+    echo "WRN: missing directory '$directory'" 1>&2
+  fi
+done
+

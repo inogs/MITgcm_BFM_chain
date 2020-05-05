@@ -1,0 +1,17 @@
+if [[ $__OPA_MPI_MPICH_IS_DEFINED__ == '' ]] ; then
+  __OPA_MPI_MPICH_IS_DEFINED__='__defined__'
+
+function opa_mpi_run {
+  # Run a command requiring $OPA_TASKS MPI tasks
+  typeset _args=$( _opa_mpi_args_to_string "$@" )
+  typeset _mpirun_command='mpirun'
+  case "$I_OPA_HOSTNAME" in
+    clx|bcc)
+      _mpirun_command="mpirun.${OPA_RM}"
+      ;;
+  esac    
+  opa_prex "time $_mpirun_command -np '$RM_NUM_PROCS' $_args"
+}
+
+# end of include guard:
+fi

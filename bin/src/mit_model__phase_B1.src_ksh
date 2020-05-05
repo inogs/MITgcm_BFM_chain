@@ -1,0 +1,331 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Load cluster profile (if backup)
+#if $I_OPA_BACKUP; then
+#. @@(I:OPA_HOME)/bin/opa_profile__${I_OPA_HOSTNAME}.inc
+#fi
+
+# Load MPI profile:
+. $OPA_SCRDIR/opa_mpi.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+typeset -i errors=0
+
+domain_dir="$OPA_ETCDIR/static-data/DOMAIN"
+wrkdir=$OPA_WRKDIR/MODEL
+# [[ -d $wrkdir ]] || opa_prex "mkdir -p $wrkdir"
+
+. $OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+
+### Start and end date for computation
+start_offset_s=$(( 0 + $OPA_TIMESTEP ))
+end_offset_s=$(( 0 + $OPA_TIMESTEP ))
+# Start date for computation since epoch (19700101)
+date_start_seconds_since_epoch=$( $OPA_BINDIR/date --utc			\
+ --date="$OPA_OPAOPER_DATE_START__ACTUAL 00:00:00 $start_offset_s seconds"\
+ +%s )
+# End date for computation since epoch (19700101)
+date_end_seconds_since_epoch=$( $OPA_BINDIR/date --utc				\
+ --date="$OPA_OPAOPER_DATE_END__ACTUAL 00:00:00 $end_offset_s seconds"	\
+ +%s )
+
+# Year of the start date:
+year=$( $OPA_BINDIR/date --utc --date="$OPA_OPAOPER_DATE_START__ACTUAL 00:00:00" +%Y )
+
+# The first day of this year, in seconds since epoch (19700101)
+date_ref_seconds=$( $OPA_BINDIR/date --utc --date="${year}0101 00:00:00" +%s )
+
+# Start and end date, in seconds since firt of january
+date_start_seconds=$(( $date_start_seconds_since_epoch - $date_ref_seconds ))
+date_end_seconds=$(( $date_end_seconds_since_epoch - $date_ref_seconds ))
+
+start_timesteps=$(( $date_start_seconds / $OPA_TIMESTEP ))
+end_timesteps=$(( $date_end_seconds / $OPA_TIMESTEP ))
+
+start_date=$( $OPA_BINDIR/date --utc --date="$OPA_OPAOPER_DATE_START__ACTUAL" +'%y%m%d' )
+end_date=$( $OPA_BINDIR/date --utc --date="$OPA_OPAOPER_DATE_END__ACTUAL" +'%y%m%d' )
+
+cat <<EofDbg
+@@@ OPA_OPAOPER_DATE_START__ACTUAL=$OPA_OPAOPER_DATE_START__ACTUAL
+@@@ date_start_seconds_since_epoch=$date_start_seconds_since_epoch
+@@@ date_start_seconds=$date_start_seconds
+@@@ start_date=$start_date
+@@@ start_timesteps=$start_timesteps
+@@@ OPA_OPAOPER_DATE_END__ACTUAL=$OPA_OPAOPER_DATE_END__ACTUAL
+@@@ date_end_seconds_since_epoch=$date_end_seconds_since_epoch
+@@@ date_end_seconds=$date_end_seconds
+@@@ end_date=$end_date
+@@@ end_timesteps=$end_timesteps
+EofDbg
+
+#restart_rundate=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 7 days ago" +'%Y%m%d' )
+restart_rundate=$($OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 7 days ago" +'%Y%m%d')
+restart_rundate_yy=$( $OPA_BINDIR/date --utc --date="$restart_rundate" +'%y%m%d' )
+restart_rundate_yyyy=$( $OPA_BINDIR/date --utc +'%Y%m%d-%H:%M:%S' --date="$restart_rundate 00:00:00" )
+echo "GFM:DBG:RESTART:$restart_rundate_yyyy"
+### Copy of restart files:
+restart_arc_dir="$OPA_ARCDIR_ROOT/$OPA_RESTART_RUNDATE/MODEL"
+restart_da_dir="$OPA_WRKDIR/DA/POSTPROC_DA/RESTARTS"
+echo "restart_arc_dir=$restart_arc_dir"
+echo "restart_da_dir=$restart_da_dir"
+
+function opa_get_restarts {
+  typeset    _restart_rundate_yyyy="$1"
+  typeset    _wrkdir="$2"
+  typeset    _restart_dir="$3"
+  typeset    _type_file="$4"
+  typeset    _link_or_copy="${5:-copy}"
+
+  typeset    _restart_file
+  typeset    _output_var
+  typeset -i _num_missing=0
+  if [[ "${_type_file}" == "RST" ]]; then
+    _prefix="RST"
+    _suffix="nc"
+    _variables="$OPA_OUTPUT_VARIABLES"
+  elif [[ "${_type_file}" == "BKP" ]];then
+    _prefix="ave"
+    _suffix="nc.bkp"
+    _variables="$OPA_HIGH_FREQ_VARIABLES"
+  else
+    echo "DBG: Type file <<${type_file}>> unknown!"
+  fi
+
+  for _output_var in ${_variables} ; do
+    _restart_file="${_prefix}.${_restart_rundate_yyyy}.${_output_var}.${_suffix}"
+    if [[ -f $_wrkdir/$_restart_file ]] ; then
+      ## File is already in wrkdir; nothing to do!
+      #opa_log 0 "WRN: restart file [${_restart_file}] already in work directory"
+      opa_prex "rm -f '$_wrkdir/$_restart_file"
+    fi
+    if [[ -f $_restart_dir/${_restart_file} ]] ; then
+      if [[ $_link_or_copy == "copy" ]] ; then
+        opa_cp -p $_restart_dir/${_restart_file} $_wrkdir/${_restart_file}
+      else
+        opa_prex "ln -s $_restart_dir/${_restart_file} $_wrkdir/${_restart_file}"
+      fi
+    elif [[ -f $_restart_dir/${_restart_file}.gz ]] ; then
+      opa_prex "gzip -dc $_restart_dir/${_restart_file}.gz > $_wrkdir/${_restart_file}"
+    else
+      _num_missing=$(( $_num_missing + 1 ))
+      echo "DBG: MANCA $_restart_dir/${_restart_file}[.gz]"
+    fi
+  done
+  return $_num_missing
+}
+
+  if $I_OPA_BACKUP; then
+    if (ssh $OPA_NOMINAL_LOGIN [ -d $OPA_NOMINAL_HOME/archive/$OPA_RESTART_RUNDATE ]); then
+      print "Backup system; downloading from nominal archive"
+      opa_prex "scp -r $OPA_NOMINAL_LOGIN:$OPA_NOMINAL_HOME/archive/$OPA_RESTART_RUNDATE $I_OPA_HOME/archive"
+    else
+      print "Error with $OPA_NOMINAL_HOME/archive/$OPA_RESTART_RUNDATE on $OPA_NOMINAL_LOGIN: directory not existing. Continuing from backup archive"
+    fi
+  fi
+  opa_get_restarts "$restart_rundate_yyyy" "$wrkdir/RESTARTS" "$restart_arc_dir" "RST"; _restart_from_da=$? 
+#  opa_get_restarts "$restart_rundate_yyyy" "$wrkdir/AVE_FREQ_1/" "$restart_arc_dir" "BKP"
+  if [[ $_restart_from_arc -eq 0 ]] ; then
+    opa_log 0 "Restarting from archive (without Data Assimilation)"
+  else
+    opa_log 1 "ERR: Cannot restart from archive :  missing files"
+  fi
+
+
+### Instantiation of namelist templates:
+nml_dir="$OPA_TPLDIR/namelists"
+
+opa_stage_in	"$wrkdir"						\
+                "$nml_dir/BenBac.nml"					\
+                "$nml_dir/BenOrganism.nml"				\
+                "$nml_dir/BenOxygen.nml"				\
+                "$nml_dir/BenthicNutrientReturn.nml"			\
+                "$nml_dir/Bioturbation.nml"				\
+                "$nml_dir/FilterFeeder.nml"				\
+                "$nml_dir/MesoZoo.nml"					\
+                "$nml_dir/MicroZoo.nml"					\
+                "$nml_dir/namelist.init"				\
+                "$nml_dir/namelist.passivetrc"				\
+                "$nml_dir/PelBac.nml"					\
+                "$nml_dir/PelChem.nml"					\
+                "$nml_dir/PelGlobal.nml"				\
+                "$nml_dir/Phyto.nml"					\
+                "$nml_dir/Settling.nml"					\
+                "$nml_dir/CO2.nml"					\
+                "$nml_dir/WindOxReaeration_3.nml"                       \
+                "$nml_dir/var_3d_nml"			|| {
+  errors=$(( $errors + $? ))
+}
+
+
+domain_suff=$(opa_defdomain $OPA_TASKS)
+echo "DBG:GFM:$OPA_TASKS---$domain_suff"
+### Copy of domain file:
+opa_cp "$domain_dir/$OPA_DOMAIN/domdec.txt $wrkdir/domdec.txt" || {
+  errors=$(( $errors + 1 ))
+}
+#opa_cp "$domain_dir/$OPA_ODD_ALPHA/Dom_Dec_jpj.ascii.${domain_suff} $wrkdir/Dom_Dec_jpj.ascii" || {
+#  errors=$(( $errors + 1 ))
+#}
+
+
+
+
+
+opa_stage_in	"$wrkdir"						\
+		"$OPA_ETCDIR/static-data/MED24_125/bounmask.nc"	\
+		"$OPA_ETCDIR/static-data/MED24_125/meshmask.nc"	|| {
+  errors=$(( $errors + $? ))
+}
+
+### generation of kexf.T.nc
+opa_prex "cd $wrkdir"
+
+
+
+
+aux_files=' '
+
+opa_stage_in	"$wrkdir/BC/" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/CO2_yyyy0630-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/ATM_yyyy0630-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/GIB_yyyy0215-12:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/GIB_yyyy0515-12:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/GIB_yyyy0815-12:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/GIB_yyyy1115-12:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0115-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0215-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0315-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0415-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0515-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0615-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0715-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0815-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy0915-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy1015-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy1115-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/BC/TIN_yyyy1215-00:00:00.nc" || {
+  errors=$(( $errors + $? ))
+}
+
+opa_stage_in	"$wrkdir/KEXT/" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0107-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0120-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0202-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0215-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0228-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0312-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0325-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0407-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0420-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0503-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0516-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0529-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0611-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0624-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0707-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0720-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0802-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0815-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0828-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0910-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy0923-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1006-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1019-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1101-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1114-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1127-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1210-00:00:00.nc" \
+                  "$OPA_ETCDIR/static-data/MODEL/FORCINGS/KextF_yyyy1223-00:00:00.nc" || {
+  errors=$(( $errors + $? ))
+}
+
+for I in `ls $OPA_WRKDIR/OPAOPER/* ` ; do
+    F=`basename $I`
+    filename=${F:7:1}20${F:0:6}-00:00:00.nc
+    opa_prex_or_die "ln -fs $I $wrkdir/FORCINGS/$filename" || errors=$(( $errors + 1 ))
+done
+
+#opa_prex "ln -fs $OPA_WRKDIR/INTERP/FORCINGS/* $wrkdir/FORCINGS/" || errors=$(( $errors + 1 ))
+opa_prex_or_die "ln -fs $OPA_WRKDIR/DA/SATELLITE      -t $wrkdir" || errors=$(( $errors + 1 ))
+opa_prex_or_die "ln -fs $OPA_WRKDIR/DA/DA_static_data -t $wrkdir" || errors=$(( $errors + 1 ))
+
+function datelist {
+VAR=$1
+for FILE in `ls $VAR*.nc` ; do 
+   V=${FILE#$VAR}
+   echo ${V%.nc}
+done
+}
+
+function datelistsat {
+VAR=$1
+for FILE in `ls $VAR | cut -c 1-8` ; do
+   echo ${FILE}-01:00:00
+done
+
+}
+
+cd $wrkdir
+opa_prex_or_die "datelist BC/TIN_          > RiversTimes" || errors=$(( $errors + 1 ))
+opa_prex_or_die  "datelist BC/GIB_          >    GibTimes" || errors=$(( $errors + 1 ))
+opa_prex_or_die  "datelist BC/ATM_          >    AtmTimes" || errors=$(( $errors + 1 ))
+opa_prex_or_die  "datelist BC/CO2_          > carbonTimes" || errors=$(( $errors + 1 ))
+
+opa_prex_or_die  "datelist FORCINGS/U      > forcingsTimes" || errors=$(( $errors + 1 ))
+opa_prex_or_die  "datelist KEXT/KextF_     >     kextTimes" || errors=$(( $errors + 1 ))
+
+opa_prex_or_die  "datelistsat SATELLITE    > daTimes "    || errors=$(( $errors + 1 ))
+#opa_prex "for I in `ls SATELLITE | cut -c 1-8` ; do echo ${I}-12:00:00 ; done > daTimes "
+
+
+opa_prex "rm -f Start_End_Times 1.aveTimes 2.aveTimes restartTimes"
+
+# CREAZIONE FILE Start_End_Times
+file_time_names="Start_End_Times"
+set_spec_data -date ${OPA_RUNDATE} -days "-7" -hours 0
+echo ${RUNDATE_tmp} > ${file_time_names}
+set_spec_data -date ${OPA_RUNDATE} -days 10 -hours 0
+echo ${RUNDATE_tmp} >> ${file_time_names}
+
+# CREAZIONE FILE aveTimes
+file_time_names="1.aveTimes"
+typeset -i myday=-7
+while [[ ${myday} -ne 10 ]] ; do
+  myday=$(( $myday + 1 ))
+  set_spec_data -date ${OPA_RUNDATE} -days ${myday}
+  echo ${RUNDATE_tmp} >> ${file_time_names}
+done
+
+file_time_names="2.aveTimes"
+if [[ ${OPA_WEEKDAY} -eq 2 ]]; then
+  set_spec_data -date ${OPA_RUNDATE} -days 0 -hours 0
+  echo ${RUNDATE_tmp} > ${file_time_names}
+else
+  touch ${file_time_names}
+fi
+
+
+# CREAZIONE FILE restartTimes
+file_time_names="restartTimes"
+# if [[ ${OPA_WEEKDAY} -eq 2 ]]; then
+#   deltaday=3
+# elif [[ ${OPA_WEEKDAY} -eq 5 ]]; then
+#   deltaday=4
+# fi
+set_spec_data -date ${OPA_RUNDATE} -days "-${OPA_PREV_RUNDATE_OFFSET}" -hours 0
+echo ${RUNDATE_tmp} > ${file_time_names}
+# set_spec_data -date ${OPA_RUNDATE} -days 0 -hours 12
+# echo ${RUNDATE_tmp} >> ${file_time_names}
+
+opa_exit "$errors"
+
+
+

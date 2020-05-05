@@ -1,0 +1,123 @@
+#!/bin/ksh
+# This script submits and monitors a list of runs to recover
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options]
+[options]
+	--help|-h		show this help
+	--from|-f		from date
+	--to|-t			to date
+	--dry-run|-d		dry run
+	--force|-f		no dry run
+	--wait-jobs|-w		wait the termination of all jobs
+	--no-wait-jobs|-W	do not wait the termination of all jobs
+EofCat
+}
+
+
+FROM_DATE=''
+TO_DATE=''
+DRY_RUN=true
+WAIT_JOBS=true
+
+opa_log_inspect_options=" "
+notify=false
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --from|-f)
+      FROM_DATE="$1"
+      shift 1
+      ;;
+    --to|-t)
+      TO_DATE="$1"
+      shift 1
+      ;;
+    --dry-run|-d)
+      DRY_RUN=true
+      ;;
+    --force|-D)
+      DRY_RUN=false
+      ;;
+    --wait-jobs|-w)
+      WAIT_JOBS=true
+      ;;
+    --no-wait-jobs|-W)
+      WAIT_JOBS=false
+      ;;
+    --)
+      while [[ ${#@} -ne 0 ]] ; do
+        opa_log_inspect_options="${opa_log_inspect_options}'$1' "
+        shift 1
+      done
+      ;;
+    *)
+      if [[ $FROM_DATE == "" ]] ; then
+        FROM_DATE="$arg"
+      elif [[ $TO_DATE == "" ]] ; then
+        TO_DATE="$arg"
+      else
+        echo "ERROR: wrong command line option <$arg>" 1>&2
+        exit 2
+      fi
+      ;;
+  esac
+done
+
+
+cat <<EOFCAT
+FROM_DATE=$FROM_DATE
+TO_DATE=$TO_DATE
+EOFCAT
+
+function dry_run {
+  echo "DRY_RUN> $*"
+}
+
+function opa_wait_jobs {
+  typeset -i _sleep=${1:-60}
+  typeset -i _num_jobs
+  while true ; do
+    _num_jobs=$(opa_num_jobs)
+    if [[ $_num_jobs -eq 0 ]] ; then
+      echo "### No more running jobs"
+      break
+    else
+      echo "### Waiting $_num_jobs jobs..."
+      opa_prex "sleep $_sleep"
+    fi
+  done
+}
+
+function opa_num_jobs {
+  echo $(llq -u $USER | grep -c "[ \t]$USER[ \t]")
+}
+
+if $DRY_RUN ; then
+  pr_fun=dry_run
+else
+  pr_fun=opa_prex
+fi
+
+today=$($OPA_BINDIR/date +'%Y%m%d')
+date=$FROM_DATE
+while [[ $date -le $TO_DATE ]] ; do
+  opa_set_run "$date"
+  echo $OPA_RUNDATE
+  date=$($OPA_BINDIR/date --date="$date 00:00:00 $OPA_NEXT_RUNDATE_OFFSET days" +"%Y%m%d")
+  if $WAIT_JOBS ; then
+    opa_wait_jobs
+  fi
+  $pr_fun "/cineca/scripts/hacmp_login.select && /sp6/userogs/ogstsf79/OPA/V1/bin/opa_start.ksh --force --rundate $OPA_RUNDATE >$I_OPA_HOME/var/log/$(hostname).${today}.opa_start.recovery_${OPA_RUNDATE}.out"
+done
+
+

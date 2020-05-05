@@ -1,0 +1,263 @@
+#!/bin/ksh
+# This command sets the correct crontab
+#
+# You must run this script only if you need to change
+# the crontab-file template ($OPA_ETCDIR/crontab-file)
+#
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options]
+[options]
+	--help|-h				show this help
+	--weekdays|-w WEEKDAY-LIST		submit weekdays WEEKDAY-LIST
+	--kernel-only|--kernel|-k		only crontab kernel, without head/tail/external producers
+	--force|-f				really change crontab
+	--all|-a				change crontab on all login nodes
+
+EofCat
+}
+
+opa_submit_options=' '
+force=false
+all=false
+kernel_only=false
+opa_weekdays="$OPA_WEEKDAYS"
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --kernel|-k)
+      kernel_only=true
+      ;;
+    --force|-f)
+      force=true
+      ;;
+    --all|-a)
+      all=true
+      ;;
+    --weekdays|-w)
+      opa_weekdays="$1"
+      shift 1
+      ;;
+    *)
+      echo "ERROR: unknown option <$arg>" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+
+if $all ; then
+  [[ "$OPA_HOST_PRIMARY_HOSTNAME" != '' ]]   && opa_prex "ssh $OPA_HOST_PRIMARY_HOSTNAME $OPA_SCRDIR/opa_setup_crontab.ksh -f "
+  [[ "$OPA_HOST_SECONDARY_HOSTNAME" != '' ]] && opa_prex "ssh $OPA_HOST_SECONDARY_HOSTNAME $OPA_SCRDIR/opa_setup_crontab.ksh -f"
+  exit 0
+fi
+
+for d in log tmp ; do
+  [[ -d $OPA_VARDIR/$d ]] || opa_mkdir $OPA_VARDIR/$d
+done
+
+unset tmp_crontab
+while [[ -f ${tmp_crontab:=$OPA_VARDIR/tmp/crontab-file.part.$$.$RANDOM} ]] ; do
+  unset tmp_crontab
+done
+
+trap "exit 101" 1
+trap "exit 102" 2
+trap "exit 103" 3
+trap "exit 115" 15
+trap "rm -f $tmp_crontab" 0
+
+typeset -i errors=0
+
+opa_download_start_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC $OPA_GET_ADVANCE_MIN minutes ago" +"%M %H")
+opa_chain_start_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC" +"%M %H")
+opa_download_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_DOWNLOAD_HOUR_UTC UTC" +"%M %H")
+
+
+if [[ "$NODE" = "$OPA_HOST_PRIMARY_HOSTNAME" ]] ; then
+  cron_deltatime="00:10:00"
+  cron_comment=""
+else
+  cron_deltatime="00:00:00"
+  cron_comment="#"
+fi
+
+if $I_OPA_BACKUP; then
+  backup_deltatime="00:30:00"
+else
+  backup_deltatime="00:00:00"
+fi
+
+opa_start=$( time_sum $OPA_START_HOUR_UTC $cron_deltatime f )
+opa_start=$( time_sum $opa_start $backup_deltatime f )
+
+opa_chain_start_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $opa_start UTC" +"%M %H")
+
+opa_chain_check_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC ${OPA_CHECK_HOURS_OFFSET} hours" +"%M %H")
+opa_chain_check_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC ${OPA_CHECK_HOURS_OFFSET} hours" +"%M %H")
+
+#20 minutes delay (10 mins + 10 mins)
+opa_download=$( time_sum $OPA_DOWNLOAD_HOUR_UTC $cron_deltatime f )
+opa_download=$( time_sum $opa_download $cron_deltatime f )
+opa_download_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $opa_download UTC" +"%M %H")
+
+
+
+# opa_advance_min=$( time_sum $OPA_GET_ADVANCE_MIN $cron_deltatime f )
+opa_download_start_hour_crontab_tz=$($OPA_BINDIR/date --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC $OPA_GET_ADVANCE_MIN minutes ago" +"%M %H")
+#echo "DBG: opa_download_start_hour_crontab_utc=$opa_download_start_hour_crontab_utc" 1>&2
+#echo "DBG: opa_chain_start_hour_crontab_utc=$opa_chain_start_hour_crontab_utc" 1>&2
+
+opa_check_days_offset=$(( $OPA_CHECK_HOURS_OFFSET / 24 ))
+cat <<EOFCAT
+opa_chain_check_hour_crontab_utc=$opa_chain_start_hour_crontab_utc
+opa_chain_check_hour_crontab_tz=$opa_chain_start_hour_crontab_tz
+opa_check_days_offset=$opa_check_days_offset
+EOFCAT
+
+set -A weekday_names -- 'Sunday' 'Monday' 'Tuesday' 'Wednesday' 'Thursday' 'Friday' 'Saturday'
+typeset -i opa_weekday
+typeset -i opa_submit_weekday
+
+function get_file_override {
+  typeset _filename="$1"
+  typeset _filename_override="${_filename}.override"
+  if [[ -f "$_filename_override" ]] ; then
+    echo "$_filename_override"
+  else
+    echo "$_filename"
+  fi
+}
+
+function _sed_tpl_file {
+  typeset _tpl=$(get_file_override "$1")
+  echo "### from template <${_tpl}>"
+  cat "$_tpl" | _sed_tpl 
+  echo
+}
+
+function _sed_tpl_producer {
+  typeset _producer=$(get_file_override "$1")
+  echo "### from producer <${_producer}>"
+  eval "$_producer" | _sed_tpl 
+  echo
+}
+
+function sed_tpl_file {
+  _sed_tpl_file "$@" >> "$tmp_crontab"
+}
+
+function sed_tpl_producer {
+  _sed_tpl_producer "$@" >> "$tmp_crontab"
+}
+
+function _sed_tpl {
+  sed	-e "s%@@(C:OPA_BINDIR)%${OPA_BINDIR}%g"								\
+	-e "s%@@(C:OPA_SCRDIR)%${OPA_SCRDIR}%g"								\
+	-e "s%@@(C:OPA_VARDIR)%${OPA_VARDIR}%g"								\
+	-e "s%@@(C:OPA_HOME)%${I_OPA_HOME}%g"								\
+	-e "s%@@(C:OPA_DOWNLOAD_START_HOUR_CRONTAB_UTC)%${opa_download_start_hour_crontab_utc}%g"	\
+	-e "s%@@(C:OPA_DOWNLOAD_START_HOUR_CRONTAB_TZ)%${opa_download_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:OPA_DOWNLOAD_HOUR_CRONTAB_UTC)%${opa_download_hour_crontab_utc}%g"			\
+	-e "s%@@(C:OPA_DOWNLOAD_HOUR_CRONTAB_TZ)%${opa_download_hour_crontab_tz}%g"			\
+	-e "s%@@(C:OPA_CHAIN_START_HOUR_CRONTAB_UTC)%${opa_chain_start_hour_crontab_utc}%g"		\
+	-e "s%@@(C:OPA_CHAIN_CHECK_HOUR_CRONTAB_UTC)%${opa_chain_check_hour_crontab_utc}%g"		\
+	-e "s%@@(C:OPA_CHAIN_START_HOUR_CRONTAB_TZ)%${opa_chain_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:OPA_CHAIN_CHECK_HOUR_CRONTAB_TZ)%${opa_chain_check_hour_crontab_tz}%g"		\
+	-e "s%@@(C:OPA_CRON_COMMENT)%${cron_comment}%g"		\
+	-e "s%@@(C:OPA_SUBMIT_WEEKDAY)%${opa_submit_weekday}%g"						\
+	-e "s%@@(C:OPA_SUBMIT_WEEKDAY_NAME)%${opa_submit_weekday_name}%g"				\
+	-e "s%@@(C:OPA_CHECK_WEEKDAY)%${opa_check_weekday}%g"						\
+	-e "s%@@(C:OPA_CHECK_WEEKDAY_NAME)%${opa_check_weekday_name}%g"					\
+	-e "s%@@(C:OPA_WEEKDAY)%${opa_weekday}%g"							\
+	-e "s%@@(C:OPA_WEEKDAY_NAME)%${opa_weekday_name}%g"						\
+	-e "s%@@(C:OPA_REPORT_DAY)%${OPA_REPORT_DAY}%g"							\
+	-e "s%@@(C:OPA_CRON_REPORT_DAY)%${OPA_CRON_REPORT_DAY}%g"					\
+	-e "s%@@(C:OPA_CRON_PART_REPORT_DAY)%${OPA_CRON_PART_REPORT_DAY}%g"
+}
+
+if ! $kernel_only ; then
+  # head
+  sed_tpl_file "$OPA_ETCDIR/crontab/head" || errors=$(( $errors + 1 ))
+fi
+
+# kernel
+for opa_weekday in $opa_weekdays ; do
+  opa_weekday_name="${weekday_names[opa_weekday]}"
+  opa_submit_weekday=$(( ( $opa_weekday + $OPA_SUBMIT_DAY_OFFSET + 7 ) % 7 ))
+  opa_submit_weekday_name="${weekday_names[opa_submit_weekday]}"
+  opa_check_weekday=$(( ( $opa_submit_weekday + $opa_check_days_offset ) % 7 ))
+  opa_check_weekday_name="${weekday_names[opa_check_weekday]}"
+  echo "opa_check_days_offset=$opa_check_days_offset"
+  echo "opa_check_weekday=$opa_check_weekday"
+  sed_tpl_file "$OPA_ETCDIR/crontab/weekday" || errors=$(( $errors + 1 ))
+done
+
+if ! $kernel_only ; then
+  # producers
+  prodir="$OPA_ETCDIR/crontab/producers"
+  if [[ -d $prodir ]] ; then
+    for profile in $(cd $prodir && ls -1 *.producer 2>/dev/null) ; do
+      sed_tpl_producer "$prodir/$profile" || errors=$(( $errors + 1 ))
+    done
+  fi
+fi
+
+if ! $kernel_only ; then
+  # tail
+  sed_tpl_file "$OPA_ETCDIR/crontab/tail" || errors=$(( $errors + 1 ))
+
+  # externals
+  extdir="$OPA_ETCDIR/crontab/externals"
+  if [[ -d $extdir ]] ; then
+    for extfile in $(cd $extdir && ls -1 *.external 2>/dev/null) ; do
+      sed_tpl_file "$extdir/$extfile" || errors=$(( $errors + 1 ))
+    done
+  fi
+fi
+
+cat $tmp_crontab || errors=$(( $errors + 1 ))
+
+if [[ $errors -ne 0 ]] ; then
+  echo "### ERROR: found $errors errors" 1>&2
+  exit 2
+fi
+
+if ! $force ; then
+  #echo "          ###########################################################################" 1>&2
+  #echo "          ### WARNING: use the --force option to really install this crontab file ###" 1>&2
+  #echo "          ###########################################################################" 1>&2
+  exit 0
+fi
+
+min_crontab_size=10
+if [[ $( cat $tmp_crontab | wc -c ) -lt $min_crontab_size ]] ; then
+  echo "### ERROR: empty crontab file" 1>&2
+  errors=$(( $errors + 1 ))
+fi
+
+if [[ $errors -gt 0 ]] ; then
+  echo "### ERROR: $errors errors found" 1>&2
+  exit 1
+fi
+
+install_crontab_cmd="/bin/ksh -c 'crontab -l | diff - $tmp_crontab >/dev/null 2>&1 || { echo \\\"WARNING: installing new crontab on \\\$(hostname)\\\"; crontab $tmp_crontab; }'"
+echo "installing crontab if necessary..."
+if $all ; then
+  for login_node in $OPA_LOGIN_NODES ; do
+    opa_prex "ssh $login_node \"$install_crontab_cmd\""
+  done
+else
+  opa_prex "ssh localhost \"$install_crontab_cmd\""
+fi
+
+opa_exit "$errors"

@@ -1,0 +1,584 @@
+#!/bin/ksh
+
+function py_parse {
+  python -c '
+
+False=0
+True=1
+
+import sys
+import os
+
+def sticky_field(value):
+  if(value == "(none)"):
+    return ""
+  else:
+    return value
+
+class Entry(object):
+  def __init__(self):
+    self.name=None
+    self.type=None
+    self.status=""
+    self.description=""
+    self.working_revision=""
+    self.repository_revision=""
+    self.repository_file=None
+    self.sticky_tag=""
+    self.sticky_date=""
+    self.sticky_options=""
+    self.is_branch=False
+  def __str__(self):
+    if( self.is_branch ):
+      tisb="*"
+    else:
+      tisb=""
+    return self.name + "(" + self.sticky_tag + tisb + ";" + self.sticky_date + ";" + self.sticky_options + ")"
+    
+class EntryManager(object):
+  def __reset_flags(self):
+    self.show__directories=False
+    self.show__up_to_date=False
+    self.show__not_up_to_date=False
+    self.show__not_on_cvs=False
+    self.show__tagged=False
+    self.show__untagged=False
+  def __init__(self,*loptions,**doptions):
+    self.show__directories=False
+    self.show__up_to_date=False
+    self.show__not_up_to_date=True
+    self.show__not_on_cvs=False
+    self.show__tagged=False
+    self.show__untagged=False
+    self.show__footer=True
+    self.tag_name=None
+    self.path_name=""
+    self.show__fullpath=False
+    self.__header_has_been_shown=False
+    self.__fmt="%(type)2s %(tag)24s %(options)5s %(status)16s %(filesystem_status)1s%(revision_status)1s %(working_revision)12s %(repository_revision)12s %(name)s"
+    for option in loptions:
+      if(option == "=f"):
+        self.__reset_flags()
+        self.show__footer=True
+      elif(option == "+f"):
+        self.show__footer=True
+      elif(option == "-f"):
+        self.show__footer=False
+      elif(option == "=d"):
+        self.__reset_flags()
+        self.show__directories=True
+      elif(option == "+d"):
+        self.show__directories=True
+      elif(option == "-d"):
+        self.show__directories=False
+      elif(option == "=u"):
+        self.__reset_flags()
+        self.show__up_to_date=True
+      elif(option == "+u"):
+        self.show__up_to_date=True
+      elif(option == "-u"):
+        self.show__up_to_date=False
+      elif(option == "=U"):
+        self.__reset_flags()
+        self.show__not_up_to_date=True
+      elif(option == "+U"):
+        self.show__not_up_to_date=True
+      elif(option == "-U"):
+        self.show__not_up_to_date=False
+      elif(option == "=n"):
+        self.__reset_flags()
+        self.show__not_on_cvs=True
+      elif(option == "+n"):
+        self.show__not_on_cvs=True
+      elif(option == "-n"):
+        self.show__not_on_cvs=False
+      elif(option == "=t"):
+        self.__reset_flags()
+        self.show__tagged=True
+      elif(option == "+t"):
+        self.show__tagged=True
+      elif(option == "-t"):
+        self.show__tagged=False
+      elif(option == "=T"):
+        self.__reset_flags()
+        self.show__untagged=True
+      elif(option == "+T"):
+        self.show__untagged=True
+      elif(option == "-T"):
+        self.show__untagged=False
+      elif(option == "-a"):
+        self.show__directories=False
+        self.show__up_to_date=False
+        self.show__not_up_to_date=False
+        self.show__not_on_cvs=False
+        self.show__tagged=False
+        self.show__untagged=False
+      elif(option == "+a" or option == "=a" ):
+        self.show__directories=True
+        self.show__up_to_date=True
+        self.show__not_up_to_date=True
+        self.show__not_on_cvs=True
+        self.show__tagged=True
+        self.show__untagged=True
+      elif(option == "+F" or option == "=F" ):
+        self.show__fullpath=True
+      elif(option == "-F"):
+        self.show__fullpath=False
+      elif(option[0:6] == "--tag="):
+        self.tag_name=option[6:]
+      elif(option[0:7] == "--path="):
+        self.path_name=option[7:]
+        if( self.path_name[-1] != "/" ):
+          self.path_name += "/"
+    self.subdir=""
+    self.num__entries=0
+    self.num__directories=0
+    self.num__files=0
+    self.num__up_to_date=0
+    self.num__not_up_to_date=0
+    self.num__on_cvs=0
+    self.num__not_on_cvs=0
+    self.num__on_cvs=0
+    self.num__tagged=0
+    self.num__untagged=0
+
+  def set_subdir(self,v):
+    if(v[-1] == "/"): 
+      self.subdir=v
+    else:
+      self.subdir=v + "/"
+
+  def show_header(self):
+    if(not self.__header_has_been_shown):
+      print self.__fmt %	{ "type"		: "ET",
+				  "status"		: "STATUS",
+				  "tag"			: "TAG",
+				  "date"		: "DATE",
+				  "options"		: "OPTS",
+				  "filesystem_status"	: "F",
+				  "revision_status"	: "R",
+				  "working_revision"	: "WRK_REV",
+				  "repository_revision"	: "REP_REV",
+				  "name"		: "NAME"
+				}
+      self.__header_has_been_shown=True
+  def show_entry(self,entry):
+    self.show_header()
+    #efilename="%s/%s/%s" % ( self.path_name, self.subdir, entry.name )
+    if( self.subdir == "" ):
+      efilename="./%s" % ( entry.name )
+    else:
+      efilename="%s/%s" % ( self.subdir, entry.name )
+    if(self.show__fullpath):
+      ebase=self.path_name
+    else:
+      ebase=""
+    if(self.show__fullpath):
+      esubdir=self.subdir
+    else:
+      lpn=len(self.path_name)
+      if( self.subdir[:lpn] == self.path_name ):
+        esubdir=self.subdir[lpn:]
+      else:
+        #sys.stderr.write("self.path_name=[%s](%d), self.subdir=[%s](%d)\n" % (self.path_name, len(self.path_name), self.subdir, len(self.subdir) ) )
+        esubdir=self.subdir
+    if(entry.type == "D"):
+      etype=">D"
+      epath=ebase
+      ename=entry.name + "/"
+    else:
+      etype=" F"
+      epath=ebase + esubdir
+      ename=entry.name
+    if(entry.sticky_tag == ""):
+      etag="(untagged)"
+    else:
+      etag=entry.sticky_tag
+    edescription=""
+    if(entry.description != ""):
+      edescription += " [%s]" % entry.description
+    if(entry.sticky_date != ""):
+      edescription += " [STICKY_DATE: %s]" % entry.sticky_date
+    eworking_revision=entry.working_revision
+    if(entry.type == "F" and entry.status != "Up-to-date"):
+      erevision_status = "!"
+    else:
+      erevision_status = ""
+    if(not os.path.exists(efilename)):
+      #sys.stderr.write( "manca %s in %s\n" % (efilename,os.getcwd()) )
+      efilesystem_status="-"
+    else:
+      efilesystem_status=""
+    print self.__fmt %		{ "type"		: etype,
+				  "status"		: entry.status,
+				  "tag"			: etag,
+				  "date"		: entry.sticky_date,
+				  "options"		: entry.sticky_options,
+                                  "filesystem_status"	: efilesystem_status,
+                                  "revision_status"	: erevision_status,
+                                  "working_revision"	: eworking_revision,
+                                  "repository_revision"	: entry.repository_revision,
+				  "name"		: epath + ename + edescription
+				}
+
+  def show_footer(self):
+    if(not self.show__footer):
+      return
+    errors = 0
+    not_up_to_date__st=""
+    if( self.show__not_up_to_date ):
+      if(self.num__not_up_to_date > 0):
+        not_up_to_date__st="!"
+        errors += self.num__not_up_to_date
+    not_up_to_date__status="%8s%1s" % ( self.num__not_up_to_date, not_up_to_date__st )
+    untagged__st=""
+    if( self.show__untagged ):
+      if(self.num__untagged > 0):
+        errors += self.num__untagged
+        untagged__st="!"
+    untagged__status="%8s%1s" % ( self.num__untagged, untagged__st )
+    if(errors > 0):
+      overall_status="%8s!" % errors
+    else:
+      overall_status="%8s " % errors
+    
+    print """\
++====S-t-a-t-u-s===============+===L-e-g-e-n-d-a===============================+
+| Entries           : %(ent)8s | F: Filesystem status                          |
+|  Directories      : %(dir)8s |    - file does not exist                      |
+|  Files            : %(fil)8s |                                               |
+|   Not on CVS      : %(noc)8s | R: revision status                            |
+|   On CVS          : %(onc)8s |    ! working revision and repository          |
+|    Up to date     : %(utd)8s |      revision dos not match                   |
+|    Not up to date : %(nut_)9s|                                               |""" % {
+	"ent"					: self.num__entries,
+	"dir"					: self.num__directories,
+	"fil"					: self.num__files,
+	"noc"					: self.num__not_on_cvs,
+	"onc"					: self.num__on_cvs,
+	"utd"					: self.num__up_to_date,
+	"nut_"					: not_up_to_date__status }
+
+    if(self.show__tagged or self.show__untagged):
+      if(self.tag_name is None):
+        etag="(any)"
+      else:
+        etag=self.tag_name
+      print """\
+|     Tagged        : %(tgd)8s | TAG NAME:                                     |
+|     Untagged      : %(utg_)9s|    %(________________________________tag)-42s |""" % {
+	"tgd"					: self.num__tagged,
+	"utg_"					: untagged__status,
+	"________________________________tag"	: etag }
+
+    print """\
+| Overall status    : %(ovs_)9s|                                               |
++==============================+===============================================+""" % {
+	"ovs_"					: overall_status   }
+
+#    print "/-------------------------------------\//--------------------------------------\\"
+#    print "| %-20s: %8d                           | %18s|" % ( "Entries", self.num__entries )
+#    print "| %-20s: %8d                           | %18s|" % ( "  Directories", self.num__directories )
+#    print "| %-20s: %8d                           | %18s|" % ( "  Files", self.num__files )
+#    print "| %-20s: %8d                           | %18s|" % ( "    Not on CVS", self.num__not_on_cvs )
+#    print "| %-20s: %8d                           | %18s|" % ( "    On CVS", self.num__on_cvs )
+#    print "| %-20s: %8d                           | %18s|" % ( "      Up to date", self.num__up_to_date )
+#    print "| %-20s: %8d                           | %18s|" % ( "      Not up to date", self.num__not_up_to_date )
+#    if(self.show__untagged or self.show__tagged):
+#      if(self.tag_name is None):
+#        etag="(any)"
+#      else:
+#        etag=self.tag_name
+#      print "| %-20s: %-36s|" % ( "      Tag", "\"" + etag + "\"" )
+#      print "| %-20s: %8d                           |" % ( "        Tagged", self.num__tagged )
+#      print "| %-20s: %8d                           |" % ( "        Untagged", self.num__untagged )
+#    errors = 0
+#    if( self.show__not_up_to_date ):
+#      errors += self.num__not_up_to_date
+#    if( self.show__untagged ):
+#      errors += self.num__untagged
+#    #if( self.num__not_up_to_date != 0 ):
+#    #  errors += 1
+#    #if( self.num__untagged != 0 ):
+#    #  errors += 1
+#    if(errors > 0):
+#      overall_status="KO!     "
+#    else:
+#      overall_status="ok.     "
+#    print "| %-20s: %8d %-27s|" % ( "Overall status", errors, overall_status )
+#      
+#    print "\\-------------------------------------//\--------------------------------------/"
+
+  def show(self,entry):
+    if( entry is None ):
+      return
+    _show=False
+    self.num__entries += 1
+    if(entry.type == "F"):
+      self.num__files+=1
+      is_up_to_date=False
+      is_tagged=False
+      is_untagged=False
+      is_not_on_cvs=False
+      if(entry.status == "Up-to-date"):
+        is_up_to_date=True
+      elif(entry.status == "Not-On-Cvs"):
+        is_not_on_cvs=True
+      elif(entry.status == "Unknown"):
+        is_not_on_cvs=True
+      else:
+        is_not_up_to_date=True
+      if(self.tag_name is not None):
+        if(entry.sticky_tag == self.tag_name):
+          is_tagged=True
+        else:
+          is_untagged=True
+      else:
+        if(not is_not_on_cvs):
+          if(entry.sticky_tag != ""):
+            is_tagged=True
+          else:
+            is_untagged=True
+     
+      if( is_up_to_date): 
+        self.num__up_to_date += 1
+        self.num__on_cvs += 1
+        if(self.show__up_to_date):
+          _show=True
+      elif( is_not_on_cvs ):
+        self.num__not_on_cvs += 1
+        if(self.show__not_on_cvs):
+          _show=True
+      elif( is_not_up_to_date): 
+        self.num__not_up_to_date += 1
+        self.num__on_cvs += 1
+        if(self.show__not_up_to_date):
+          _show=True
+
+      if( is_tagged): 
+        self.num__tagged += 1
+        if(self.show__tagged):
+          _show=True
+
+      if( is_untagged): 
+        self.num__untagged += 1
+        if(self.show__untagged):
+          _show=True
+        
+    elif(entry.type == "D"):
+      self.num__directories+=1
+      if(self.show__directories):
+        _show=True
+    if(_show):
+      self.show_entry(entry)
+    if(entry.type == "D"):
+      self.set_subdir(entry.name)
+
+em=EntryManager(*sys.argv)
+e=None
+for line in sys.stdin:
+  l=line.strip().split()
+  if(len(l) == 0):
+    continue
+  if( l[0] == "?" ):
+    em.show(e)
+    e=Entry()
+    e.name = l[1]
+    e.status = "Not-On-Cvs"
+    e.type = "F"
+  elif( l[0] == "File:" ):
+    em.show(e)
+    e=Entry()
+    e.type="F"
+    for status_index in range(len(l)-1,0,-1):
+      if(l[status_index]=="Status:"):
+        break
+    file_index=status_index-1
+    e.name=l[file_index]
+    ed = ""
+    for k in range(1,file_index):
+      ed += l[k] + "-"
+    e.description = ed[:-1]
+    es = ""
+    for k in range(status_index+1,len(l)):
+      es += l[k] + "-"
+    e.status=es[:-1]
+  elif( l[0] == "Working" ):
+    if( l[2] == "New" and l[3] == "file!" ):
+      e.working_revision="(new)"
+    elif( l[2] == "No" and l[3] == "entry" and l[4] == "for" ):
+      e.working_revision="(unknown)"
+    else:
+      e.working_revision=l[2]
+  elif( l[0] == "Repository" ):
+    if( l[2] == "No" and l[3] == "revision" and l[4] == "control" and l[5] == "file" ):
+      e.repository_revision="(no-rcs)"
+      e.repository_file=""
+    else:
+      e.repository_revision=l[2]
+      e.repository_file=l[3]
+  elif( l[0] == "Sticky" ):
+    if( l[1] == "Tag:" ):
+      e.sticky_tag=sticky_field(l[2])
+      if( len(l) > 3 and l[3] == "(branch:" ):
+        e.is_branch=True
+    elif( l[1] == "Date:" ):
+      e.sticky_date=sticky_field(l[2])
+    elif( l[1] == "Options:" ):
+      e.sticky_options=sticky_field(l[2])
+  elif( l[0] == "cvs" and l[1] == "status:" ):
+    if( l[2] == "Examining" ):
+      em.show(e)
+      e=Entry()
+      e.type="D"
+      e.name=l[3]
+    #elif( l[2] == "nothing" and l[3] == "known" ):
+    #  em.show(e)
+    #  e=Entry()
+    #  e.type="F"
+    #  e.name=l[5]
+    #  e.status="Unknown"
+
+em.show(e)  
+em.show_footer()
+' "$@"
+}
+
+#====================================================================
+
+function print_help {
+  cat 1>&2 <<EofHelp
+Usage: $(basename $0) [options] [files...]
+Esegue un check del contenuto di una directory rispetto allo stato
+CVS.
+[options]
+	--help,-h		stampa questo help
+	+/-d			mostra/non mostra le directory
+	+/-u			mostra/non mostra le entry up-to-date
+	+/-U			mostra/non mostra le entry not up-to-date
+	+/-n			mostra/non mostra le entry not on cvs
+	+/-t			mostra/non mostra le entry cvs tagged
+	+/-T			mostra/non mostra le entry cvs untagged
+	+/-a			mostra/non mostra tutto
+				(equivale a +/-duUntT)
+	+/-f			mostra/non mostra il footer
+	+/-F			mostra/non mostra il full path per le entry
+	--tag T			usa il tag T per le opzioni [+-][tT]
+	--path P		effettua il check nel path P invece che in .
+
+Le opzioni +/- possono essere accumulate (ad esempio, '-tT +uUn' equivale a
+'-t -T +u +U +n'). Le opzioni --option che richiedono una opzione possono
+essere usate in due modi diversi:
+	--option value
+	--option=value
+
+Le opzioni [+-][tT] agiscono rispetto al tag T, se viene usata l'opzione
+'--tag T', o verso un tag qualsiasi, se quest'ultima opzione non e' data.
+Ad esempio,
+	--tag T +T	=> mostra le entry cvs che non sono legate al tag T
+	+T		=> mostra le entry cvs che non sono legate a nessun tag
+L'opzione --tag non ha effetto in assenza delle opzioni [+-][tT].
+
+[examples]
+	> cvs_check.ksh 
+Esegue un check nella directory corrente, mostrando solo i file non 
+up-to-date.
+	> cvs_check.ksh +T
+Esegue un check nella directory corrente, mostrando solo i file non 
+up-to-date e quelli che non sono legati ad alcun tag.
+	> cvs_check.ksh +T --tag=TAG
+Esegue un check nella directory corrente, mostrando solo i file non 
+up-to-date e quelli che non sono legati al tag TAG.
+	> cvs_check.ksh +n
+Esegue un check nella directory corrente, mostrando solo i file non 
+up-to-date e quelli che non sono su cvs.
+	> cvs_check.ksh -a +utd
+Esegue un check nella directory corrente, mostrando solo i file 
+up-to-date e quelli che sono legati a qualche tag, e le directory.
+	> cvs_check.ksh --path=PATH
+Esegue un check in PATH, mostrando solo i file non up-to-date.
+	> cvs_check.ksh --path=PATH lami/profile.src lami/setup_workdir.src cvs_utils/cvs_check.src
+Esegue un check a partire da PATH, solo sui file passati come argomento,
+evidenziando i file che non sono up-to-date, che non sono su cvs, e le
+directory.
+EofHelp
+}
+
+py_opts=" "
+path='.'
+rem_args=" "
+while [[ ${#@} -ne 0 ]] ; do
+  opt="$1"
+  #echo "opt='${opt}'"
+  shift 1
+  case "$opt" in
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    [+=-][duUntTafF])
+      py_opts="${py_opts}$opt "
+      ;;
+    [+=-][duUntTafF][duUntTafF]*([duUntTafF]))
+      pmu=$( printf '%s\n' "$opt" | cut -c1-1 )
+      flags=${opt#[+=-]}
+      typeset -i num_flags=${#flags}
+      typeset -i i=1
+      use_flags=' '
+      while [[ $i -le $num_flags ]] ; do
+        flag=$( printf '%s\n' "$flags" | cut -c${i}-${i} )
+        use_flags="${use_flags}${pmu}${flag} "
+        i=$(( $i + 1 ))
+      done
+      set - $use_flags "$@"
+      ;;
+    --tag=*)
+      py_opts="${py_opts}$opt "
+      ;;
+    --tag)
+      py_opts="${py_opts}$opt=$1 "
+      shift 1
+      ;;
+    --path=*)
+      py_opts="${py_opts}$opt "
+      path=$( printf '%s\n' "$opt" | cut -d= -f2- )
+      ;;
+    --path)
+      path="$1"
+      py_opts="${py_opts}$opt=$path "
+      shift 1
+      ;;
+    *)
+      rem_args="${rem_args}'$opt' "
+      #echo "ERROR: wrong option [${opt}]" 1>&2
+      #exit 1
+      ;;
+  esac
+done
+
+eval set - $rem_args
+     
+cd $path 2>/dev/null || {
+  echo "ERR: non posso accedere alla directory [${path}]" 1>&2
+  exit 1
+}
+
+if [[ ${#@} -eq 0 ]] ; then
+  cvs status 2>&1 | py_parse $py_opts
+else
+  {
+    fpath_prev=""
+    for file in "$@" ; do
+      fpath=$(dirname $file)
+      if [[ $fpath != $fpath_prev ]] ; then
+        echo "cvs status: Examining $fpath" 1>&2
+        fpath_prev="$fpath"
+      fi
+      #echo "$file"
+      cvs status "$file"
+    done
+  } 2>&1 | py_parse +a -d -T -t $py_opts
+fi
+
+#cvs status "$@" 2>&1 | py_parse $py_opts
+

@@ -1,0 +1,34 @@
+#!/bin/ksh
+# This script tests the opa_lists library
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. @@(I:OPA_HOME)/bin/opa_lists.inc
+
+
+ll="$EMPTY_LIST"
+
+ll=$(list_append "$ll" '3')
+ll=$(list_append "$ll" '0')
+ll=$(list_append "$ll" '-5')
+ll=$(list_append "$ll" '30')
+
+nl=$(list_count "$ll")
+echo "list=<$ll> count=${nl}"
+ln=$(list_normalize "$ll")
+echo "normalized: <$ln>"
+ls=$(list_sort "$ll")
+echo "sorted: <$ls>"
+ls=$(list_sort "$ll" -n)
+echo "sorted numerically: <$ls>"
+
+l="    4 5 6  "
+nl=$(list_normalize "$l")
+tl=$(list_trim "$l")
+echo "l=<$l>, nl=<$nl>, trim=<$tl>"
+
+l="     "
+nl=$(list_normalize "$l")
+tl=$(list_trim "$l")
+echo "l=<$l>, nl=<$nl>, trim=<$tl>"

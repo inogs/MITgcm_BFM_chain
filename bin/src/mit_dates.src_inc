@@ -1,0 +1,72 @@
+if [[ $__OPA_DATES_IS_DEFINED__ == '' ]] ; then
+  __OPA_DATES_IS_DEFINED__='__defined__'
+
+# Provides some functions to manage dates
+# dates_diff:	difference between two dates YYYYMMDD
+
+
+function dates_diff {
+  typeset -i _ds="$1"
+  typeset -i _dt="$2"
+  typeset -i _dx
+  typeset    _sign=''
+  if [[ $_ds -eq $_dt ]] ; then
+    echo 0
+    return
+  elif [[ $_ds -gt $_dt ]] ; then
+    _dx=$_ds
+    _ds=$_dt
+    _dt=$_dx
+    _sign='-'
+  fi
+  # now $_ds is strictly lower than $_dt
+  #echo "::: $0 : $_ds $_dt " 1>&2
+  typeset    _day_increments=' 1000 100 10 1 '
+  typeset -i _dy
+  typeset -i _di=0
+  _dx=$_ds
+  for _d in $_day_increments ; do
+    while true ; do
+      #echo "... adding $_d days to $_ds + $_di = $_dx ..." 1>&2
+      _dy=$($OPA_BINDIR/date --utc --date="$_dx $_d days" +'%Y%m%d')
+      if [[ $_dy -gt $_dt ]] ; then
+        continue 2
+      else
+        _dx=$_dy
+        _di=$(( $_di + $_d ))
+        if [[ $_dx -eq $_dt ]] ; then
+          break 2
+        fi
+      fi
+    done
+  done
+  echo "$_sign$_di"
+}
+
+function dates_diff_safe {
+  typeset -i _ds="$1"
+  typeset -i _dt="$2"
+  typeset -i _dx
+  typeset    _sign=''
+  if [[ $_ds -eq $_dt ]] ; then
+    echo 0
+    return
+  elif [[ $_ds -gt $_dt ]] ; then
+    _dx=$_ds
+    _ds=$_dt
+    _dt=$_dx
+    _sign='-'
+  fi
+  # now $_ds is strictly lower than $_dt
+  #echo "::: $0 : $_ds $_dt " 1>&2
+  typeset -i _di=0
+  _dx=$_ds
+  while [[ $_dx -lt $_dt ]] ; do
+    _dx=$($OPA_BINDIR/date --utc --date="$_dx 1 day" +'%Y%m%d')
+    _di=$(( $_di + 1 ))
+  done
+  echo "$_sign$_di"
+}
+
+# end of include guard:
+fi

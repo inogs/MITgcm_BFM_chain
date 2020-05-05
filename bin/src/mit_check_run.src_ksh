@@ -1,0 +1,160 @@
+#!/bin/ksh
+# This script creates a monthly report of the OPA runs
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options]
+[options]
+$(opa_set_default_run__print_options)
+	--refresh|-R		refresh cache
+	--notify|-n		notify
+	--help|-h		show this help
+EofCat
+}
+
+
+opa_set_default_run_options=''
+NOTIFY=false
+  
+opa_log_inspect_options=" "
+NOTIFY=false
+REFRESH=false
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+      opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --notify|-n)
+      NOTIFY=true
+      ;;
+    --refresh|-R)
+      REFRESH=true
+      ;;
+    --)
+      while [[ ${#@} -ne 0 ]] ; do
+        opa_log_inspect_options="${opa_log_inspect_options}'$1' "
+        shift 1
+      done
+      ;;
+    *)
+      if [[ $DATE == '' ]] ; then
+        DATE="$arg"
+      else
+        echo "ERROR: wrong command line option <$arg>" 1>&2
+        exit 2
+      fi
+      ;;
+  esac
+done
+
+opa_prex "opa_set_default_run $opa_set_default_run_options"
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+tmpfile="$OPA_VARDIR/tmp/opa_check_run.${OPA_RUNDATE}.${RANDOM}"
+while [[ -f ${tmpfile:=$OPA_VARDIR/tmp/opa_check_run.$OPA_RUNDATE.$RANDOM} ]] ; do
+  unset tmpfile
+done
+echo "tmpfile=$tmpfile"
+
+trap "rm -f $tmpfile" 0
+trap "rm -f $tmpfile" 1
+trap "rm -f $tmpfile" 2
+trap "rm -f $tmpfile" 3
+trap "rm -f $tmpfile" 15
+
+export OPA_HOME="$I_OPA_HOME"
+export OPA_HOSTNAME="$I_OPA_HOSTNAME"
+
+typeset -i errors=0
+
+#echo "REFRESH=$REFRESH"
+#echo "NOTIFY=$NOTIFY"
+
+if $REFRESH ; then
+  opa_log_inspect_options="${opa_log_inspect_options}--refresh "
+fi
+opa_prex "$OPA_SCRDIR/opa_log_inspect.py -G --from $OPA_RUNDATE --to $OPA_RUNDATE $opa_log_inspect_options 1>$tmpfile" || errors=$(( $errors + 1 ))
+
+opa_prex "cat $tmpfile"
+
+completed=false
+if [[ ( $errors -ne 0 ) ]] ; then
+  completed=false
+else
+  completed=false
+  while read line ; do
+    date=$(echo "$line" | awk '{print $1}')
+    if [[ $date == $OPA_RUNDATE ]] ; then
+      rid=$(echo "$line" | awk '{print $2}')
+      status=$(echo "$line" | awk '{print $3}')
+      submit=$(echo "$line" | awk '{print $4}')
+      pre_start=$(echo "$line" | awk '{print $5}')
+      pre_end=$(echo "$line" | awk '{print $6}')
+      mod_start=$(echo "$line" | awk '{print $7}')
+      mod_end=$(echo "$line" | awk '{print $8}')
+      post_start=$(echo "$line" | awk '{print $9}')
+      post_end=$(echo "$line" | awk '{print $10}')
+      triggers=$(echo "$line" | awk '{print $11}')
+      printf "parsing line <$line> :"
+      completed=false
+      if [[ $submit == 'None' ]] ; then
+        echo "NOT submitted"
+      elif [[ $pre_end == 'None' ]] ; then
+        echo "'pre' NOT completed"
+      elif [[ $mod_end == 'None' ]] ; then
+        echo "'mode' NOT completed"
+      elif [[ $post_end == 'None' ]] ; then
+        echo "'post' NOT completed"
+      elif [[ $(echo "$triggers" | grep -c JobEndFailure) -ne 0 ]] ; then
+        echo "job NOT correctly ended"
+      else
+        echo "job correctly ended"
+        completed=true
+      fi
+    fi
+  done < "$tmpfile"
+fi
+
+exit_code=2
+message=""
+status=""
+if $completed ; then
+  message="completed"
+  status="ok"
+  exit_code=0
+else
+  message="NOT completed"
+  status="KO!"
+  exit_code=1
+fi
+
+echo "$OPA_RUNDATE: $message"
+if $NOTIFY ; then
+  mail -s "OPA-${OPA_VERSION}@${I_OPA_HOSTNAME}: Report for run $OPA_RUNDATE - ${status}" $OPA_NOTIFY_ADDRESSES <<EOFCAT
+# I_OPA_HOSTNAME=$I_OPA_HOSTNAME
+# OPA_VERSION=$OPA_VERSION
+# OPA_TRUE_VERSION_NUMBER=$OPA_TRUE_VERSION_NUMBER
+# OPA_PROD_VERSION_NUMBER=$OPA_PROD_VERSION_NUMBER
+
+Report for run $OPA_RUNDATE: $message
+
+---
+$(cat $tmpfile)
+---
+
+EOFCAT
+  
+fi
+exit $exit_code
+
+

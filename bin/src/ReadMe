@@ -1,0 +1,8 @@
+!!!WARNING!!!
+	These comments/output strings identifies lines where we suppose it will
+	be necessary to modify something when the chain will become operational.
+	For instance, sometimes 
+before submit type
+setenv OPA_HOME /sfs/sanfs/home/userogs/ogstsf79/OPA-opech
+setenv OPA_HOSTNAME sp5
+setenv OPA_ARCH AIX

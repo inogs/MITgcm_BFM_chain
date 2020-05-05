@@ -1,0 +1,102 @@
+#!/bin/ksh
+# This command submits an MIT-offline operational chain
+# for a specific rundate.
+# It is thought to be run using crontab.
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+. @@(I:MIT_HOME)/bin/mit_rm.inc
+
+today=$MIT_TODAY
+
+function print_help {
+  cat <<EofCat
+Usage: $MIT_PROGNAME [options]
+[options]
+$(mit_set_default_run__print_options)
+	--help|-h				show this help
+	--force|-f				force submission
+						[DEFAULT: "$force"]
+	--pass|-p				pass next option to mit_submit.ksh
+						[DEFAULT: "$mit_submit_options"]
+	--recovery				enable recovery mode
+	--try-resume				try to resume download of input files
+	--force-download			force download of input files
+	--simulate-transfer			simulate transfer
+	--without-kill				without kill old jobs 
+	--					end of options; all next arguments are passed to mit_submit.ksh
+						[DEFAULT: "$mit_submit_options"]
+	
+EofCat
+}
+
+# parse command line arguments
+force=false
+
+mit_submit_options=' '
+mit_set_default_run_options=' '
+without_kill=false
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --rundate|-r|--today|-t|--submit-day-offset|-s)
+      mit_set_default_run_options="${mit_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --force|-f)
+      force=true
+      ;;
+    --pass|-p)
+      mit_submit_options="$mit_submit_options '$1' "
+      shift 1
+      ;;
+    --recovery)
+      mit_submit_options="$mit_submit_options '$arg' "
+      ;;
+    --try-resume|--force-download)
+      mit_submit_options="$mit_submit_options '$arg' "
+      ;;
+    --simulate-transfer)
+      mit_submit_options="$mit_submit_options '$arg' "
+      ;;
+    --without-kill)
+      without_kill=true
+      ;;
+    --)
+      while [[ ${#@} -ne 0 ]] ; do
+        mit_submit_options="$mit_submit_options '$1' "
+        shift 1
+      done
+      ;;
+    *)
+      echo "WARNING: unknown option <$arg> passed to mit_submit.ksh" 1>&2
+      mit_submit_options="$mit_submit_options '$arg' "
+      ;;
+  esac
+done
+
+mit_prex "mit_set_default_run $mit_set_default_run_options"
+mit_prex "mit_set_run $MIT_DEFAULT_RUNDATE"
+
+mit_jobs=$(mit_rm_select_job)
+if $without_kill ; then
+  mit_log 0 "NON uccido i job presenti ($mit_jobs)!!!"
+else
+  mit_log 0 "UCCIDO i job presenti ($mit_jobs)!!!"
+  for mit_job in $mit_jobs; do
+    mit_prex "mit_rm_job_del $mit_job"
+  done
+fi
+
+command="$MIT_SCRDIR/mit_submit.ksh --rundate '$MIT_RUNDATE' --submit $mit_submit_options"
+if $force ; then
+  mit_log_to_file 0 "Running command <${command}>"
+  mit_prex "$command"
+else
+  echo "DRY-RUN> $command"
+fi

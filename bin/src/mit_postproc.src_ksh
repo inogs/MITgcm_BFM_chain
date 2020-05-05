@@ -1,0 +1,51 @@
+#!/bin/ksh
+# This script executes the postprocess
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+typeset -i errors=0
+
+
+### Phase C1 - creation of grads files and images
+# opa_step_has_phase post C1 && {
+#   opa_exec_and_log opa_postproc__phase_C1 || errors=$(( $errors + 1 ))
+# }
+#
+### Phase C5 - put
+#opa_step_has_phase post PUT_INGV && {
+opa_step_has_phase post PUT_CMCC && {
+  opa_exec_and_log opa_postproc__phase_C5 || errors=$(( $errors + 1 ))
+}
+#
+### Phase C2 - grads images generation
+# opa_step_has_phase post C2 && {
+#   opa_exec_and_log opa_postproc__phase_C2 || errors=$(( $errors + 1 ))
+# }
+#
+### Phase C3 - transfer
+ opa_step_has_phase post C3 && {
+ opa_exec_and_log opa_postproc__phase_C3 || errors=$(( $errors + 1 ))
+ }
+
+### Phase C4 - archive
+opa_step_has_phase post C4 && {
+  opa_exec_and_log opa_postproc__phase_C4 || errors=$(( $errors + 1 ))
+}
+
+### Phase C6 - trasferimento dati satellite e prodotti cartella Salon (solo il martedi)
+# opa_step_has_phase post PUT_SALON && {
+#  opa_exec_and_log opa_postproc__phase_C6 -t f -c || errors=$(( $errors + 1 ))
+# }
+
+
+
+opa_log 0 "postprocess done [$(opa_exitcode $errors)]"
+
+opa_exit "$errors"

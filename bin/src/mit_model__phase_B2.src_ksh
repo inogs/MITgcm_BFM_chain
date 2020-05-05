@@ -1,0 +1,32 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Load MPI profile:
+. $OPA_SCRDIR/opa_mpi.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+typeset -i errors=0
+
+wrkdir=$OPA_WRKDIR/MODEL
+
+### MODEL
+opa_log 0 "model execution on [${RM_NUM_NODES}] nodes <${RM_NODES}>, using [${RM_NUM_PROCS}] processors"
+
+opa_prex "cd $wrkdir"
+# opa_prex "ulimit -s 1024000"
+opa_mpi_run "$OPA_BINDIR/ogstm.xx$OPA_DEBUG_EXTENSION" || {
+  opa_log 0 "ERR: model failed"
+  errors=$(( $errors + 1 ))
+}
+
+opa_exit "$errors"
+
+
+

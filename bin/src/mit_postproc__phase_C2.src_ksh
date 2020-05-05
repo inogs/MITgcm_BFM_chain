@@ -1,0 +1,108 @@
+#!/bin/ksh
+# This script executes the postprocess
+# phase C2: grads postprocess
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+# Setting up grads script from templates
+opa_prex "$OPA_SCRDIR/opa_setup_grads.ksh"
+
+typeset -i errors=0
+
+ec=0 ; errors=$(( $errors + $ec ))
+
+wrkdir=$OPA_WRKDIR/POSTPROC
+[ -d $wrkdir ] || opa_mkdir $wrkdir
+
+. $OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+
+# model output are daily averages centered at 12:00
+mid_day_offset_s=$(( 43200 ))
+
+# create template ctl for bio and diagnostic data:
+num_days=$(( $OPA_FORECAST_DAYS__ACTUAL - 1 + $OPA_ANALYSES_DAYS__ACTUAL ))
+start_grads_date=$( $OPA_BINDIR/date --utc --date="$OPA_OPAOPER_DATE_START__ACTUAL    \
+         00:00:00 $mid_day_offset_s seconds"  +'%H:%MZ%d%b%Y' )
+for type in bio grid2D grid3D ; do
+  sed   -e "s%@@(num_days)%${num_days}%g"                                       \
+        -e "s%@@(start_grads_date)%${start_grads_date}%g"                       \
+        $OPA_TPLDIR/ave.${type}.ctl > $wrkdir/ave.${type}.ctl || {
+    errors=$(( $errors + 1 ))
+  }
+done
+
+# create template ctl for meshmask :
+ sed   -e "s%@@(num_days)%${num_days}%g"                      \
+       -e "s%@@(start_grads_date)%${start_grads_date}%g"      \
+       $OPA_TPLDIR/mesh.ctl > $wrkdir/mesh.ctl || {
+    errors=$(( $errors + 1 )) 
+  }
+
+# create template ctl for sub-basin mask and copy file maxlev:
+ sed   -e "s%@@(num_days)%${num_days}%g"                      \
+       -e "s%@@(start_grads_date)%${start_grads_date}%g"      \
+       $OPA_TPLDIR/mask.ctl > $wrkdir/mask.ctl || {
+    errors=$(( $errors + 1 )) 
+  }
+opa_cp $I_OPA_HOME/etc/grads/maxlev.sub $wrkdir/ || errors=$(( $errors + 1 ))
+
+date=$OPA_OPAOPER_DATE_START__ACTUAL
+while true ; do
+  echo "### $date"
+  if [[ $date = $OPA_OPAOPER_DATE_END__ACTUAL ]] ; then
+    break
+  fi
+#link sub-basin mask data and meshmask data:
+  opa_prex "ln -fs $I_OPA_HOME/etc/static-data/MED872_cut/MASK/sbmask.dat $wrkdir/mask.$date.dat"
+  opa_prex "ln -fs $I_OPA_HOME/etc/static-data/MED872_cut/MASK/mesh.dat $wrkdir/mesh.$date.dat"
+
+  date=$( $OPA_BINDIR/date --utc --date="$date 1 days" +%y%m%d )
+done
+
+export GASCRP="$OPA_ETCDIR/grads"
+
+##OPA_OPAOPER_F_DAY_OFFSET_START__ACTUAL="0"
+##OPA_OPAOPER_F_DAY_OFFSET_END__ACTUAL="10"
+##OPA_FORECAST_DAYS__ACTUAL="11"
+##
+##OPA_OPAOPER_A_DAY_OFFSET_START__ACTUAL="-7"
+##OPA_OPAOPER_A_DAY_OFFSET_END__ACTUAL="-1"
+##OPA_ANALYSES_DAYS__ACTUAL="7"
+
+opa_prex "cd $OPA_WRKDIR/POSTPROC"
+
+#plot analyses:
+analyses_tin=1
+analyses_tfn="$OPA_ANALYSES_DAYS__ACTUAL"
+opa_prex "$OPA_GRADS_HOME/bin/gradshdf -blc 'run $OPA_ETCDIR/grads/mplot_ALL_analyses.gs $analyses_tin $analyses_tfn '" || errors=$(( $errors + 1 ))
+
+#plot forecast:
+forecast_tin=$(( $analyses_tfn + 1 ))
+forecast_tfn=$(( $analyses_tfn + $OPA_FORECAST_DAYS__ACTUAL - 1 ))
+opa_prex "$OPA_GRADS_HOME/bin/gradshdf -blc 'run mplot_ALL_forecast.gs $forecast_tin $forecast_tfn '" || errors=$(( $errors + 1 ))
+
+#plot transects:
+trn_a_tin=1
+trn_a_tfn="$OPA_ANALYSES_DAYS__ACTUAL"
+trn_f_tin=$(( $trn_a_tfn + 1 ))
+trn_f_tfn=$(( $trn_a_tfn + $OPA_FORECAST_DAYS__ACTUAL - 4 ))
+opa_prex "$OPA_GRADS_HOME/bin/gradshdf -blc 'run transects_ave.gs $trn_a_tin $trn_a_tfn $trn_f_tin $trn_f_tfn '" || errors=$(( $errors + 1 ))
+
+#plot profiles:
+pro_tin=1
+pro_tfn=$(( $OPA_FORECAST_DAYS__ACTUAL - 1 + $OPA_ANALYSES_DAYS__ACTUAL ))
+opa_prex "$OPA_GRADS_HOME/bin/gradshdf -blc 'run subbasin_ave.gs $pro_tin $pro_tfn'" || errors=$(( $errors + 1 ))
+
+opa_log 0 "postprocess_C2 done [$(opa_exitcode $errors)]"
+
+opa_exit "$errors"
+
+
+

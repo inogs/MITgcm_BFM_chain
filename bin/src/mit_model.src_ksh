@@ -1,0 +1,37 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+typeset -i errors=0
+
+
+# ### Setup of namelists and initial conditions
+opa_step_has_phase model B1 && {
+  opa_exec_and_log opa_model__phase_B1 || errors=$(( $errors + 1 ))
+}
+ 
+# ### Model execution
+opa_step_has_phase model B2 && {
+  opa_exec_and_log opa_model__phase_B2 || errors=$(( $errors + 1 ))
+}
+
+### Phase B3 - preparation of products creating with bfm-v5
+opa_step_has_phase model B3 && {
+   opa_exec_and_log opa_model__phase_B3 || errors=$(( $errors + 1 ))
+}
+
+### Phase C1 - creation of grads files and images
+opa_step_has_phase model C1 && {
+  opa_exec_and_log opa_postproc__phase_C1 || errors=$(( $errors + 1 ))
+}
+
+opa_exit "$errors"
+
+

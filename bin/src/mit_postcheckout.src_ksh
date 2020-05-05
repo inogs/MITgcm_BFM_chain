@@ -1,0 +1,15 @@
+#!/bin/ksh
+# This command has to be executed after a checkout of the OPA chain
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+for opa_script_name in directories environment grads static_data; do
+  opa_script="$OPA_SCRDIR/opa_setup_${opa_script_name}.ksh"
+  echo "### Running $opa_script"
+  opa_prex "$opa_script" || {
+    echo "ERR: $opa_script failed!"
+    exit 1
+  }
+done
+

@@ -1,0 +1,16 @@
+#!/bin/ksh
+# This command creates env files
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+echo "### Setting up env files"
+mit_prex "cd $MIT_ETCDIR/ENV"
+for file_tpl in *.template ; do
+  file="${file_tpl%%.template}"
+  mit_log 2 "Setting up template '${file_tpl}' -> '${file}'"
+  mit_setup_template "$file_tpl" "$file" || {
+    mit_log 0 "ERR: Template substitution failed!"
+    exit 1
+  }
+done

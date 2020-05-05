@@ -1,0 +1,10 @@
+check:
+		@if [[ $${MIT_HOME:-UNDEFINED} = UNDEFINED ]] ; then		\
+			echo "ERR: MIT_HOME is not defined!" 1>&2;		\
+			exit 1;							\
+		fi
+		@if [[ $${MIT_HOSTNAME:-UNDEFINED} = UNDEFINED ]] ; then	\
+			echo "ERR: MIT_HOSTNAME is not defined!" 1>&2;		\
+			exit 1;							\
+		fi
+

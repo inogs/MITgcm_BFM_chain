@@ -1,0 +1,127 @@
+#!/bin/ksh
+# This script links input analyses files in $OPA_WRKDIR/OPAOPER
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+# Get the name of OPAOPER_A wind input files
+opa_set_input_files__opaoper_a
+opa_print_input_files__opaoper_a
+opa_set_input_files__opaoper_f
+opa_print_input_files__opaoper_f
+
+typeset -i errors=0
+
+output_dir_a=$OPA_WRKDIR/OPAOPER
+output_dir_f=$OPA_WRKDIR/OPAOPER
+output_dir_d=$OPA_WRKDIR/DA/MISFIT
+input_dir_a=$OPA_WRKDIR/OPAOPER_A
+input_dir_f=$OPA_WRKDIR/OPAOPER_F
+input_dir_d=$OPA_WRKDIR/DA/SAT
+
+#input_date=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00" +%y%m%d )
+
+function _Iopa_input_stagein_a_f_d {
+  typeset    _a_f_d="$1"
+  typeset    _output_dir="$2"
+  shift 1
+  typeset    _ps_dir="$OPA_ETCDIR/static-data/CORRECTION_PS"
+
+  typeset    _input_dir
+  typeset    _input_files_indices
+  set -A     _input_lfiles
+  set -A     _input_vars
+  typeset -i _input_files_index
+  typeset    _input_lfile
+  typeset -i _errors=0
+  case "$_a_f_d" in
+    a)
+      _input_dir=$input_dir_a
+      _output_dir=$output_dir_a
+      _input_files_indices="$OPA_OPAOPER_A_INPUT_FILES_INDICES"
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${OPA_OPAOPER_A_INPUT_LFILES[_input_files_index]}"
+        _input_vars[_input_files_index]="${OPA_OPAOPER_A_INPUT_VARS[_input_files_index]}"
+      done
+      ;;
+    f)
+      _input_dir=$input_dir_f
+      _output_dir=$output_dir_f
+      _input_files_indices="$OPA_OPAOPER_F_INPUT_FILES_INDICES"
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${OPA_OPAOPER_F_INPUT_LFILES[_input_files_index]}"
+        _input_vars[_input_files_index]="${OPA_OPAOPER_F_INPUT_VARS[_input_files_index]}"
+      done
+      ;;
+    d)
+      _input_dir=$input_dir_d
+      _output_dir=$output_dir_d
+      _input_files_indices="$OPA_DA_SET_INPUT_FILES_INDICES"
+      for _input_files_index in $_input_files_indices ; do
+        _input_lfiles[_input_files_index]="${OPA_DA_SET_INPUT_LFILES[_input_files_index]}"
+        _input_vars[_input_files_index]="${OPA_DA_SET_INPUT_VARS[_input_files_index]}"
+      done
+      ;;
+ 
+  esac
+  echo "@@@ $_a_f_d $_input_dir"
+  for _input_files_index in $_input_files_indices ; do
+    _input_lfile="${_input_lfiles[_input_files_index]}"
+    _input_var="${_input_vars[_input_files_index]}"
+    if [[ ! -f $_input_dir/$_input_lfile ]] ; then
+      opa_log 0 "ERR: missing analysis [${_input_dir}/${_input_lfile}]"
+      _errors=$(( $_errors + 1 ))
+    fi
+# GFM
+    case "$_input_var" in
+# GFM ncbo non serve nell'interpolazione (dati di analisi)
+#       U|V)
+#         opa_prex_or_die "$OPA_BINDIR/ncbo -O --op_typ='mult' '$_input_dir/$_input_lfile' '$_ps_dir/grid.${_input_var}_PS.nc' '$_output_dir/$_input_lfile'"
+#         ;;
+      *)
+        opa_prex_or_die "ln -fs $_input_dir/$_input_lfile $_output_dir"
+        ;;
+    esac
+  done
+  return $_errors
+}
+
+function opa_input_stagein_a {
+  _Iopa_input_stagein_a_f_d a "$@"
+}
+
+function opa_input_stagein_f {
+  _Iopa_input_stagein_a_f_d f "$@"
+}
+
+function opa_input_stagein_d {
+  _Iopa_input_stagein_a_f_d d "$@"
+}
+
+opa_input_stagein_a
+
+opa_input_stagein_f
+
+opa_input_stagein_d
+
+##Removed in V3C
+#for arg in $OPA_OPAOPER_F_LAST_FILES ; do
+#  echo "DBG> $arg"
+#  f_source=$input_dir_f/$(echo $arg | cut -d'|' -f1)
+#  f_target=$output_dir_f/$(echo $arg | cut -d'|' -f2-)
+#  if [[ -f $f_target ]] ; then
+#    opa_prex "rm -f $f_target"
+#  fi
+#  opa_prex_or_die "ln -fs $f_source $f_target"
+#done
+
+opa_exit "$errors"
+
+
+

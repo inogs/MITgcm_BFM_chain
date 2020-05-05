@@ -1,0 +1,12 @@
+#!/bin/ksh
+# This command unpacks packed static data
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+echo "### Packing static data"
+opa_prex "cd $I_OPA_HOME/etc/static-data"
+for partsdir in $(find $I_OPA_HOME/etc/static-data -type d -name parts) ; do
+  dir=$(dirname "$partsdir")
+  opa_prex "$OPA_SCRDIR/merge_parts.py -d '$dir'"
+done

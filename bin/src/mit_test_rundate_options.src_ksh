@@ -1,0 +1,38 @@
+#!/bin/ksh
+# This command can be used to test rundate options
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+
+function print_help {
+  cat <<EofHlp
+Usage: $OPA_PROGNAME [action] [options]
+[options]
+$(opa_set_default_run__print_options)
+	--help|-h		show this help
+EofHlp
+}
+
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+	opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+	shift 1
+	;;
+    --help|-h)
+	print_help
+        exit 0
+        ;;
+    *)
+	echo "ERR: invalid argument '$_arg'" 1>&2
+	;;
+  esac
+done
+
+opa_prex "opa_set_default_run $opa_set_default_run_options"
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+opa_prex "opa_dump_run"
+

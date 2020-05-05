@@ -1,0 +1,11 @@
+if [[ $__OPA_MPI_POE_IS_DEFINED__ == '' ]] ; then
+  __OPA_MPI_POE_IS_DEFINED__='__defined__'
+
+function opa_mpi_run {
+  # Run a command requiring $OPA_TASKS MPI tasks
+  typeset _args=$( _opa_mpi_args_to_string "$@" )
+  opa_prex "time poe $_args"
+}
+
+# end of include guard:
+fi

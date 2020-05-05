@@ -1,0 +1,79 @@
+if [[ $__OPA_LISTS_IS_DEFINED__ == '' ]] ; then
+  __OPA_LISTS_IS_DEFINED__='__defined__'
+
+# Provides some functions to manage lists
+
+EMPTY_LIST=' '
+
+function list_has_item {
+  typeset _items="$1"
+  typeset _item="$2"
+  if [[ $(echo " $_items " | $OPA_BINDIR/grep -c " $_item ") -eq 0 ]] ; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+function list_append {
+  typeset _items="$1"
+  typeset _item="$2"
+  printf '%s' "$_items$_item "
+}
+
+function list_append_u {
+  typeset _items="$1"
+  typeset _item="$2"
+  if ! list_has_item "$_items" "$_item" ; then
+    _items="$_items$_item "
+  fi
+  printf '%s' "$_items "
+}
+
+function list_extend {
+  typeset _items="$1"
+  shift 1
+  typeset _subitems
+  typeset _subitem
+  for _subitems in "$@" ; do
+    for _subitem in $_subitems ; do
+      list_append "$_subitem"
+    done
+  done
+}
+
+function list_extend_u {
+  typeset _items="$1"
+  shift 1
+  typeset _subitems
+  typeset _subitem
+  for _subitems in "$@" ; do
+    for _subitem in $_subitems ; do
+      list_append_u "$_subitem"
+    done
+  done
+}
+
+function list_count {
+  typeset _items="$1"
+  echo "${_items}" | $OPA_BINDIR/wc -w
+}
+
+function list_normalize {
+  typeset _items="$1"
+  echo "$_items" | sed -e 's%^ *% %g' -e 's% *$% %g' -e 's%  *% %g'
+}
+
+function list_sort {
+  typeset _items="$1"
+  shift 1
+  list_normalize $(echo "$_items" | sed -e 's%^ *%%g' -e 's% *$%%g' -e 's%  *% %g' |tr ' ' '\n' | $OPA_BINDIR/sort "$@" | tr '\n' ' ')
+}
+
+function list_trim {
+  typeset _items="$1"
+  list_normalize "$_items" | sed -e 's%^ *%%g' -e 's% *$%%g'
+}
+
+# end of include guard:
+fi
