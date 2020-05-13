@@ -32,6 +32,34 @@ case "$MIT_VERSION" in
     ;;
 esac
 
+
+MIT_DAYS=10
+
+function mit_days {
+
+for (( days=0; days<$MIT_DAYS ; days++ )) ; do
+   date -d "$DATESTART + $days days" +%Y%m%d
+done
+}
+
+function mit_weekly_linker {
+
+sourcefile=$1
+AVE_DAILY_DIR=$2
+var=${sourcefile:${#sourcefile}-6:3}
+
+
+if ! [ -f $sourcefile ] ; then
+ echo "$sourcefile not found"
+ return 1
+fi
+
+for D in `mit_days` ; do
+   ln -fs ${sourcefile} $AVE_DAILY_DIR/ave.${D}-12:00:00.${var}.nc
+done
+
+}
+
 MIT_PROD_VERSION_NUMBER=4C					# Production version
 
 MIT_FTPSERVER_SUBDIR="v${MIT_TRUE_VERSION_NUMBER}-med-ogs-forecast"    #MEDSEA_FORECAST_BIO_006_002/myov0${MIT_TRUE_VERSION_NUMBER}-med-ogs-bio-fc
@@ -58,8 +86,6 @@ MIT_GET_TARGET_TIME="07:30:00"
 MIT_TEST=false
 MIT_DOWNLOAD_HOUR_UTC="03:00:00"
 
-# These values can eventually be changed by mit_profile__${I_MIT_HOSTNAME}.inc:
-MIT_ODD_ALPHA="${RT_MIT_ODD_ALPHA:-0.75}"			# Alpha correction for ODD algorithm
 
 
 # I_MIT_HOSTNAME, MIT_RM and MIT_MPI are set based on hostname
@@ -275,8 +301,8 @@ MIT_KEEP_INPUT="${RT_MIT_KEEP_INPUT:-true}"	# if true, input data are not delete
 
 MIT_LAST_RUNDATE=${MIT_TODAY}
 
-#MIT_DEFAULT_RUNDATE="${RT_MIT_RUNDATE:-$MIT_TODAY}"	# Default rundate
-MIT_DEFAULT_RUNDATE="${MIT_TODAY}"	# Default rundate
+MIT_DEFAULT_RUNDATE="${RT_MIT_RUNDATE:-$MIT_TODAY}"	# Default rundate
+#MIT_DEFAULT_RUNDATE="${MIT_TODAY}"	# Default rundate
 	# The default rundate is $RT_MIT_RUNDATE if defined, $MIT_TODAY otherways
 
 MIT_DEBUG_MODE=${RT_MIT_DEBUG_MODE:-false}	# Activates model debugging
@@ -526,6 +552,14 @@ function mit_is_prod {
   else
     return 1
   fi
+}
+
+
+function mit_linker {
+
+for I in `ls $1 `; do
+   ln -fs $I
+done
 }
 
 function mit_get_proddate {
@@ -942,8 +976,8 @@ function _mit_get_default_run {
 
 function mit_set_default_run {
   _mit_get_default_run --rundate "$RT_MIT_RUNDATE" "$@"
-  MIT_DEFAULT_RUNDATE="$_MIT_TODAY"
-# MIT_DEFAULT_RUNDATE="$_MIT_RUNDATE"
+# MIT_DEFAULT_RUNDATE="$_MIT_TODAY"
+  MIT_DEFAULT_RUNDATE="$_MIT_RUNDATE"
   MIT_TODAY="$_MIT_TODAY"
   MIT_SUBMIT_DAY_OFFSET="$_MIT_SUBMIT_DAY_OFFSET"
 }
