@@ -9,26 +9,39 @@ mit_set_run
 # start
 mit_start
 mit_prex "source $MIT_VENV_1/bin/activate"
-mit_prex "cd $MIT_BC_IC_FROM_OGSTM"
-
-OPA_RUNDATE=$( date -d "last tuesday" +%Y%m%d )
-  DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d-%H:%M:%S )   # <--- IC
-  DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
-     DATE_W=$( date -d "${OPA_RUNDATE} - 4 days +  12  hours " +%Y%m%d-%H:%M:%S )
+PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
+#mit_prex "cd $MIT_BC_IC_FROM_OGSTM"
 
 
+    DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
+    DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
+OPA_RUNDATE_A=$( date -d "last tuesday" +%Y%m%d )
+       DATE_W=$( date -d "${OPA_RUNDATE_A} - 5 days +  12  hours " +%Y%m%d-%H:%M:%S )
 
-COPERNICUS_ARCHIVE_DIR=$HOME/OPA/V4C/archive
 
-      ARCHIVE_AVE_D=$COPERNICUS_ARCHIVE_DIR/$OPA_RUNDATE/POSTPROC/AVE_FREQ_1/ARCHIVE
-      ARCHIVE_AVE_W=$COPERNICUS_ARCHIVE_DIR/$OPA_RUNDATE/POSTPROC/AVE_FREQ_2
-AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
-AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
+
+OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V6C/prod/archive
+
+      ARCHIVE_AVE_W=$OPA_ARCDIR_ROOT/analysis/$OPA_RUNDATE/POSTPROC/AVE_FREQ_2
+       AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
+      AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
+AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
 
 MASK128=$MIT_WRKDIR/BC_IC/mask128.nc # Cadeau Mask, generated
 MASK_OGSTM_RED=$MIT_WRKDIR/mask_ogstm_reduced.nc
 
 MPI="mpirun -np 36 "
+
+
+cd $AVE_DAILY_ZIPPED_DIR
+for D in `mit_days `; do
+  ARCHIVE_DIR=`python $MIT_BITSEA/validation/online/V6C_archive_info.py -d $D --dir`
+  mit_prex_or_die "mit_linker $OPA_ARCDIR_ROOT/$ARCHIVE_DIR/POSTPROC/AVE_FREQ_1/ARCHIVE/ave.${D}-12:00:00.*.nc.gz "
+done
+
+exit 0
+
+
 # 1.2 Parallel uncompressing
 for var in N1p N3n N4n N5s O2o P1 P2 P3 P4; do  
    mit_prex_or_die " $MPI python uncompress.py -i $ARCHIVE_AVE_D    -o $AVE_DAILY_DIR  -l ave*${var}*.nc.gz "
@@ -71,6 +84,10 @@ mit_prex_or_die "chmod 744 $RUNDIR/set_cut_indexes_INGV_vs_M128.sh $RUNDIR/set_c
 medmit_prex_or_die ". nco_indexer.sh $RUNDIR/set_cut_indexes_V4_vs_M128.sh"
 medmit_prex_or_die " $MIT_BINDIR/ncks -F -a -d x,$Index_W,$Index_E -d y,$Index_S,$Index_N $MASK_OGSTM -O $MASK_OGSTM_RED"
 ##################################################################
+
+
+
+
 
 typeset -i errors=0
 mit_exit "$exit_code"
