@@ -10,7 +10,7 @@ mit_set_run
 mit_start
 mit_prex "source $MIT_VENV_1/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
-#mit_prex "cd $MIT_BC_IC_FROM_OGSTM"
+#mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR"
 
 
     DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
@@ -22,13 +22,13 @@ OPA_RUNDATE_A=$( date -d "last tuesday" +%Y%m%d )
 
 OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V6C/prod/archive
 
-      ARCHIVE_AVE_W=$OPA_ARCDIR_ROOT/analysis/$OPA_RUNDATE/POSTPROC/AVE_FREQ_2
+       ARCHIVE_AVE_W=$OPA_ARCDIR_ROOT/analysis/$OPA_RUNDATE_A/POSTPROC/AVE_FREQ_2
        AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
       AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
 AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
 
-MASK128=$MIT_WRKDIR/BC_IC/mask128.nc # Cadeau Mask, generated
-MASK_OGSTM_RED=$MIT_WRKDIR/mask_ogstm_reduced.nc
+              MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc    # to be generated
+        MASK_OGSTM_RED=$MIT_WRKDIR/BC_IC/mask_ogstm_reduced.nc
 
 MPI="mpirun -np 36 "
 
@@ -42,46 +42,53 @@ done
 exit 0
 
 
-# 1.2 Parallel uncompressing
-for var in N1p N3n N4n N5s O2o P1 P2 P3 P4; do  
-   mit_prex_or_die " $MPI python uncompress.py -i $ARCHIVE_AVE_D    -o $AVE_DAILY_DIR  -l ave*${var}*.nc.gz "
-done
-mit_prex_or_die " $MPI python uncompress.py -i $ARCHIVE_AVE_W  -o $AVE_WEEKLY_DIR -l *gz "
-
-
-for var in $OPA_LOW__FREQ_VARIABLES ; do 
-   mit_prex_or_die "ln -fs $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_WEEKLY_DIR/ave.${DATESTART}.${var}.nc "
-   mit_prex_or_die "ln -fs $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_WEEKLY_DIR/ave.${DATE__END}.${var}.nc "
+# Parallel uncompressing of OPA_HIGH_FREQ_VARIABLES
+for var in  N O[23][ohc] P[1-4][lc] Z R6c B1c; do
+   mit_prex_or_die " $MPI python $MIT_POSTPROCDIR/archive/uncompress.py -i $AVE_DAILY_ZIPPED_DIR    -o $AVE_DAILY_DIR  -l ave*${var}*.nc.gz "
 done
 
+# Parallel uncompressing of all weekly vars
+mit_prex_or_die " $MPI python $MIT_POSTPROCDIR/archive/uncompress.py -i $ARCHIVE_AVE_W  -o $AVE_WEEKLY_DIR -l *gz "
+
+# completes AVE_DAILY_DIR generation
+for var in $OPA_LOW__FREQ_VARIABLES ; do
+   mit_prex_or_die "weekly_linker $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_DAILY_DIR "
+done
+
+# questo crea gli ave.yyyymmdd-00:00:00.var.nc non mi ricordo se è utile
 for var in $OPA_HIGH_FREQ_VARIABLES ; do
-    mit_prex_or_die "ln -fs $AVE_DAILY_DIR/ave.${DATESTART:0:8}-12:00:00.${var}.nc ${AVE_DAILY_DIR}/ave.${DATESTART}.${var}.nc " 
+    prex_or_die "ln -fs $AVE_DAILY_DIR/ave.${DATESTART:0:8}-12:00:00.${var}.nc ${AVE_DAILY_DIR}/ave.${DATESTART}.${var}.nc "
 done
 
 ####### link phys  ###########################
-for I in `ls $COPERNICUS_ARCHIVE_DIR/${OPA_RUNDATE}/OPAOPER_A/*  $COPERNICUS_ARCHIVE_DIR/${OPA_RUNDATE}/OPAOPER_F/* ` ; do
-    F=`basename $I`
-    filename=${F:18:8}_${F:29:4}
-    filename=20${F}
-    mit_prex_or_die "ln -fs $I $PHYS_DIR/$filename"
+for D in `mit_days `; do
+  ARCHIVE_PHYS_PREFIX=`python $BITSEA/validation/online/V6C_archive_info.py -d $D --phys `
+  for var in U V T ; do
+    phys_file=$OPA_ARCDIR_ROOT/${ARCHIVE_PHYS_PREFIX}${var}.nc
+    filename=${D}_${var}.nc  # 20200510_U.nc
+    mit_prex_or_die "ln -fs $phys_file $PHYS_DIR/$filename"
+  done
 done
 ##################################################################
 
 
+
+### Step 0.  GET MASK INFO  #####################################
+
 BATHY=$MIT_WRKDIR/BC_IC/bathy
 mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
-mit_prex_or_die "python maskgen.py -b $BATHY -o $MASK128"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/maskgen.py -b $BATHY -o $MASKFILE"
 
-MASK__PHYS="$HOME/OPA/V4C/etc/static-data/MED24_141/meshmask.nc"
-MASK_OGSTM="$HOME/OPA/V4C/etc/static-data/MED24_125/meshmask.nc"
+MASK__PHYS="$HOME/OPA/V6C/etc/static-data/MED24_141/meshmask.nc"
+MASK_OGSTM="$HOME/OPA/V6C/etc/static-data/MED24_125/meshmask.nc"
 
-mit_prex_or_die " python get_cut_Locations.py -c $MASK__PHYS -f $MASK_128 > $RUNDIR/set_cut_indexes_INGV_vs_M128.sh "
-mit_prex_or_die " python get_cut_Locations.py -c $MASK_OGSTM -f $MASK_128 > $RUNDIR/set_cut_indexes_V4_vs_M128.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK__PHYS -f $MASKFILE > $RUNDIR/set_cut_indexes_PHYS_vs_local.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_OGSTM -f $MASKFILE > $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh "
 
-mit_prex_or_die "chmod 744 $RUNDIR/set_cut_indexes_INGV_vs_M128.sh $RUNDIR/set_cut_indexes_V4_vs_M128.sh"
+mit_prex_or_die "chmod 744 $RUNDIR/set_cut_indexes_PHYS_vs_local.sh $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh"
 
-# getting Mask16 reduced on CADEAU 
-medmit_prex_or_die ". nco_indexer.sh $RUNDIR/set_cut_indexes_V4_vs_M128.sh"
+# getting OGSTM mask reduced on local
+memit_prex_or_die ". $MIT_BC_IC_FROM_OGSTM_DIR/nco_indexer.sh $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh"
 medmit_prex_or_die " $MIT_BINDIR/ncks -F -a -d x,$Index_W,$Index_E -d y,$Index_S,$Index_N $MASK_OGSTM -O $MASK_OGSTM_RED"
 ##################################################################
 
