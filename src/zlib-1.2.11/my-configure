@@ -1,0 +1,3 @@
+. $OPA_HOME/src/ENV/$OPA_HOSTNAME
+./configure --prefix=$OPA_HOME/HOST/$OPA_HOSTNAME
+
