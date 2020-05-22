@@ -1,0 +1,44 @@
+#per creare gli ambienti virtuali python per il postproc della catena
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+
+module load autoload profile/advanced
+
+case $MIT_HOSTNAME in
+    pico)
+      module load autoload profile/advanced
+      module load intelmpi netcdf/4.1.3--intel--cs-xe-2015--binary
+      module load python/2.7.9 numpy/1.9.2--python--2.7.9 matplotlib/1.4.3--python--2.7.9
+      ;;
+    galileo)
+      module load autoload
+      module unload intelmpi intel 
+      module load profile/advanced intelmpi/2018--binary netcdf/4.6.1--intelmpi--2018--binary
+      module load python/2.7.12 #numpy/1.9.1--python--2.7.9 matplotlib/1.4.3--python--2.7.9
+      module load hdf5/1.8.17--intelmpi--2018--binary
+      export HDF5_DIR=$HDF5_HOME
+      module list
+      ;;
+    marconi)
+      module load autoload 
+      module load profile/advanced intelmpi/2017--binary netcdf/4.4.1--intelmpi--2017--binary
+      module load python/2.7.12 numpy/1.11.2--python--2.7.12
+      ;;
+    *)
+      module load python
+      ;;
+esac
+
+#creazione di venv1
+VENV_PATH=$MIT_HOME/HOST/$MIT_HOSTNAME/venvs/venv1
+
+virtualenv $VENV_PATH
+
+source $VENV_PATH/bin/activate
+pip install --upgrade pip
+CFLAGS+="-L/cineca/prod/compilers/intel/pe-xe-2018/binary/lib/intel64 -lirc" CC=mpiicc pip install netcdf4 --global-option=build_ext
+pip install ipython
+pip install python-dateutil
+pip install seawater
+pip install matplotlib
+#installare Pillow per concludere la configurazione di venv1
+

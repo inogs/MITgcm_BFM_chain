@@ -1,0 +1,47 @@
+#creazione di venv2
+. $OPA_HOME/src/ENV/$OPA_HOSTNAME
+
+VENV_PATH=$OPA_HOME/HOST/$OPA_HOSTNAME/venvs/venv2
+
+module load profile/advanced
+case $OPA_HOSTNAME in
+    pico)
+      module load autoload python/3.5.0 numpy/1.10.1--python--3.5.0 mkl
+      module load intelmpi/5.0.1--binary netcdff/4.4.2--intel--cs-xe-2015--binary
+      ;;
+    galileo)
+#bisogna aver prima installato Python-3.5.0 con Intel
+      PYTHON_PATH=$OPA_HOME/HOST/$OPA_HOSTNAME/venvs/python-3.5.0
+      export PATH=$PYTHON_PATH/bin:$PATH
+      export LD_LIBRARY_PATH=$PYTHON_PATH/lib:$LD_LIBRARY_PATH
+      export PYTHONPATH=$PYTHON_PATH/lib/python3.5/site-packages/:/cineca/prod/compilers/intel/pe-xe-2017/binary/lib/intel64
+      module load autoload mkl/2017--binary
+      module load intelmpi/2017--binary netcdff/4.4.4--intel--pe-xe-2017--binary
+      module unload hdf5
+      module load hdf5/1.8.17--intelmpi--2017--binary
+      export HDF5_DIR=$HDF5_HOME
+      ;;
+    *)
+      module load python
+      ;;
+    marconi)
+#bisogna aver prima installato Python-3.5.0 con Intel
+      PYTHON_PATH=$OPA_HOME/HOST/$OPA_HOSTNAME/venvs/python-3.5.0
+      export PATH=$PYTHON_PATH/bin:$PATH
+      export LD_LIBRARY_PATH=$PYTHON_PATH/lib:$LD_LIBRARY_PATH
+      export PYTHONPATH=$PYTHON_PATH/lib/python3.5/site-packages/
+      module load autoload mkl/2017--binary
+      module load intelmpi/2017--binary netcdff/4.4.4--intel--pe-xe-2017--binary
+      ;;
+    *)
+      module load python
+      ;;
+esac
+
+virtualenv $VENV_PATH
+
+source $VENV_PATH/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install seawater
+python3 -m pip install netcdf4
+python3 -m pip install cython
