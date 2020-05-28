@@ -27,9 +27,32 @@ OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V6C/prod/archive
       AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
 AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
             PHYS_DIR=$MIT_WRKDIR/BC_IC/PHYS/UNZIPPED
+          START_PHYS=$MIT_WRKDIR/BC_IC/PHYS/IC
+      PHYSCUT_IC_DIR=${START_PHYS}/CUT_3D
+          PHYSIC_DIR=$MIT_WRKDIR/BC_IC/IC/PHYS
+       BIOCUT_IC_DIR=$MIT_WRKDIR/BC_IC/BIO/IC/CUT_3D
+          BIO_IC_DIR=$MIT_WRKDIR/BC_IC/IC/BIO
+      PHYSCUT_BC_DIR=${MIT_WRKDIR}/PHYS/CUTTED_SLICES
+         PHYS_BC_DIR=${MIT_WRKDIR}/BC/PHYS
+       BIOCUT_BC_DIR=${MIT_WRKDIR}/BIO/CUTTED_SLICES
+          BIO_BC_DIR=${MIT_WRKDIR}/BC/BIO
 
-              MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc    # to be generated
-        MASK_OGSTM_RED=$MIT_WRKDIR/BC_IC/mask_ogstm_reduced.nc
+      TIMELIST_START=$MIT_WRKDIR/t0.txt
+         TIMES_DAILY=$MIT_WRKDIR/daily.txt
+
+            MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc    # to be generated
+      MASK_OGSTM_RED=$MIT_WRKDIR/BC_IC/mask_ogstm_reduced.nc
+
+          MODEL_VARS=$MIT_WRKDIR/ogstm_state_vars.txt
+
+           RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_N2.xlsx
+       RIVERMETEODIR=$MIT_WRKDIR
+
+export RIVERDATA RIVERMETEODIR
+
+echo ${MIT_OUTPUT_VARIABLES} | sed --regexp-extended -e 's/ +/ /g' | tr ' ' '\n' > ${MODEL_VARS};
+
+for D in $(mit_days); do echo "$D-12:00:00" ; done > $TIMES_DAILY
 
 MPI="mpirun -np 36 "
 
@@ -96,22 +119,15 @@ mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((
 ##################################################################
 
 
-
-
-
-typeset -i errors=0
-mit_exit "$exit_code"
-
-
 # Get name of ECMWF wind input files
-mit_set_input_files__mitoper_a
-mit_set_input_files__mitoper_f
+#mit_set_input_files__mitoper_a
+#mit_set_input_files__mitoper_f
 
-typeset -i errors=0
+#typeset -i errors=0
 
 ### set up of input files in $OPA_WRKDIR/OPAOPER
 
-$OPA_SCRDIR/mit_input_stagein.ksh || errors=$(( $errors + 1 ))
+#$OPA_SCRDIR/mit_input_stagein.ksh || errors=$(( $errors + 1 ))
 
 # ### create links for analyses
 # $OPA_SCRDIR/mit_link_analyses.ksh || errors=$(( $errors + 1 ))
@@ -120,14 +136,71 @@ $OPA_SCRDIR/mit_input_stagein.ksh || errors=$(( $errors + 1 ))
 # $OPA_SCRDIR/mit_link_forecast.ksh || errors=$(( $errors + 1 ))
 
 
-if [[ $errors -gt 0 ]] ; then
-  mit_log 0 "WRN: $errors errors during phase A1"
-fi
-
-echo "DBG: LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+#if [[ $errors -gt 0 ]] ; then
+#  mit_log 0 "WRN: $errors errors during phase A1"
+#fi
 
 ### check input files:
-typeset -i exit_code=0
-$OPA_SCRDIR/mit_check_input_files.ksh || exit_code=$?
+#typeset -i exit_code=0
+#$OPA_SCRDIR/mit_check_input_files.ksh || exit_code=$?
+
+### Step 2. INITIAL CONDITIONS ###################################
+
+echo "${DATESTART}-12:00:00" > $TIMELIST_START
+
+## phys  ##
+
+for I in `ls $PHYS_DIR/*${DATESTART}* ` ; do 
+   filename=`basename $I `
+   mit_prex_or_die " ln -fs $I $START_PHYS/$filename "
+done
+
+mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
+mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $START_PHYS -o $PHYSCUT_IC_DIR -c '$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1))'"
+mit_prex_or_die "mpirun -np 4 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_OGSTM_RED  -i $PHYSCUT_IC_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
+
+
+## bio ##
+
+mit_prex_or_die ". $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
+### here ogstm_cutter.py is not parallel because it works in parallel in timelist
+mit_prex_or_die "mpirun -np 1  python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_N -i $AVE_DAILY_DIR  --datatype ave -o $BIOCUT_IC_DIR -v $MODEL_VARS -t $TIMELIST_START -m $MASK_OGSTM"
+mit_prex_or_die "mpirun -np 10 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_OGSTM_RED -i $BIOCUT_IC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
+
+##################################################################
+
+
+### Step 4. BOUNDARY CONDITIONS ##################################
+
+## phys ##
+mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
+mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $PHYS_DIR -o $PHYSCUT_BC_DIR/SOUTH  -c '${MIT_BINDIR}/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_S+1)) ' "
+
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s E -o $PHYS_BC_DIR"
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s N -o $PHYS_BC_DIR"
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s W -o $PHYS_BC_DIR"
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE --nativemask $MASK_OGSTM_RED -s S -i $PHYSCUT_BC_DIR/SOUTH  -o $PHYS_BC_DIR"
+
+## bio ##
+
+mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
+
+# South Boundary
+
+mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_S -i $AVE_DAILY_DIR --datatype ave -o ${BIOCUT_BC_DIR}/SOUTH -v $MODEL_VARS -t $TIMES_DAILY -m $MASK_OGSTM"
+
+mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s N -o $BIO_BC_DIR"
+mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s E -o $BIO_BC_DIR"
+mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s W -o $BIO_BC_DIR"
+mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE --nativemask $MASK_OGSTM_RED -s S -o $BIO_BC_DIR  -i ${BIOCUT_BC_DIR}/SOUTH"
 
 mit_exit "$exit_code"
+
+##################################################################
+
+### Step 5. Prepare data to fluxus 
+cd $MIT_WRKDIR
+mit_prex_or_die " tar -czf bc.tar.gz  BC/PHYS/*dat BC/BIO/*dat "
+mit_prex_or_die " tar -czf IC.tar.gz  IC/PHYS/*dat IC/BIO/*dat "
+
+
