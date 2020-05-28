@@ -26,6 +26,7 @@ OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V6C/prod/archive
        AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
       AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
 AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
+            PHYS_DIR=$MIT_WRKDIR/BC_IC/PHYS/UNZIPPED
 
               MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc    # to be generated
         MASK_OGSTM_RED=$MIT_WRKDIR/BC_IC/mask_ogstm_reduced.nc
@@ -39,9 +40,8 @@ for D in `mit_days `; do
   mit_prex_or_die "mit_linker $OPA_ARCDIR_ROOT/$ARCHIVE_DIR/POSTPROC/AVE_FREQ_1/ARCHIVE/ave.${D}-12:00:00.*.nc.gz "
 done
 
-exit 0
 
-
+cd $MIT_WRKDIR
 # Parallel uncompressing of OPA_HIGH_FREQ_VARIABLES
 for var in  N O[23][ohc] P[1-4][lc] Z R6c B1c; do
    mit_prex_or_die " $MPI python $MIT_POSTPROCDIR/archive/uncompress.py -i $AVE_DAILY_ZIPPED_DIR    -o $AVE_DAILY_DIR  -l ave*${var}*.nc.gz "
@@ -52,17 +52,17 @@ mit_prex_or_die " $MPI python $MIT_POSTPROCDIR/archive/uncompress.py -i $ARCHIVE
 
 # completes AVE_DAILY_DIR generation
 for var in $OPA_LOW__FREQ_VARIABLES ; do
-   mit_prex_or_die "weekly_linker $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_DAILY_DIR "
+   mit_prex_or_die "mit_weekly_linker $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_DAILY_DIR "
 done
 
 # questo crea gli ave.yyyymmdd-00:00:00.var.nc non mi ricordo se è utile
-for var in $OPA_HIGH_FREQ_VARIABLES ; do
-    prex_or_die "ln -fs $AVE_DAILY_DIR/ave.${DATESTART:0:8}-12:00:00.${var}.nc ${AVE_DAILY_DIR}/ave.${DATESTART}.${var}.nc "
-done
+#for var in $OPA_HIGH_FREQ_VARIABLES ; do
+#	prex_or_die "ln -fs $AVE_DAILY_DIR/ave.${DATESTART:0:8}-12:00:00.${var}.nc ${AVE_DAILY_DIR}/ave.${DATESTART}.${var}.nc "
+#done
 
 ####### link phys  ###########################
 for D in `mit_days `; do
-  ARCHIVE_PHYS_PREFIX=`python $BITSEA/validation/online/V6C_archive_info.py -d $D --phys `
+  ARCHIVE_PHYS_PREFIX=`python ${MIT_BITSEA}/validation/online/V6C_archive_info.py -d $D --phys `
   for var in U V T ; do
     phys_file=$OPA_ARCDIR_ROOT/${ARCHIVE_PHYS_PREFIX}${var}.nc
     filename=${D}_${var}.nc  # 20200510_U.nc
@@ -75,21 +75,24 @@ done
 
 ### Step 0.  GET MASK INFO  #####################################
 
-BATHY=$MIT_WRKDIR/BC_IC/bathy
-mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/maskgen.py -b $BATHY -o $MASKFILE"
+#BATHY=$MIT_WRKDIR/BC_IC/bathy
+#mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
+#mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
+
+mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/mask.nc.gz > $MASKFILE"
 
 MASK__PHYS="$HOME/OPA/V6C/etc/static-data/MED24_141/meshmask.nc"
 MASK_OGSTM="$HOME/OPA/V6C/etc/static-data/MED24_125/meshmask.nc"
 
-mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK__PHYS -f $MASKFILE > $RUNDIR/set_cut_indexes_PHYS_vs_local.sh "
-mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_OGSTM -f $MASKFILE > $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK__PHYS -f $MASKFILE > $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_OGSTM -f $MASKFILE > $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh "
 
-mit_prex_or_die "chmod 744 $RUNDIR/set_cut_indexes_PHYS_vs_local.sh $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh"
+mit_prex_or_die "chmod 744 $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
 
 # getting OGSTM mask reduced on local
-memit_prex_or_die ". $MIT_BC_IC_FROM_OGSTM_DIR/nco_indexer.sh $RUNDIR/set_cut_indexes_OGSTM_vs_local.sh"
-medmit_prex_or_die " $MIT_BINDIR/ncks -F -a -d x,$Index_W,$Index_E -d y,$Index_S,$Index_N $MASK_OGSTM -O $MASK_OGSTM_RED"
+#mit_prex_or_die ". $MIT_BC_IC_FROM_OGSTM_DIR/nco_indexer.sh $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
+mit_prex_or_die ". $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
+mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1)) $MASK_OGSTM -O $MASK_OGSTM_RED"
 ##################################################################
 
 

@@ -1,0 +1,11 @@
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+export CC=mpiicc
+export CFLAGS="-g -O2 -fopenmp"
+export CXXFLAGS="-g -O2 -fopenmp"
+export FCFLAGS="-g -fopenmp"
+export F90=mpiifort
+export F77=mpiifort
+./configure --prefix="$MIT_HOME/HOST/$MIT_HOSTNAME" --enable-netcdf4 --with-pic LDFLAGS="$LDFLAGS -L$MIT_HOME/HOST/$MIT_HOSTNAME/lib -lhdf5_hl -lhdf5 -lsz -lz" CPPFLAGS="$CPPFLAGS -I$MIT_HOME/HOST/$MIT_HOSTNAME/include"
+#./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME #--disable-netcdf-4
+make 
+make install

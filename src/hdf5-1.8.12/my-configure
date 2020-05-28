@@ -1,0 +1,7 @@
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME --enable-shared --enable-parallel --enable-fortran --enable-fortran2003 --enable-gpfs --disable-libtool-lock --with-szlib=$MIT_HOME/HOST/$MIT_HOSTNAME --with-zlib=$MIT_HOME/HOST/$MIT_HOSTNAME CC=mpiicc FC=mpiifort
+cp pio_engine.c perform/pio_engine.c
+cp sio_engine.c perform/sio_engine.c
+make clean
+make
+make install
