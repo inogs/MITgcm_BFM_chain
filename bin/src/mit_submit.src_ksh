@@ -114,8 +114,7 @@ EofCat
 }
 
 # parse command line arguments
-mit_steps__available="pre"
-#mit_steps__available="pre,model,post"
+mit_steps__available="pre,model,post"
 mit_rundate="$MIT_UNDEFINED"
 mit_queue="$MIT_DEFAULT_QUEUE"
 mit_queue_par="$MIT_DEFAULT_QUEUE_PAR"
