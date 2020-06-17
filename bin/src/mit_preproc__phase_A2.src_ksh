@@ -1,122 +1,39 @@
 #!/bin/ksh
-# This script interpolate ECMWF wind (converted in NETCDF format) for OPA_offline grid
 
 # Load common profile
-. @@(I:OPA_HOME)/bin/opa_profile.inc
+. @@(I:MIT_HOME)/bin/mit_profile.inc
 
 # Rundate definition
-opa_set_run
+mit_set_run
 
 # start
-opa_start
+mit_start
+mit_prex "source $MIT_VENV_1/bin/activate"
+PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
-# Get the name of OPAOPER_A wind input files
-opa_set_input_files__opaoper_a
-opa_print_input_files__opaoper_a
+TIMELISTFILE=$RUNDIR/meteo_timelist.txt
 
-# Get the name of OPAOPER_F data input files
-opa_set_input_files__opaoper_f
-opa_print_input_files__opaoper_f
+MASK_ARSO=$RUNDIR/mask.arso.nc
+mit_prex_or_die "gzip -cd static-data/masks/METEO/mask.nc.gz > $MASK_ARSO "
 
-typeset -i errors=0
+for I in `ls $DOWNLOADED_METEO/*gz `; do medmit_prex_or_die "tar -xzf $I -C $ORIG_METEO "; done
 
-### PHASE A2
-opa_log 0 "PHASE A2 : interpolation"
-
-interp_wrkdir="$OPA_WRKDIR/INTERP"
-evapo_wrkdir="$OPA_WRKDIR/INTERP/EVAPO"
-
-### source of actual input description file:
-if [[ ! -f $OPA_ACTUAL_INPUT_DESCRIPTION_FILE ]] ; then
-  opa_die 2 "Missing description file $OPA_ACTUAL_DESCRIPTION_FILE"
-fi
-. $OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+##################################################################
 
 
-cat <<EofCat
-@@@ OPA_RUNDATE__ACTUAL				= $OPA_RUNDATE__ACTUAL
-@@@ OPA_OPAOPER_A_DAY_OFFSET_START__ACTUAL	= $OPA_OPAOPER_A_DAY_OFFSET_START__ACTUAL
-@@@ OPA_OPAOPER_A_DAY_OFFSET_END__ACTUAL	= $OPA_OPAOPER_A_DAY_OFFSET_END__ACTUAL
-@@@ OPA_ANALYSES_DAYS__ACTUAL			= $OPA_ANALYSES_DAYS__ACTUAL
-@@@ OPA_OPAOPER_F_DAY_OFFSET_START__ACTUAL	= $OPA_OPAOPER_F_DAY_OFFSET_START__ACTUAL
-@@@ OPA_OPAOPER_F_DAY_OFFSET_END__ACTUAL	= $OPA_OPAOPER_F_DAY_OFFSET_END__ACTUAL
-@@@ OPA_FORECAST_DAYS__ACTUAL			= $OPA_FORECAST_DAYS__ACTUAL
-EofCat
 
-### Check if OPA_RUNDATE and OPA_RUNDATE__ACTUAL are the same
-if [[ $OPA_RUNDATE != $OPA_RUNDATE__ACTUAL ]] ; then
-  opa_die 3 "ERR: Actual input description file refers to $OPA_RUNDATE__ACTUAL, which is not $OPA_RUNDATE"
-fi
+### Step 3. Space Interpolation   ###############################
 
-if [ 1 == 0 ] ; then # REMOVING ALL THE PART 
-### cd in interp work directory:
-opa_prex "cd $interp_wrkdir"
+mit_prex_or_die " python TimeList_generator.py -s $DATESTART -e $DATE__END -d 'hours = 1' > $TIMELISTFILE "
+mit_prex_or_die " python meteo_generator.py -i $ORIG_METEO -o $BC_METEO -m $MASK_128 --nativemask $MASK_ARSO -t $TIMELISTFILE "
 
-### Creation of list of files to be interpolated, grouped with respect to variable
-set -A nomefile -- 
-for var_index in $OPA_VARIABLE_INDICES ; do
-  var="${OPA_VARIABLE[var_index]}"
-  nomefile_file_name="nomefile_$var"
-  printf '%s' "@@@ Creating ${nomefile_file_name}..."
-  for file_index in ${OPA_VAR_INPUT_FILE_INDICES_SORTED__ACTUAL[var_index]} ; do
-    echo $(basename ${OPA_INPUT_FILE__ACTUAL[file_index]})
-  done > $nomefile_file_name
-  echo " done."
-  nomefile[var_index]="$nomefile_file_name"
-done
-
-### Creation of other config files for interp:
-typeset -i num_times=$(( $OPA_ANALYSES_DAYS__ACTUAL + $OPA_FORECAST_DAYS__ACTUAL ))
-# GFM:NON SERVONO NELLA VERSIONE V3 echo "$num_times" > nrecords
-# GFM:NON SERVONO NELLA VERSIONE V3 echo "0" > time.txt
-
-### Stage-in of executable
-opa_stage_in "$interp_wrkdir"	"$OPA_BINDIR/ForcingGenerator"
-
-### Stage-in of domain description files:
-opa_stage_in "$interp_wrkdir"					\
-	$OPA_ETCDIR/static-data/MED1672/MASK/meshmask_1672.nc	\
-	$OPA_ETCDIR/static-data/MED1672_cut/MASK/meshmask.nc
-
-### Stage-in of correction ps:
-opa_stage_in "$interp_wrkdir"					\
-	$OPA_ETCDIR/static-data/CORRECTION_PS/grid.U_PS.nc	\
-	$OPA_ETCDIR/static-data/CORRECTION_PS/grid.V_PS.nc
-
-### Stage-in of nudging velocity:
-opa_stage_in "$interp_wrkdir"					\
-	$OPA_ETCDIR/static-data/MED1672_cut/CIRC/SPONGE_U.nc	\
-	$OPA_ETCDIR/static-data/MED1672_cut/CIRC/SPONGE_V.nc	\
-	$OPA_ETCDIR/static-data/MED1672_cut/CIRC/SPONGE_W.nc	\
-	$OPA_ETCDIR/static-data/MED1672_cut/CIRC/SPONGE_T.nc
+##################################################################
 
 
-# MOD-V3: creare config file per interp; modifica a opa_stage_in?
-#         definire ORIG_DIR
-#         definire OUT_DIR, che conterrà i forzanti da copiare in MODEL/FORCINGS
+mit_prex_or_die " mv $BC_METEO/CHECK $RUNDIR "
 
 
-  opa_prex "sed 	-e 's%@@(N:MASKFILE_16)%${interp_wrkdir}/meshmask_1672.nc%g'			\
-      			-e 's%@@(N:MASKFILE_OUT)%${interp_wrkdir}/meshmask.nc%g'			\
-      			-e 's%@@(N:ORIG_DIR)%$OPA_WRKDIR/OPAOPER/%g'					\
-      			-e 's%@@(N:OUT_DIR)%$OPA_WRKDIR/INTERP/FORCINGS/%g'				\
-      			-e 's%@@(N:PS)%.true.%g'							\
-      			-e 's%@@(N:PS16FILE_U)%${interp_wrkdir}/grid.U_PS.nc%g'				\
-      			-e 's%@@(N:PS16FILE_V)%${interp_wrkdir}/grid.V_PS.nc%g'				\
-      			-e 's%@@(N:NUDGFILE_U)%${interp_wrkdir}/SPONGE_U.nc%g'			\
-      			-e 's%@@(N:NUDGFILE_V)%${interp_wrkdir}/SPONGE_V.nc%g'			\
-      			-e 's%@@(N:NUDGFILE_W)%${interp_wrkdir}/SPONGE_W.nc%g'			\
-      			-e 's%@@(N:NUDGFILE_T)%${interp_wrkdir}/SPONGE_T.nc%g'			\
-                        -e 's%@@(N:EVAPO_DIR)%${interp_wrkdir}/EVAPO/%g'                     \
-		$OPA_TPLDIR/interp/namelist.tpl > ${interp_wrkdir}/namelist"
-
-fi
-### Interpolation
-opa_report "bio_chain-tl-start_production" "0" "true"
-#opa_prex_or_die "time ./ForcingGenerator" \
-#	10 "ForcingGenerator failed"
-
-opa_exit "$errors"
+mit_exit "$errors"
 
 
 
