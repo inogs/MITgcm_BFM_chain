@@ -29,7 +29,7 @@ METEODIR=$MIT_WRKDIR/METEO
 
 DOWNTIMELISTFILE=$METEODIR/to_download_timelist.txt
 
-mit_prex "cd $MIT_BC_IC_FROM_OGSTM"
+mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR "
 
 mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END -d \"days = 1 \" > $DOWNTIMELISTFILE "
 
