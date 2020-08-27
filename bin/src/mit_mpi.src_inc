@@ -1,17 +1,17 @@
-if [[ $__OPA_MPI_IS_DEFINED__ == '' ]] ; then
-  __OPA_MPI_IS_DEFINED__='__defined__'
+if [[ $__MIT_MPI_IS_DEFINED__ == '' ]] ; then
+  __MIT_MPI_IS_DEFINED__='__defined__'
 
 
-# This script is a wrapper to include the specific script for $OPA_MPI;
+# This script is a wrapper to include the specific script for $MIT_MPI;
 # the MPI-specific script must define these functions:
-# 1) opa_mpi_run
-#    load the specified MPI command requiring $OPA_TASKS tasks,
+# 1) mit_mpi_run
+#    load the specified MPI command requiring $MIT_TASKS tasks,
 #    to be used only inside a batch job!
 	
 
-function _opa_mpi_args_to_string {
+function _mit_mpi_args_to_string {
   # This function is used internally by the MPI-specific implementations
-  # of opa_mpi_run; it returns a string quoting all the arguments
+  # of mit_mpi_run; it returns a string quoting all the arguments
   typeset _arg
   typeset _string=' '
   for _arg in "$@" ; do
@@ -20,9 +20,9 @@ function _opa_mpi_args_to_string {
   echo "$_string"
 }
 
-mpi_inc_file="$OPA_SCRDIR/opa_mpi__${OPA_MPI}.inc"
+mpi_inc_file="$MIT_SCRDIR/mit_mpi__${MIT_MPI}.inc"
 if [[ ! -f $mpi_inc_file ]] ; then
-  echo "ERROR: there is no inc file for MPI library [${OPA_MPI}]!" 1>&2
+  echo "ERROR: there is no inc file for MPI library [${MIT_MPI}]!" 1>&2
   exit 1
 fi
 
