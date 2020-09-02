@@ -5,16 +5,6 @@ if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
 #. /etc/profile.d/pbs.sh
 . /etc/profile.d/modules.sh
 
-#MIT_BASE_DIR_scratch="/gpfs/scratch/userogs/$USER/MIT"
-#MIT_BASE_DIR_scratch="/gpfs/work/OGS_prod/MIT"
-
-#MIT_BASE_DIR_meteo="/gpfs/work/OGS_prod/MIT"
-
-#MIT_BASE_WRKDIR="$MIT_BASE_DIR_scratch"
-
-#MIT_BASE_ARCDIR="$MIT_BASE_DIR_meteo"
-
-#MIT_GRADS_HOME="/cineca/prod/tools/grads/1.8/binary"
 MIT_GRADS_HOME="$MIT_HOSTDIR"
 MIT_GRADS_GADDIR="${MIT_GRADS_HOME}/etc/grads/data"
 
@@ -39,16 +29,14 @@ NODE=$( echo "$NODENAME"| cut -d: -f1 ) # prima parte del nome del nodo
 MIT_HOST_LOGIN_NODES="$MIT_HOST_PRIMARY_LOGIN_NODE $MIT_HOST_SECONDARY_LOGIN_NODE"
 _mit_pro_dir=/shared/project/data/userogs/ogstsf79/BFM-MED
 MIT_HOST_PRO_UHD_LIST="${USER}:${MIT_HOST_PRIMARY_LOGIN_NODE}:$_mit_pro_dir ${USER}:${MIT_HOST_SECONDARY_LOGIN_NODE}:$_mit_pro_dir ${USER}:devel.fec.cineca.it:$_mit_pro_dir"
-#MIT_HOST_PRO_UHD_LIST="${USER}:devel.fec.cineca.it:/gpfsFE/web/meteo/ogs/BFM-MED"
 MIT_HOST_PRO_FTP_LIST="${I_MIT_HOME}/etc/nc-config/.meteo.ncconfig:/"
 
 MIT_CORES_PER_NODE=36
-MIT_DOMAIN=10nodes-bdw                                  #Folder to take for domain (depends on number of used nodes)
 
 MIT_DEFAULT_WALL_CLOCK_LIMIT=06:00:00			# Default wall clock limit [[hh:]mm:]ss
 MIT_DEFAULT_WALL_CLOCK_LIMIT_SER=04:00:00			# Default wall clock limit [[hh:]mm:]ss
 MIT_DEFAULT_WALL_CLOCK_LIMIT_PAR=06:00:00			# Default wall clock limit [[hh:]mm:]ss
-MIT_DEFAULT_TASKS=360					# Default tasks' number WARNING: 1 node is not enough
+MIT_DEFAULT_TASKS=144					# Default tasks' number WARNING: 1 node is not enough
 MIT_DEFAULT_QUEUE="gll_meteo_prod"                                      # Default queue
 MIT_DEFAULT_QUEUE_PAR="gll_meteo_prod"                                  # Default queue par
 #MIT_DEFAULT_QUEUE_SER="serial"                                 # Default queue ser

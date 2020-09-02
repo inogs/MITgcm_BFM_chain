@@ -361,13 +361,12 @@ fi
 
 # check number of tasks:
 typeset -i num_missing_odd_files=0
-for ij in i j ; do
-  odd_file="$MIT_ETCDIR/static-data/DOMAIN/$MIT_DOMAIN/domdec.txt"
-  if [[ ! -f "$odd_file" ]] ; then
-    mit_log_to_file 1 "ERR: missing file '$odd_file'"
-    num_missing_odd_files=$(( $num_missing_odd_files + 1 ))
-  fi
-done
+#for ij in i j ; do
+#  if [[ ! -f "$odd_file" ]] ; then
+#    mit_log_to_file 1 "ERR: missing file '$odd_file'"
+#    num_missing_odd_files=$(( $num_missing_odd_files + 1 ))
+#  fi
+#done
 if [[ $num_missing_odd_files -ne 0 ]] ; then
   mit_log_to_file 0 "ERR: [${mit_tasks}] is not allowed as number of tasks" 1>&2
   exit 2
