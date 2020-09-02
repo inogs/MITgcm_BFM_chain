@@ -98,11 +98,9 @@ done
 
 ### Step 0.  GET MASK INFO  #####################################
 
-#BATHY=$MIT_WRKDIR/BC_IC/bathy
-#mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
-#mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
-
-mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/mask.nc.gz > $MASKFILE"
+BATHY=$MIT_WRKDIR/BC_IC/bathy.bin
+mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
 
 MASK__PHYS="$HOME/OPA/V6C/etc/static-data/MED24_141/meshmask.nc"
 MASK_OGSTM="$HOME/OPA/V6C/etc/static-data/MED24_125/meshmask.nc"
