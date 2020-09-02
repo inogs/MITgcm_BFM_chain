@@ -1,0 +1,31 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Load MPI profile:
+. $MIT_SCRDIR/mit_mpi.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+RUNDIR=$MIT_WRKDIR/MODEL/run
+OUTDIR=$MIT_WRKDIR/MODEL/results_merged
+mit_mkdir ${RUNDIR}/progn_vars_init
+cd $RUNDIR
+mit_prex "mv ${RUNDIR}/*.0000000000.* ${RUNDIR}/progn_vars_init/ "
+
+
+
+# cat of vars list
+for var in `cat $MIT_ETCDIR/static-data/MODEL/merging_varlist`;  do
+ filenames=${RUNDIR}/${var}.*.data
+ mit_prex_or_die "cat $filenames > ${OUTDIR}/${var}.dat"
+done
+
+mit_exit "$errors"

@@ -33,9 +33,23 @@ BC_IC_DIRS='BC_IC
             BC_IC/BIO/CUTTED_SLICES
             BC_IC/BIO/CUTTED_SLICES/SOUTH' 
             
+MODEL_DIRS='MODEL
+            MODEL/input/
+            MODEL/input/binaries
+            MODEL/input/binaries/ICs
+            MODEL/input/binaries/ICs/PHYS
+            MODEL/input/binaries/ICs/BIO            
+            MODEL/input/binaries/meteo
+            MODEL/input/binaries/OBCs
+            MODEL/input/binaries/OBCs/PHYS
+            MODEL/input/binaries/OBCs/BIO
+            MODEL/input/binaries/OBCs/ptracers_CG
+            MODEL/input/binaries/RBCs
+            MODEL/run
+            MODEL/results_merged'
 
 
-wrk_subdirs="$METEODIRS $BC_IC_DIRS "
+wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS "
 
 # reset input directories
 for subdir in $wrk_subdirs ; do

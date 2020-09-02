@@ -12,6 +12,7 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_model.ksh					\
 		mit_model__phase_B1.ksh				\
 		mit_model__phase_B2.ksh				\
+                mit_model__phase_B3.ksh                         \
 		mit_model_wrapper.ksh				\
 		mit_mon.ksh					\
 		mit_mpi.inc					\
