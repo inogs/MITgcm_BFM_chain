@@ -3,290 +3,42 @@
 # phase C1: packing output data 
 
 # Load common profile
-. @@(I:OPA_HOME)/bin/opa_profile.inc
+. @@(I:MIT_HOME)/bin/mit_profile.inc
 
 # Load MPI profile:
-. $OPA_SCRDIR/opa_mpi.inc
+. $MIT_SCRDIR/mit_mpi.inc
 
 # Rundate definition
-opa_set_run
+mit_set_run
 
 # start
-opa_start
+mit_start
+mit_prex "source $MIT_VENV_1/bin/activate"
 
+PYTHONPATH=${PYTHONPATH}:$MIT_BITSEA
 typeset -i errors=0
 
-ec=0 ; errors=$(( $errors + $ec ))
 
-OPA_POSTPROC=$OPA_WRKDIR/POSTPROC
-opa_prex "cd $OPA_POSTPROC"
+MIT_POSTPROC=$MIT_WRKDIR/POSTPROC
 
-. $OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+mit_mkdir "$MIT_POSTPROC"
+mit_mkdir "$MIT_POSTPROC/IMG"
 
-typeset -i errors=0
-
-opa_prex "module unload numpy"
-opa_prex "source $OPA_VENV_1/bin/activate"
-PYTHONPATH=${PYTHONPATH}:$OPA_BITSEA
-PRODUCTS_DIR=$OPA_POSTPROC/PRODUCTS
-opa_mkdir "$PRODUCTS_DIR"
-MASK_FILE=$OPA_WRKDIR/MODEL/meshmask.nc
-
-#- yyyy-mm-dd la data in cui avviene la corsa della catena
-{
-BULLETIN_DATE=$(  $OPA_BINDIR/date --utc --date="$OPA_RUNDATE"                         +"%Y%m%d"  )
-} 
+INPUTDIR=$MIT_WRKDIR/MODEL/results_merged
+OUTPUTDIR=$MIT_POSTPROC/IMG
 
 
-hot_start=false
-if $OPA_DA_ENABLE ; then
-  opa_check_da ; missing_da_files=$?
-  if [[ $missing_da_files -eq 0 ]] ; then
-    hot_start=true
-  fi
-fi
+MEDEAF_DIR=$MIT_HOSTDIR/medeaf/cadeau/
+MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
+mit_prex_or_die "python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE" 
+mit_prex_or_die "mpirun -np 36 python $MEDEAF_DIR/build_layer_map.py -i $INPUTDIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $MEDEAF_DIR/Plotlist.xml"
 
-if $hot_start ; then
-   opa_analyses_dates  $OPA_RUNDATE | head -1 > timelist.a
-#   if $I_OPA_BACKUP ; then
-#     opa_prex "mpirun -np 1 python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.a -d an -b $BULLETIN_DATE --production backup"
-#   else
-     opa_prex "mpirun -np 1 python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.a -d an -b $BULLETIN_DATE " #--production nominal"
-#   fi
-   opa_analyses_dates  $OPA_RUNDATE | tail -6 > timelist.s
-else
-   opa_analyses_dates  $OPA_RUNDATE          > timelist.s
-fi
-
-opa_forecast_dates $OPA_RUNDATE           > timelist.f 
-
-#if $I_OPA_BACKUP ; then
-#     opa_prex "mpirun -np 6  python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.s -d sm -b $BULLETIN_DATE --production backup"
-#     opa_prex "mpirun -np 10 python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.f -d fc -b $BULLETIN_DATE --production backup"
-#else
-     opa_prex "mpirun -np 6  python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.s -d sm -b $BULLETIN_DATE " #--production nominal"
-     opa_prex "mpirun -np 10 python $OPA_BINDIR/prodotti_copernicus.py -i $OPA_WRKDIR/MODEL/AVE_FREQ_1 -o $PRODUCTS_DIR -m $MASK_FILE -t timelist.f -d fc -b $BULLETIN_DATE " #--production nominal"
-#fi
-
-
-opa_stage_in "$OPA_POSTPROC"   "$OPA_ETCDIR/static-data/POSTPROC/VarDescriptor_1.xml" || {
-  opa_die 1 "stage-in of POSTPROC failed"
-}
-
-    MODELDIR=$OPA_WRKDIR/MODEL
-     TMP_DIR=$OPA_WRKDIR/POSTPROC/AVE_FREQ_1/TMP
-  CHLSUP_DIR=$OPA_WRKDIR/POSTPROC/AVE_FREQ_1/CHL_SUP
-  ZIPPED_DIR=$OPA_WRKDIR/POSTPROC/COMPRESSED_FOR_ARCHIVE
-
-opa_mkdir "$ZIPPED_DIR"
-opa_mkdir "$ZIPPED_DIR/AVE_FREQ_1"
-opa_mkdir "$ZIPPED_DIR/AVE_FREQ_2"
-opa_mkdir "$ZIPPED_DIR/AVE_PHYS"
-
-opa_mkdir "$ZIPPED_DIR/RST"
-opa_mkdir "$ZIPPED_DIR/RST/BEFORE"
-opa_mkdir "$ZIPPED_DIR/RST/AFTER"
-opa_mkdir "$ZIPPED_DIR/PHYS/"
-# ARCHIVE_DIR=$OPA_WRKDIR/POSTPROC/AVE_FREQ_1/ARCHIVE
-
-# ESCLUDIAMO IL CASE
-#  case "$I_OPA_HOSTNAME" in
-#  pico)
-#     opa_prex_or_die 'mpirun -genv I_MPI_FABRICS=shm:ofa python $OPA_BINDIR/postproc.py -l ave*N1p.nc -i $MODEL_AVEDIR  -d VarDescriptor_1.xml -a $ARCHIVE_DIR -t $TMP_DIR  -c $CHLSUP_DIR ' \
-#     10 "postproc.py failed"
-#     ;;
-#  *)
-     opa_prex_or_die "mpirun python $OPA_BINDIR/var_aggregator.py -l ave*N1p.nc -i $MODELDIR/AVE_FREQ_1  -d VarDescriptor_1.xml  -t $MODELDIR/AVE_FREQ_1  -c $CHLSUP_DIR -m $MASK_FILE"
-#     10 "var_aggregator.py failed"
-     opa_prex_or_die "mpirun -np 34 python $OPA_BITSEA/validation/online/reduce_ave_phys.py -i $MODELDIR/AVE_PHYS -o $MODELDIR/AVE_FREQ_1  -m $MASK_FILE"
-
-     opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $MODELDIR/AVE_FREQ_1 -o $ZIPPED_DIR/AVE_FREQ_1 -l *nc"
-#     opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $TMP_DIR             -o $ZIPPED_DIR/AVE_FREQ_1 -l *nc"
-
-     for opa_restart_archive_offset in $OPA_RESTART_ARCHIVE_OFFSETS ; do
-        output_restart_date=$($OPA_BINDIR/date --utc --date="$OPA_RUNDATE $opa_restart_archive_offset days " +%Y%m%d)
-        opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $MODELDIR/RESTARTS -o $ZIPPED_DIR/RST -l RST.${output_restart_date}-00:00:00.*nc"
-     done
-
-     opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $MODELDIR/RESTARTS    -o $ZIPPED_DIR/RST/AFTER  -l RST.*01:00:00.*.nc"
-     opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $MODELDIR/DA__FREQ_1  -o $ZIPPED_DIR/RST/BEFORE -l RST.*01:00:00.*.nc"
-
-     opa_prex_or_die "mpirun python $OPA_BINDIR/compress.py -i $MODELDIR/AVE_FREQ_2   -o $ZIPPED_DIR/AVE_FREQ_2 -l ave.*.nc"
-
-     
-#     ;;
-#  esac
-
-#### MAP GENERATION #####
-
-MAPS_DIR=$OPA_WRKDIR/POSTPROC/AVE_FREQ_1/MAP_GEN
-mkdir -p $MAPSDIR $MAPS_DIR/MAP_ORIG $MAPS_DIR/MAP_COMPRESSED
-opa_stage_in "$MAPS_DIR" "${OPA_ETCDIR}/static-data/POSTPROC/fonts/TitilliumWeb-Regular.ttf" || {
-  opa_die 7 "stage-in failed for font file"
-}
-
-cd $MAPS_DIR
-BACKGROUND=${OPA_ETCDIR}/static-data/POSTPROC/background_medeaf.png
-
-opa_prex "mpirun -np 36 python $OPA_BITSEA/build_layer_maps.py -b $BACKGROUND -o $MAPS_DIR/MAP_ORIG -m $MASK_FILE -i $OPA_WRKDIR/MODEL/AVE_FREQ_1  -g ave*N1p.nc  -p $OPA_BITSEA/postproc/Plotlist_bio.xml "
-opa_prex "mpirun -np 36 python $OPA_BITSEA/build_layer_maps.py -b $BACKGROUND -o $MAPS_DIR/MAP_ORIG -m $MASK_FILE -i $OPA_WRKDIR/MODEL/AVE_PHYS    -g ave*phys.nc -p $OPA_BITSEA/postproc/Plotlist_phys.xml "
-
-cd $OPA_BITSEA/validation/online
-opa_prex "mpirun -np 36 python map_compressor.py -i $MAPS_DIR/MAP_ORIG -o $MAPS_DIR/MAP_COMPRESSED -b $OPA_BINDIR"
-opa_prex "cd $MAPS_DIR/MAP_COMPRESSED"
-opa_prex "rename 0-fs8.png 0.png *.png"
-
-
-opa_log 0 "postprocess_C1 done [$(opa_exitcode $ec)]"
-opa_report "bio_chain-tl-output_available" "0" "true"
-opa_exit "$errors"
-
-
-######################This step ends here as of Copernicus-V3#####################################
-
-submaskfile="$OPA_ETCDIR/static-data/POSTPROC/submask.nc"
-if [[ ! -f $submaskfile ]];then
-  opa_prex "gzip -dc ${submaskfile}.gz > ${submaskfile}"
-fi
-
-opa_stage_in "$wrkdir"	 "$submaskfile" \
-                         "$OPA_ETCDIR/static-data/POSTPROC/punti.dat" \
-                         "$OPA_ETCDIR/static-data/POSTPROC/VarDescriptor_1.xml" \
-                         "$OPA_ETCDIR/static-data/POSTPROC/VarDescriptor_2.xml" || {
-  opa_die 1 "stage-in of POSTPROC failed"
-}
-
-#                          "$OPA_ETCDIR/static-data/MED1672_cut/MASK/meshmask.nc"
-opa_prex "ln -s $OPA_WRKDIR/INTERP/meshmask.nc $wrkdir"
-
-#opa_batch_prex "module unload intelmpi"
-#opa_batch_prex "module load openmpi/1.8.2--gnu--4.8.3"
-#opa_batch_prex "module list"
-
-# FREQGROUP = 1
-#export PYTHONPATH=/cineca/prod/compilers/python/2.7.9/none/lib/python2.7/site-packages/:/cineca/prod/libraries/numpy/1.9.1/python--2.7.9/lib/python2.7/site-packages/:/cineca/prod/libraries/scipy/0.15.1/python--2.7.9/lib/python2.7/site-packages/:/galileo/home/usera07ogs/a07ogs00/OPA/V4-dev/HOST/galileo/lib/python2.7/site-packages/
-env|grep PYTHONPATH
-  case "$I_OPA_HOSTNAME" in
-  pico)
-      opa_prex_or_die 'mpirun -genv I_MPI_FABRICS=shm:ofa python $OPA_BINDIR/postproc.py --wrkdir ${OPA_WRKDIR} --freqgroup 1 ' \
-	10 "postproc.py failed"
-
-      opa_prex "python $OPA_SCRDIR/timelist_generator.py ${wrkdir}/AVE_FREQ_1 " # writes times_array.txt
-      opa_prex "mpirun -genv I_MPI_FABRICS=shm:ofa python $OPA_BINDIR/aveScan.py --wrkdir ${OPA_WRKDIR} --freqgroup 1"
-     ;;
-  *)
-      opa_prex_or_die 'mpirun python $OPA_BINDIR/postproc.py --wrkdir ${OPA_WRKDIR} --freqgroup 1 ' \
-	10 "postproc.py failed"
-
-      opa_prex "python $OPA_SCRDIR/timelist_generator.py ${wrkdir}/AVE_FREQ_1 " # writes times_array.txt
-      opa_prex "mpirun python $OPA_BINDIR/aveScan.py --wrkdir ${OPA_WRKDIR} --freqgroup 1"
-     ;;
-  esac
-
-# FREQGROUP = 2
-# if [[ $OPA_WEEKDAY == 2 ]];then
-#   opa_prex_or_die 'mpirun python $OPA_BINDIR/postproc.py --wrkdir ${OPA_WRKDIR} --freqgroup 2 ' \
-# 	10 "postproc.py failed"
-# 
-#   opa_prex "mpirun python $OPA_BINDIR/aveScan.py --wrkdir ${OPA_WRKDIR} --freqgroup 2"
-# fi
-
-
-hot_start=false
-if $OPA_DA_ENABLE ; then
-  opa_check_da ; _restart_from_da=$?
-  if [[ $_restart_from_da -eq 0 ]] ; then
-    hot_start=true
-  fi
-fi
-
-opa_cp file_in_ave.header file_in_ave.an
-opa_cp file_in_ave.header file_in_ave.sm
-opa_cp file_in_ave.header file_in_ave.fc
-opa_prex "ls -1 ${wrkdir}/AVE_FREQ_1/ave*nc > file_tot_ave"
-
-typeset -i n_ave=0
-while read line; do
-  n_ave=$(( $n_ave + 1 ))
-# an or sm?
-  if [[ $n_ave -eq 1 ]]; then
-    if $hot_start ; then
-      opa_prex "echo $line >> file_in_ave.an"
-    else
-      opa_prex "echo $line >> file_in_ave.sm"
-    fi
-  else
-    opa_prex "echo $line >> file_in_ave.sm"
-  fi
-
-  if [[ $n_ave -eq 7 ]]; then
-    break
-  fi
-done < file_tot_ave
-
-opa_prex "ls -1 ${wrkdir}/AVE_FREQ_1/ave*nc | tail -10 >> file_in_ave.fc"
-
-if $hot_start ; then
-  opa_ana_files > file_out_pro.an
-fi
-opa_prex "opa_sim_files $OPA_RUNDATE $hot_start > file_out_pro.sm"
-opa_prex "opa_pro_files > file_out_pro.fc"
-
-opa_prex "opa_pro_files > $OPA_PRO_DESCRIPTION_FILE"
-opa_prex "chmod 644 '$OPA_PRO_DESCRIPTION_FILE'"
-
-typeset -i n_time=0
-while read line; do
-  n_time=$(( $n_time + 1 ))
-# an or sm?
-  if [[ $n_time -eq 1 ]]; then
-    if $hot_start ; then
-      opa_prex "echo $line >> times_array_an"
-    else
-      opa_prex "echo $line >> times_array_sm"
-    fi
-  else
-    opa_prex "echo $line >> times_array_sm"
-  fi
-
-  if [[ $n_time -eq 7 ]]; then
-    break
-  fi
-done < times_array.txt
-
-opa_prex "tail -10 times_array.txt > times_array_fc "
-
-if $hot_start ; then
-  opa_prex "$OPA_BINDIR/crea_pro file_in_ave.an file_out_pro.an times_array_an an " || {
-    echo "WARNING: crea_pro failed in analysis generation!"
-    errors=$(( $errors + 1 )) 
-  }
-fi
-
-opa_prex "$OPA_BINDIR/crea_pro file_in_ave.sm file_out_pro.sm times_array_sm sm" || {
-  echo "WARNING: crea_pro failed in simulation generation !"
-  errors=$(( $errors + 1 ))
-}
-
-opa_prex "$OPA_BINDIR/crea_pro file_in_ave.fc file_out_pro.fc times_array_fc fc" || {
-  echo "WARNING: crea_pro failed in forecast generation!"
-  errors=$(( $errors + 1 ))
-}
+cd $MIT_POSTPROC/
+mit_prex_or_die "tar -cf $MIT_ARCDIR_ROOT/current/maps.tar IMG/"
 
 
 
-for i in file_out_pro.an file_out_pro.sm file_out_pro.fc; do
-  if [[ -f $i ]]; then
-    while read file ; do
-      opa_prex "chmod 644 '$file'"
-    done < $i
-  fi
-done
-opa_prex "tar -cf filelist_MyOcean_prod.tar file_* times_array*"
-
-opa_log 0 "postprocess_C1 done [$(opa_exitcode $ec)]"
-opa_report "bio_chain-tl-output_available" "0" "true"
-opa_exit "$errors"
+mit_exit "$errors"
 
 
 
