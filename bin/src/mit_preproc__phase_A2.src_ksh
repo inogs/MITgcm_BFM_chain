@@ -42,7 +42,7 @@ mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/meteo_generator.py -i $ORIG_M
 ##################################################################
 
 
-mit_prex_or_die " mv $BC_METEO/CHECK $MIT_WRKDIR "
+#mit_prex_or_die " mv $BC_METEO/CHECK $MIT_WRKDIR "
 
 
 mit_exit "$errors"
