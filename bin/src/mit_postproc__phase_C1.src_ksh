@@ -37,6 +37,7 @@ mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
 cd $MIT_POSTPROC/
 mit_prex_or_die "tar -cf $MIT_ARCDIR_ROOT/current/maps.tar IMG/"
 
+mit_prex_or_die "md5sum $MIT_ARCDIR_ROOT/current/maps.tar > $MIT_ARCDIR_ROOT/current/maps.tar.md5"
 
 
 mit_exit "$errors"
