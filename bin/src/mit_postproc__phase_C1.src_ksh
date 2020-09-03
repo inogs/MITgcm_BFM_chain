@@ -33,6 +33,7 @@ MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
 mit_prex_or_die "python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE" 
 mit_prex_or_die "mpirun -np 36 python $MEDEAF_DIR/build_layer_map.py -i $INPUTDIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $MEDEAF_DIR/Plotlist.xml"
 
+mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
 cd $MIT_POSTPROC/
 mit_prex_or_die "tar -cf $MIT_ARCDIR_ROOT/current/maps.tar IMG/"
 
