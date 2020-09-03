@@ -11,7 +11,7 @@ mit_start
 mit_prex "source $MIT_VENV_1/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 #mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR"
-
+typeset -i exit_code=0
 
     DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
     DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
@@ -117,31 +117,6 @@ mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((
 ##################################################################
 
 
-# Get name of ECMWF wind input files
-#mit_set_input_files__mitoper_a
-#mit_set_input_files__mitoper_f
-
-#typeset -i errors=0
-
-### set up of input files in $OPA_WRKDIR/OPAOPER
-
-#$OPA_SCRDIR/mit_input_stagein.ksh || errors=$(( $errors + 1 ))
-
-# ### create links for analyses
-# $OPA_SCRDIR/mit_link_analyses.ksh || errors=$(( $errors + 1 ))
-
-# ### create links for analyses
-# $OPA_SCRDIR/mit_link_forecast.ksh || errors=$(( $errors + 1 ))
-
-
-#if [[ $errors -gt 0 ]] ; then
-#  mit_log 0 "WRN: $errors errors during phase A1"
-#fi
-
-### check input files:
-#typeset -i exit_code=0
-#$OPA_SCRDIR/mit_check_input_files.ksh || exit_code=$?
-
 ### Step 2. INITIAL CONDITIONS ###################################
 
 echo "${DATESTART}-12:00:00" > $TIMELIST_START
@@ -193,12 +168,5 @@ mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES
 mit_prex_or_die "$MPI python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE --nativemask $MASK_OGSTM_RED -s S -o $BIO_BC_DIR  -i ${BIOCUT_BC_DIR}/SOUTH"
 
 mit_exit "$exit_code"
-
-##################################################################
-
-### Step 5. Prepare data to fluxus 
-cd $MIT_WRKDIR
-mit_prex_or_die " tar -czf bc.tar.gz  BC/PHYS/*dat BC/BIO/*dat "
-mit_prex_or_die " tar -czf IC.tar.gz  IC/PHYS/*dat IC/BIO/*dat "
 
 
