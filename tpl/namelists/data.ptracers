@@ -11,7 +11,7 @@
  PTRACERS_useGMRedi(1)=.FALSE.,
  PTRACERS_useKPP(1)=.FALSE.,
  PTRACERS_initialFile(1)='../input/binaries/ICs/BIO/IC_O2o.dat',
- PTRACERS_EvPrRn(1)=250.0000,
+ #PTRACERS_EvPrRn(1)=250.0000,
 #PTRACERS_ref(1:Nr,1)=Null,Null,Null ... ,
 # tracer 2 - N1p
  PTRACERS_names(2)='N1p',
@@ -23,7 +23,7 @@
  PTRACERS_useGMRedi(2)=.FALSE.,
  PTRACERS_useKPP(2)=.FALSE.,
  PTRACERS_initialFile(2)='../input/binaries/ICs/BIO/IC_N1p.dat',
- PTRACERS_EvPrRn(2)=2.5720,
+ #PTRACERS_EvPrRn(2)=2.5720,
 #PTRACERS_ref(1:Nr,2)=Null,Null,Null ... ,
 # tracer 3 - N3n
  PTRACERS_names(3)='N3n',
@@ -35,7 +35,7 @@
  PTRACERS_useGMRedi(3)=.FALSE.,
  PTRACERS_useKPP(3)=.FALSE.,
  PTRACERS_initialFile(3)='../input/binaries/ICs/BIO/IC_N3n.dat',
- PTRACERS_EvPrRn(3)=150.0000,
+ #PTRACERS_EvPrRn(3)=150.0000,
 #PTRACERS_ref(1:Nr,3)=Null,Null,Null ... ,
 # tracer 4 - N4n
  PTRACERS_names(4)='N4n',
@@ -47,7 +47,7 @@
  PTRACERS_useGMRedi(4)=.FALSE.,
  PTRACERS_useKPP(4)=.FALSE.,
  PTRACERS_initialFile(4)='../input/binaries/ICs/BIO/IC_N4n.dat',
- PTRACERS_EvPrRn(4)=34.1210,
+ #PTRACERS_EvPrRn(4)=34.1210,
 #PTRACERS_ref(1:Nr,4)=Null,Null,Null ... ,
 # tracer 5 - O4n
  PTRACERS_names(5)='O4n',
@@ -59,7 +59,7 @@
  PTRACERS_useGMRedi(5)=.FALSE.,
  PTRACERS_useKPP(5)=.FALSE.,
  PTRACERS_initialFile(5)='../input/binaries/ICs/BIO/IC_O4n.dat',
- PTRACERS_EvPrRn(5)=0.0000,
+ #PTRACERS_EvPrRn(5)=0.0000,
 #PTRACERS_ref(1:Nr,5)=Null,Null,Null ... ,
 # tracer 6 - N5s
  PTRACERS_names(6)='N5s',
@@ -71,7 +71,7 @@
  PTRACERS_useGMRedi(6)=.FALSE.,
  PTRACERS_useKPP(6)=.FALSE.,
  PTRACERS_initialFile(6)='../input/binaries/ICs/BIO/IC_N5s.dat',
- PTRACERS_EvPrRn(6)=150.0000,
+ #PTRACERS_EvPrRn(6)=150.0000,
 #PTRACERS_ref(1:Nr,6)=Null,Null,Null ... ,
 # tracer 7 - N6r
  PTRACERS_names(7)='N6r',
@@ -83,7 +83,7 @@
  PTRACERS_useGMRedi(7)=.FALSE.,
  PTRACERS_useKPP(7)=.FALSE.,
  PTRACERS_initialFile(7)='../input/binaries/ICs/BIO/IC_N6r.dat',
- PTRACERS_EvPrRn(7)=0.0000,
+ #PTRACERS_EvPrRn(7)=0.0000,
 #PTRACERS_ref(1:Nr,7)=Null,Null,Null ... ,
 # tracer 8 - B1c
  PTRACERS_names(8)='B1c',
@@ -95,7 +95,7 @@
  PTRACERS_useGMRedi(8)=.FALSE.,
  PTRACERS_useKPP(8)=.FALSE.,
  PTRACERS_initialFile(8)='../input/binaries/ICs/BIO/IC_B1c.dat',
- PTRACERS_EvPrRn(8)=1.0000,
+ #PTRACERS_EvPrRn(8)=1.0000,
 #PTRACERS_ref(1:Nr,8)=Null,Null,Null ... ,
 # tracer 9 - B1n
  PTRACERS_names(9)='B1n',
@@ -107,7 +107,7 @@
  PTRACERS_useGMRedi(9)=.FALSE.,
  PTRACERS_useKPP(9)=.FALSE.,
  PTRACERS_initialFile(9)='../input/binaries/ICs/BIO/IC_B1n.dat',
- PTRACERS_EvPrRn(9)=0.0170,
+ #PTRACERS_EvPrRn(9)=0.0170,
 #PTRACERS_ref(1:Nr,9)=Null,Null,Null ... ,
 # tracer 10 - B1p
  PTRACERS_names(10)='B1p',
@@ -119,7 +119,7 @@
  PTRACERS_useGMRedi(10)=.FALSE.,
  PTRACERS_useKPP(10)=.FALSE.,
  PTRACERS_initialFile(10)='../input/binaries/ICs/BIO/IC_B1p.dat',
- PTRACERS_EvPrRn(10)=0.0019,
+ #PTRACERS_EvPrRn(10)=0.0019,
 #PTRACERS_ref(1:Nr,10)=Null,Null,Null ... ,
 # tracer 11 - P1c
  PTRACERS_names(11)='P1c',
@@ -131,7 +131,7 @@
  PTRACERS_useGMRedi(11)=.FALSE.,
  PTRACERS_useKPP(11)=.FALSE.,
  PTRACERS_initialFile(11)='../input/binaries/ICs/BIO/IC_P1c.dat',
- PTRACERS_EvPrRn(11)=1.0000,
+ #PTRACERS_EvPrRn(11)=1.0000,
 #PTRACERS_ref(1:Nr,11)=Null,Null,Null ... ,
 # tracer 12 - P1n
  PTRACERS_names(12)='P1n',
@@ -143,7 +143,7 @@
  PTRACERS_useGMRedi(12)=.FALSE.,
  PTRACERS_useKPP(12)=.FALSE.,
  PTRACERS_initialFile(12)='../input/binaries/ICs/BIO/IC_P1n.dat',
- PTRACERS_EvPrRn(12)=0.0126,
+ #PTRACERS_EvPrRn(12)=0.0126,
 #PTRACERS_ref(1:Nr,12)=Null,Null,Null ... ,
 # tracer 13 - P1p
  PTRACERS_names(13)='P1p',
@@ -155,7 +155,7 @@
  PTRACERS_useGMRedi(13)=.FALSE.,
  PTRACERS_useKPP(13)=.FALSE.,
  PTRACERS_initialFile(13)='../input/binaries/ICs/BIO/IC_P1p.dat',
- PTRACERS_EvPrRn(13)=0.0008,
+ #PTRACERS_EvPrRn(13)=0.0008,
 #PTRACERS_ref(1:Nr,13)=Null,Null,Null ... ,
 # tracer 14 - P1l
  PTRACERS_names(14)='P1l',
@@ -167,7 +167,7 @@
  PTRACERS_useGMRedi(14)=.FALSE.,
  PTRACERS_useKPP(14)=.FALSE.,
  PTRACERS_initialFile(14)='../input/binaries/ICs/BIO/IC_P1l.dat',
- PTRACERS_EvPrRn(14)=0.0200,
+# PTRACERS_EvPrRn(14)=0.0200,
 #PTRACERS_ref(1:Nr,14)=Null,Null,Null ... ,
 # tracer 15 - P1s
  PTRACERS_names(15)='P1s',
@@ -179,7 +179,7 @@
  PTRACERS_useGMRedi(15)=.FALSE.,
  PTRACERS_useKPP(15)=.FALSE.,
  PTRACERS_initialFile(15)='../input/binaries/ICs/BIO/IC_P1s.dat',
- PTRACERS_EvPrRn(15)=0.0126,
+ #PTRACERS_EvPrRn(15)=0.0126,
 #PTRACERS_ref(1:Nr,15)=Null,Null,Null ... ,
 # tracer 16 - P2c
  PTRACERS_names(16)='P2c',
@@ -191,7 +191,7 @@
  PTRACERS_useGMRedi(16)=.FALSE.,
  PTRACERS_useKPP(16)=.FALSE.,
  PTRACERS_initialFile(16)='../input/binaries/ICs/BIO/IC_P2c.dat',
- PTRACERS_EvPrRn(16)=0.5000,
+ #PTRACERS_EvPrRn(16)=0.5000,
 #PTRACERS_ref(1:Nr,16)=Null,Null,Null ... ,
 # tracer 17 - P2n
  PTRACERS_names(17)='P2n',
@@ -203,7 +203,7 @@
  PTRACERS_useGMRedi(17)=.FALSE.,
  PTRACERS_useKPP(17)=.FALSE.,
  PTRACERS_initialFile(17)='../input/binaries/ICs/BIO/IC_P2n.dat',
- PTRACERS_EvPrRn(17)=0.0063,
+ #PTRACERS_EvPrRn(17)=0.0063,
 #PTRACERS_ref(1:Nr,17)=Null,Null,Null ... ,
 # tracer 18 - P2p
  PTRACERS_names(18)='P2p',
@@ -215,7 +215,7 @@
  PTRACERS_useGMRedi(18)=.FALSE.,
  PTRACERS_useKPP(18)=.FALSE.,
  PTRACERS_initialFile(18)='../input/binaries/ICs/BIO/IC_P2p.dat',
- PTRACERS_EvPrRn(18)=0.0004,
+ #PTRACERS_EvPrRn(18)=0.0004,
 #PTRACERS_ref(1:Nr,18)=Null,Null,Null ... ,
 # tracer 19 - P2l
  PTRACERS_names(19)='P2l',
@@ -227,7 +227,7 @@
  PTRACERS_useGMRedi(19)=.FALSE.,
  PTRACERS_useKPP(19)=.FALSE.,
  PTRACERS_initialFile(19)='../input/binaries/ICs/BIO/IC_P2l.dat',
- PTRACERS_EvPrRn(19)=0.0100,
+# PTRACERS_EvPrRn(19)=0.0100,
 #PTRACERS_ref(1:Nr,19)=Null,Null,Null ... ,
 # tracer 20 - P3c
  PTRACERS_names(20)='P3c',
@@ -239,7 +239,7 @@
  PTRACERS_useGMRedi(20)=.FALSE.,
  PTRACERS_useKPP(20)=.FALSE.,
  PTRACERS_initialFile(20)='../input/binaries/ICs/BIO/IC_P3c.dat',
- PTRACERS_EvPrRn(20)=0.5000,
+# PTRACERS_EvPrRn(20)=0.5000,
 #PTRACERS_ref(1:Nr,20)=Null,Null,Null ... ,
 # tracer 21 - P3n
  PTRACERS_names(21)='P3n',
@@ -251,7 +251,7 @@
  PTRACERS_useGMRedi(21)=.FALSE.,
  PTRACERS_useKPP(21)=.FALSE.,
  PTRACERS_initialFile(21)='../input/binaries/ICs/BIO/IC_P3n.dat',
- PTRACERS_EvPrRn(21)=0.0063,
+# PTRACERS_EvPrRn(21)=0.0063,
 #PTRACERS_ref(1:Nr,21)=Null,Null,Null ... ,
 # tracer 22 - P3p
  PTRACERS_names(22)='P3p',
@@ -263,7 +263,7 @@
  PTRACERS_useGMRedi(22)=.FALSE.,
  PTRACERS_useKPP(22)=.FALSE.,
  PTRACERS_initialFile(22)='../input/binaries/ICs/BIO/IC_P3p.dat',
- PTRACERS_EvPrRn(22)=0.0004,
+ #PTRACERS_EvPrRn(22)=0.0004,
 #PTRACERS_ref(1:Nr,22)=Null,Null,Null ... ,
 # tracer 23 - P3l
  PTRACERS_names(23)='P3l',
@@ -275,7 +275,7 @@
  PTRACERS_useGMRedi(23)=.FALSE.,
  PTRACERS_useKPP(23)=.FALSE.,
  PTRACERS_initialFile(23)='../input/binaries/ICs/BIO/IC_P3l.dat',
- PTRACERS_EvPrRn(23)=0.0100,
+# PTRACERS_EvPrRn(23)=0.0100,
 #PTRACERS_ref(1:Nr,23)=Null,Null,Null ... ,
 # tracer 24 - P4c
  PTRACERS_names(24)='P4c',
@@ -287,7 +287,7 @@
  PTRACERS_useGMRedi(24)=.FALSE.,
  PTRACERS_useKPP(24)=.FALSE.,
  PTRACERS_initialFile(24)='../input/binaries/ICs/BIO/IC_P4c.dat',
- PTRACERS_EvPrRn(24)=0.5000,
+# PTRACERS_EvPrRn(24)=0.5000,
 #PTRACERS_ref(1:Nr,24)=Null,Null,Null ... ,
 # tracer 25 - P4n
  PTRACERS_names(25)='P4n',
@@ -299,7 +299,7 @@
  PTRACERS_useGMRedi(25)=.FALSE.,
  PTRACERS_useKPP(25)=.FALSE.,
  PTRACERS_initialFile(25)='../input/binaries/ICs/BIO/IC_P4n.dat',
- PTRACERS_EvPrRn(25)=0.0063,
+# PTRACERS_EvPrRn(25)=0.0063,
 #PTRACERS_ref(1:Nr,25)=Null,Null,Null ... ,
 # tracer 26 - P4p
  PTRACERS_names(26)='P4p',
@@ -311,7 +311,7 @@
  PTRACERS_useGMRedi(26)=.FALSE.,
  PTRACERS_useKPP(26)=.FALSE.,
  PTRACERS_initialFile(26)='../input/binaries/ICs/BIO/IC_P4p.dat',
- PTRACERS_EvPrRn(26)=0.0004,
+# PTRACERS_EvPrRn(26)=0.0004,
 #PTRACERS_ref(1:Nr,26)=Null,Null,Null ... ,
 # tracer 27 - P4l
  PTRACERS_names(27)='P4l',
@@ -323,7 +323,7 @@
  PTRACERS_useGMRedi(27)=.FALSE.,
  PTRACERS_useKPP(27)=.FALSE.,
  PTRACERS_initialFile(27)='../input/binaries/ICs/BIO/IC_P4l.dat',
- PTRACERS_EvPrRn(27)=0.0100,
+# PTRACERS_EvPrRn(27)=0.0100,
 #PTRACERS_ref(1:Nr,27)=Null,Null,Null ... ,
 # tracer 28 - Z3c
  PTRACERS_names(28)='Z3c',
@@ -335,7 +335,7 @@
  PTRACERS_useGMRedi(28)=.FALSE.,
  PTRACERS_useKPP(28)=.FALSE.,
  PTRACERS_initialFile(28)='../input/binaries/ICs/BIO/IC_Z3c.dat',
- PTRACERS_EvPrRn(28)=0.1000,
+# PTRACERS_EvPrRn(28)=0.1000,
 #PTRACERS_ref(1:Nr,28)=Null,Null,Null ... ,
 # tracer 29 - Z3n
  PTRACERS_names(29)='Z3n',
@@ -347,7 +347,7 @@
  PTRACERS_useGMRedi(29)=.FALSE.,
  PTRACERS_useKPP(29)=.FALSE.,
  PTRACERS_initialFile(29)='../input/binaries/ICs/BIO/IC_Z3n.dat',
- PTRACERS_EvPrRn(29)=0.0015,
+# PTRACERS_EvPrRn(29)=0.0015,
 #PTRACERS_ref(1:Nr,29)=Null,Null,Null ... ,
 # tracer 30 - Z3p
  PTRACERS_names(30)='Z3p',
@@ -359,7 +359,7 @@
  PTRACERS_useGMRedi(30)=.FALSE.,
  PTRACERS_useKPP(30)=.FALSE.,
  PTRACERS_initialFile(30)='../input/binaries/ICs/BIO/IC_Z3p.dat',
- PTRACERS_EvPrRn(30)=0.0002,
+# PTRACERS_EvPrRn(30)=0.0002,
 #PTRACERS_ref(1:Nr,30)=Null,Null,Null ... ,
 # tracer 31 - Z4c
  PTRACERS_names(31)='Z4c',
@@ -371,7 +371,7 @@
  PTRACERS_useGMRedi(31)=.FALSE.,
  PTRACERS_useKPP(31)=.FALSE.,
  PTRACERS_initialFile(31)='../input/binaries/ICs/BIO/IC_Z4c.dat',
- PTRACERS_EvPrRn(31)=0.1000,
+# PTRACERS_EvPrRn(31)=0.1000,
 #PTRACERS_ref(1:Nr,31)=Null,Null,Null ... ,
 # tracer 32 - Z4n
  PTRACERS_names(32)='Z4n',
@@ -383,7 +383,7 @@
  PTRACERS_useGMRedi(32)=.FALSE.,
  PTRACERS_useKPP(32)=.FALSE.,
  PTRACERS_initialFile(32)='../input/binaries/ICs/BIO/IC_Z4n.dat',
- PTRACERS_EvPrRn(32)=0.0015,
+# PTRACERS_EvPrRn(32)=0.0015,
 #PTRACERS_ref(1:Nr,32)=Null,Null,Null ... ,
 # tracer 33 - Z4p
  PTRACERS_names(33)='Z4p',
@@ -395,7 +395,7 @@
  PTRACERS_useGMRedi(33)=.FALSE.,
  PTRACERS_useKPP(33)=.FALSE.,
  PTRACERS_initialFile(33)='../input/binaries/ICs/BIO/IC_Z4p.dat',
- PTRACERS_EvPrRn(33)=0.0002,
+# PTRACERS_EvPrRn(33)=0.0002,
 #PTRACERS_ref(1:Nr,33)=Null,Null,Null ... ,
 # tracer 34 - Z5c
  PTRACERS_names(34)='Z5c',
@@ -407,7 +407,7 @@
  PTRACERS_useGMRedi(34)=.FALSE.,
  PTRACERS_useKPP(34)=.FALSE.,
  PTRACERS_initialFile(34)='../input/binaries/ICs/BIO/IC_Z5c.dat',
- PTRACERS_EvPrRn(34)=0.1000,
+# PTRACERS_EvPrRn(34)=0.1000,
 #PTRACERS_ref(1:Nr,34)=Null,Null,Null ... ,
 # tracer 35 - Z5n
  PTRACERS_names(35)='Z5n',
@@ -419,7 +419,7 @@
  PTRACERS_useGMRedi(35)=.FALSE.,
  PTRACERS_useKPP(35)=.FALSE.,
  PTRACERS_initialFile(35)='../input/binaries/ICs/BIO/IC_Z5n.dat',
- PTRACERS_EvPrRn(35)=0.0017,
+# PTRACERS_EvPrRn(35)=0.0017,
 #PTRACERS_ref(1:Nr,35)=Null,Null,Null ... ,
 # tracer 36 - Z5p
  PTRACERS_names(36)='Z5p',
@@ -431,7 +431,7 @@
  PTRACERS_useGMRedi(36)=.FALSE.,
  PTRACERS_useKPP(36)=.FALSE.,
  PTRACERS_initialFile(36)='../input/binaries/ICs/BIO/IC_Z5p.dat',
- PTRACERS_EvPrRn(36)=0.0002,
+# PTRACERS_EvPrRn(36)=0.0002,
 #PTRACERS_ref(1:Nr,36)=Null,Null,Null ... ,
 # tracer 37 - Z6c
  PTRACERS_names(37)='Z6c',
@@ -443,7 +443,7 @@
  PTRACERS_useGMRedi(37)=.FALSE.,
  PTRACERS_useKPP(37)=.FALSE.,
  PTRACERS_initialFile(37)='../input/binaries/ICs/BIO/IC_Z6c.dat',
- PTRACERS_EvPrRn(37)=0.1000,
+# PTRACERS_EvPrRn(37)=0.1000,
 #PTRACERS_ref(1:Nr,37)=Null,Null,Null ... ,
 # tracer 38 - Z6n
  PTRACERS_names(38)='Z6n',
@@ -455,7 +455,7 @@
  PTRACERS_useGMRedi(38)=.FALSE.,
  PTRACERS_useKPP(38)=.FALSE.,
  PTRACERS_initialFile(38)='../input/binaries/ICs/BIO/IC_Z6n.dat',
- PTRACERS_EvPrRn(38)=0.0017,
+# PTRACERS_EvPrRn(38)=0.0017,
 #PTRACERS_ref(1:Nr,38)=Null,Null,Null ... ,
 # tracer 39 - Z6p
  PTRACERS_names(39)='Z6p',
@@ -467,7 +467,7 @@
  PTRACERS_useGMRedi(39)=.FALSE.,
  PTRACERS_useKPP(39)=.FALSE.,
  PTRACERS_initialFile(39)='../input/binaries/ICs/BIO/IC_Z6p.dat',
- PTRACERS_EvPrRn(39)=0.0002,
+# PTRACERS_EvPrRn(39)=0.0002,
 #PTRACERS_ref(1:Nr,39)=Null,Null,Null ... ,
 # tracer 40 - R1c
  PTRACERS_names(40)='R1c',
@@ -479,7 +479,7 @@
  PTRACERS_useGMRedi(40)=.FALSE.,
  PTRACERS_useKPP(40)=.FALSE.,
  PTRACERS_initialFile(40)='../input/binaries/ICs/BIO/IC_R1c.dat',
- PTRACERS_EvPrRn(40)=0.0000,
+# PTRACERS_EvPrRn(40)=0.0000,
 #PTRACERS_ref(1:Nr,40)=Null,Null,Null ... ,
 # tracer 41 - R1n
  PTRACERS_names(41)='R1n',
@@ -491,7 +491,7 @@
  PTRACERS_useGMRedi(41)=.FALSE.,
  PTRACERS_useKPP(41)=.FALSE.,
  PTRACERS_initialFile(41)='../input/binaries/ICs/BIO/IC_R1n.dat',
- PTRACERS_EvPrRn(41)=0.0000,
+# PTRACERS_EvPrRn(41)=0.0000,
 #PTRACERS_ref(1:Nr,41)=Null,Null,Null ... ,
 # tracer 42 - R1p
  PTRACERS_names(42)='R1p',
@@ -503,7 +503,7 @@
  PTRACERS_useGMRedi(42)=.FALSE.,
  PTRACERS_useKPP(42)=.FALSE.,
  PTRACERS_initialFile(42)='../input/binaries/ICs/BIO/IC_R1p.dat',
- PTRACERS_EvPrRn(42)=0.0000,
+# PTRACERS_EvPrRn(42)=0.0000,
 #PTRACERS_ref(1:Nr,42)=Null,Null,Null ... ,
 # tracer 43 - O5c
  PTRACERS_names(43)='O5c',
@@ -515,7 +515,7 @@
  PTRACERS_useGMRedi(43)=.FALSE.,
  PTRACERS_useKPP(43)=.FALSE.,
  PTRACERS_initialFile(43)='../input/binaries/ICs/BIO/IC_O5c.dat',
- PTRACERS_EvPrRn(43)=0.0000,
+# PTRACERS_EvPrRn(43)=0.0000,
 #PTRACERS_ref(1:Nr,43)=Null,Null,Null ... ,
 # tracer 44 - R2c
  PTRACERS_names(44)='R2c',
@@ -527,7 +527,7 @@
  PTRACERS_useGMRedi(44)=.FALSE.,
  PTRACERS_useKPP(44)=.FALSE.,
  PTRACERS_initialFile(44)='../input/binaries/ICs/BIO/IC_R2c.dat',
- PTRACERS_EvPrRn(44)=0.0000,
+# PTRACERS_EvPrRn(44)=0.0000,
 #PTRACERS_ref(1:Nr,44)=Null,Null,Null ... ,
 # tracer 45 - R6c
  PTRACERS_names(45)='R6c',
@@ -539,7 +539,7 @@
  PTRACERS_useGMRedi(45)=.FALSE.,
  PTRACERS_useKPP(45)=.FALSE.,
  PTRACERS_initialFile(45)='../input/binaries/ICs/BIO/IC_R6c.dat',
- PTRACERS_EvPrRn(45)=0.0000,
+# PTRACERS_EvPrRn(45)=0.0000,
 #PTRACERS_ref(1:Nr,45)=Null,Null,Null ... ,
 # tracer 46 - R6n
  PTRACERS_names(46)='R6n',
@@ -551,7 +551,7 @@
  PTRACERS_useGMRedi(46)=.FALSE.,
  PTRACERS_useKPP(46)=.FALSE.,
  PTRACERS_initialFile(46)='../input/binaries/ICs/BIO/IC_R6n.dat',
- PTRACERS_EvPrRn(46)=0.0000,
+# PTRACERS_EvPrRn(46)=0.0000,
 #PTRACERS_ref(1:Nr,46)=Null,Null,Null ... ,
 # tracer 47 - R6p
  PTRACERS_names(47)='R6p',
@@ -563,7 +563,7 @@
  PTRACERS_useGMRedi(47)=.FALSE.,
  PTRACERS_useKPP(47)=.FALSE.,
  PTRACERS_initialFile(47)='../input/binaries/ICs/BIO/IC_R6p.dat',
- PTRACERS_EvPrRn(47)=0.0000,
+# PTRACERS_EvPrRn(47)=0.0000,
 #PTRACERS_ref(1:Nr,47)=Null,Null,Null ... ,
 # tracer 48 - R6s
  PTRACERS_names(48)='R6s',
@@ -575,7 +575,7 @@
  PTRACERS_useGMRedi(48)=.FALSE.,
  PTRACERS_useKPP(48)=.FALSE.,
  PTRACERS_initialFile(48)='../input/binaries/ICs/BIO/IC_R6s.dat',
- PTRACERS_EvPrRn(48)=0.0000,
+# PTRACERS_EvPrRn(48)=0.0000,
 #PTRACERS_ref(1:Nr,48)=Null,Null,Null ... ,
 # tracer 49 - R3c
  PTRACERS_names(49)='R3c',
@@ -587,7 +587,7 @@
  PTRACERS_useGMRedi(49)=.FALSE.,
  PTRACERS_useKPP(49)=.FALSE.,
  PTRACERS_initialFile(49)='../input/binaries/ICs/BIO/IC_R3c.dat',
- PTRACERS_EvPrRn(49)=0.0000,
+# PTRACERS_EvPrRn(49)=0.0000,
 #PTRACERS_ref(1:Nr,49)=Null,Null,Null ... ,
 # tracer 50 - O3c
  PTRACERS_names(50)='O3c',
@@ -599,7 +599,7 @@
  PTRACERS_useGMRedi(50)=.FALSE.,
  PTRACERS_useKPP(50)=.FALSE.,
  PTRACERS_initialFile(50)='../input/binaries/ICs/BIO/IC_O3c.dat',
- PTRACERS_EvPrRn(50)=33225.0000,
+# PTRACERS_EvPrRn(50)=33225.0000,
 #PTRACERS_ref(1:Nr,50)=Null,Null,Null ... ,
 # tracer 51 - O3h
  PTRACERS_names(51)='O3h',
@@ -611,7 +611,7 @@
  PTRACERS_useGMRedi(51)=.FALSE.,
  PTRACERS_useKPP(51)=.FALSE.,
  PTRACERS_initialFile(51)='../input/binaries/ICs/BIO/IC_O3h.dat',
- PTRACERS_EvPrRn(51)=2800.0000,
+# PTRACERS_EvPrRn(51)=2800.0000,
 #PTRACERS_ref(1:Nr,51)=Null,Null,Null ... ,
 #
 # Chioggia

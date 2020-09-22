@@ -1,3 +1,4 @@
-. $OPA_HOME/src/ENV/$OPA_HOSTNAME
-./configure --prefix=$OPA_HOME/HOST/$OPA_HOSTNAME
-
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME
+make
+make install

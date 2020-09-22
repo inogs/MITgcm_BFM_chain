@@ -1,6 +1,6 @@
-. $OPA_HOME/src/ENV/$OPA_HOSTNAME
-./configure --prefix=$OPA_HOME/HOST/$OPA_HOSTNAME
+. $OPA_HOME/src/ENV/$MIT_HOSTNAME
+./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME
 make clean
 make
 make install
-ln -s $OPA_HOME/HOST/$OPA_HOSTNAME/lib/libsz.so.2.0.0 $OPA_HOME/HOST/$OPA_HOSTNAME/lib/libszip.so
+ln -s $MIT_HOME/HOST/$MIT_HOSTNAME/lib/libsz.so.2.0.0 $MIT_HOME/HOST/$MIT_HOSTNAME/lib/libszip.so
