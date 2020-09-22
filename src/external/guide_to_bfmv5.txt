@@ -1,0 +1,9 @@
+1) ./ogstm_downloader.sh (edit and launch)
+
+2) If bfmv5 has been downloaded, edit the 
+   bfm/build/configurations/OGS_PELAGIC/layout   for the variables involved in BFM
+   ogstm/bfmv5/BFMtab.xml                        for the ogstm output frequency
+
+3) ./ogstm_builder.sh (edit and launch)
+
+4) In the wrkdir/MODEL, cp ${CODEDIR}/ogstm/ready_for_model_namelists/* .
