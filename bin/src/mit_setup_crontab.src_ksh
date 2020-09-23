@@ -2,15 +2,15 @@
 # This command sets the correct crontab
 #
 # You must run this script only if you need to change
-# the crontab-file template ($OPA_ETCDIR/crontab-file)
+# the crontab-file template ($MIT_ETCDIR/crontab-file)
 #
 
 # Load common profile
-. @@(I:OPA_HOME)/bin/opa_profile.inc
+. @@(I:MIT_HOME)/bin/mit_profile.inc
 
 function print_help {
   cat <<EofCat
-Usage: $OPA_PROGNAME [options]
+Usage: $MIT_PROGNAME [options]
 [options]
 	--help|-h				show this help
 	--weekdays|-w WEEKDAY-LIST		submit weekdays WEEKDAY-LIST
@@ -21,11 +21,11 @@ Usage: $OPA_PROGNAME [options]
 EofCat
 }
 
-opa_submit_options=' '
+mit_submit_options=' '
 force=false
 all=false
 kernel_only=false
-opa_weekdays="$OPA_WEEKDAYS"
+mit_weekdays="$MIT_WEEKDAYS"
 while [[ ${#@} -ne 0 ]] ; do
   arg="$1"
   shift 1
@@ -44,7 +44,7 @@ while [[ ${#@} -ne 0 ]] ; do
       all=true
       ;;
     --weekdays|-w)
-      opa_weekdays="$1"
+      mit_weekdays="$1"
       shift 1
       ;;
     *)
@@ -56,17 +56,17 @@ done
 
 
 if $all ; then
-  [[ "$OPA_HOST_PRIMARY_HOSTNAME" != '' ]]   && opa_prex "ssh $OPA_HOST_PRIMARY_HOSTNAME $OPA_SCRDIR/opa_setup_crontab.ksh -f "
-  [[ "$OPA_HOST_SECONDARY_HOSTNAME" != '' ]] && opa_prex "ssh $OPA_HOST_SECONDARY_HOSTNAME $OPA_SCRDIR/opa_setup_crontab.ksh -f"
+  [[ "$MIT_HOST_PRIMARY_HOSTNAME" != '' ]]   && mit_prex "ssh $MIT_HOST_PRIMARY_HOSTNAME $MIT_SCRDIR/mit_setup_crontab.ksh -f "
+  [[ "$MIT_HOST_SECONDARY_HOSTNAME" != '' ]] && mit_prex "ssh $MIT_HOST_SECONDARY_HOSTNAME $MIT_SCRDIR/mit_setup_crontab.ksh -f"
   exit 0
 fi
 
 for d in log tmp ; do
-  [[ -d $OPA_VARDIR/$d ]] || opa_mkdir $OPA_VARDIR/$d
+  [[ -d $MIT_VARDIR/$d ]] || mit_mkdir $MIT_VARDIR/$d
 done
 
 unset tmp_crontab
-while [[ -f ${tmp_crontab:=$OPA_VARDIR/tmp/crontab-file.part.$$.$RANDOM} ]] ; do
+while [[ -f ${tmp_crontab:=$MIT_VARDIR/tmp/crontab-file.part.$$.$RANDOM} ]] ; do
   unset tmp_crontab
 done
 
@@ -78,12 +78,12 @@ trap "rm -f $tmp_crontab" 0
 
 typeset -i errors=0
 
-opa_download_start_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC $OPA_GET_ADVANCE_MIN minutes ago" +"%M %H")
-opa_chain_start_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC" +"%M %H")
-opa_download_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_DOWNLOAD_HOUR_UTC UTC" +"%M %H")
+mit_download_start_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC $MIT_GET_ADVANCE_MIN minutes ago" +"%M %H")
+mit_chain_start_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC" +"%M %H")
+mit_download_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_DOWNLOAD_HOUR_UTC UTC" +"%M %H")
 
 
-if [[ "$NODE" = "$OPA_HOST_PRIMARY_HOSTNAME" ]] ; then
+if [[ "$NODE" = "$MIT_HOST_PRIMARY_HOSTNAME" ]] ; then
   cron_deltatime="00:10:00"
   cron_comment=""
 else
@@ -91,42 +91,42 @@ else
   cron_comment="#"
 fi
 
-if $I_OPA_BACKUP; then
+if $I_MIT_BACKUP; then
   backup_deltatime="00:30:00"
 else
   backup_deltatime="00:00:00"
 fi
 
-opa_start=$( time_sum $OPA_START_HOUR_UTC $cron_deltatime f )
-opa_start=$( time_sum $opa_start $backup_deltatime f )
+mit_start=$( time_sum $MIT_START_HOUR_UTC $cron_deltatime f )
+mit_start=$( time_sum $mit_start $backup_deltatime f )
 
-opa_chain_start_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $opa_start UTC" +"%M %H")
+mit_chain_start_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $mit_start UTC" +"%M %H")
 
-opa_chain_check_hour_crontab_utc=$($OPA_BINDIR/date --utc --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC ${OPA_CHECK_HOURS_OFFSET} hours" +"%M %H")
-opa_chain_check_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC ${OPA_CHECK_HOURS_OFFSET} hours" +"%M %H")
+mit_chain_check_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC ${MIT_CHECK_HOURS_OFFSET} hours" +"%M %H")
+mit_chain_check_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC ${MIT_CHECK_HOURS_OFFSET} hours" +"%M %H")
 
 #20 minutes delay (10 mins + 10 mins)
-opa_download=$( time_sum $OPA_DOWNLOAD_HOUR_UTC $cron_deltatime f )
-opa_download=$( time_sum $opa_download $cron_deltatime f )
-opa_download_hour_crontab_tz=$($OPA_BINDIR/date        --date="$OPA_TODAY $opa_download UTC" +"%M %H")
+mit_download=$( time_sum $MIT_DOWNLOAD_HOUR_UTC $cron_deltatime f )
+mit_download=$( time_sum $mit_download $cron_deltatime f )
+mit_download_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $mit_download UTC" +"%M %H")
 
 
 
-# opa_advance_min=$( time_sum $OPA_GET_ADVANCE_MIN $cron_deltatime f )
-opa_download_start_hour_crontab_tz=$($OPA_BINDIR/date --date="$OPA_TODAY $OPA_START_HOUR_UTC UTC $OPA_GET_ADVANCE_MIN minutes ago" +"%M %H")
-#echo "DBG: opa_download_start_hour_crontab_utc=$opa_download_start_hour_crontab_utc" 1>&2
-#echo "DBG: opa_chain_start_hour_crontab_utc=$opa_chain_start_hour_crontab_utc" 1>&2
+# mit_advance_min=$( time_sum $MIT_GET_ADVANCE_MIN $cron_deltatime f )
+mit_download_start_hour_crontab_tz=$($MIT_BINDIR/date --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC $MIT_GET_ADVANCE_MIN minutes ago" +"%M %H")
+#echo "DBG: mit_download_start_hour_crontab_utc=$mit_download_start_hour_crontab_utc" 1>&2
+#echo "DBG: mit_chain_start_hour_crontab_utc=$mit_chain_start_hour_crontab_utc" 1>&2
 
-opa_check_days_offset=$(( $OPA_CHECK_HOURS_OFFSET / 24 ))
+mit_check_days_offset=$(( $MIT_CHECK_HOURS_OFFSET / 24 ))
 cat <<EOFCAT
-opa_chain_check_hour_crontab_utc=$opa_chain_start_hour_crontab_utc
-opa_chain_check_hour_crontab_tz=$opa_chain_start_hour_crontab_tz
-opa_check_days_offset=$opa_check_days_offset
+mit_chain_check_hour_crontab_utc=$mit_chain_start_hour_crontab_utc
+mit_chain_check_hour_crontab_tz=$mit_chain_start_hour_crontab_tz
+mit_check_days_offset=$mit_check_days_offset
 EOFCAT
 
 set -A weekday_names -- 'Sunday' 'Monday' 'Tuesday' 'Wednesday' 'Thursday' 'Friday' 'Saturday'
-typeset -i opa_weekday
-typeset -i opa_submit_weekday
+typeset -i mit_weekday
+typeset -i mit_submit_weekday
 
 function get_file_override {
   typeset _filename="$1"
@@ -161,50 +161,50 @@ function sed_tpl_producer {
 }
 
 function _sed_tpl {
-  sed	-e "s%@@(C:OPA_BINDIR)%${OPA_BINDIR}%g"								\
-	-e "s%@@(C:OPA_SCRDIR)%${OPA_SCRDIR}%g"								\
-	-e "s%@@(C:OPA_VARDIR)%${OPA_VARDIR}%g"								\
-	-e "s%@@(C:OPA_HOME)%${I_OPA_HOME}%g"								\
-	-e "s%@@(C:OPA_DOWNLOAD_START_HOUR_CRONTAB_UTC)%${opa_download_start_hour_crontab_utc}%g"	\
-	-e "s%@@(C:OPA_DOWNLOAD_START_HOUR_CRONTAB_TZ)%${opa_download_start_hour_crontab_tz}%g"		\
-	-e "s%@@(C:OPA_DOWNLOAD_HOUR_CRONTAB_UTC)%${opa_download_hour_crontab_utc}%g"			\
-	-e "s%@@(C:OPA_DOWNLOAD_HOUR_CRONTAB_TZ)%${opa_download_hour_crontab_tz}%g"			\
-	-e "s%@@(C:OPA_CHAIN_START_HOUR_CRONTAB_UTC)%${opa_chain_start_hour_crontab_utc}%g"		\
-	-e "s%@@(C:OPA_CHAIN_CHECK_HOUR_CRONTAB_UTC)%${opa_chain_check_hour_crontab_utc}%g"		\
-	-e "s%@@(C:OPA_CHAIN_START_HOUR_CRONTAB_TZ)%${opa_chain_start_hour_crontab_tz}%g"		\
-	-e "s%@@(C:OPA_CHAIN_CHECK_HOUR_CRONTAB_TZ)%${opa_chain_check_hour_crontab_tz}%g"		\
-	-e "s%@@(C:OPA_CRON_COMMENT)%${cron_comment}%g"		\
-	-e "s%@@(C:OPA_SUBMIT_WEEKDAY)%${opa_submit_weekday}%g"						\
-	-e "s%@@(C:OPA_SUBMIT_WEEKDAY_NAME)%${opa_submit_weekday_name}%g"				\
-	-e "s%@@(C:OPA_CHECK_WEEKDAY)%${opa_check_weekday}%g"						\
-	-e "s%@@(C:OPA_CHECK_WEEKDAY_NAME)%${opa_check_weekday_name}%g"					\
-	-e "s%@@(C:OPA_WEEKDAY)%${opa_weekday}%g"							\
-	-e "s%@@(C:OPA_WEEKDAY_NAME)%${opa_weekday_name}%g"						\
-	-e "s%@@(C:OPA_REPORT_DAY)%${OPA_REPORT_DAY}%g"							\
-	-e "s%@@(C:OPA_CRON_REPORT_DAY)%${OPA_CRON_REPORT_DAY}%g"					\
-	-e "s%@@(C:OPA_CRON_PART_REPORT_DAY)%${OPA_CRON_PART_REPORT_DAY}%g"
+  sed	-e "s%@@(C:MIT_BINDIR)%${MIT_BINDIR}%g"								\
+	-e "s%@@(C:MIT_SCRDIR)%${MIT_SCRDIR}%g"								\
+	-e "s%@@(C:MIT_VARDIR)%${MIT_VARDIR}%g"								\
+	-e "s%@@(C:MIT_HOME)%${I_MIT_HOME}%g"								\
+	-e "s%@@(C:MIT_DOWNLOAD_START_HOUR_CRONTAB_UTC)%${mit_download_start_hour_crontab_utc}%g"	\
+	-e "s%@@(C:MIT_DOWNLOAD_START_HOUR_CRONTAB_TZ)%${mit_download_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_DOWNLOAD_HOUR_CRONTAB_UTC)%${mit_download_hour_crontab_utc}%g"			\
+	-e "s%@@(C:MIT_DOWNLOAD_HOUR_CRONTAB_TZ)%${mit_download_hour_crontab_tz}%g"			\
+	-e "s%@@(C:MIT_CHAIN_START_HOUR_CRONTAB_UTC)%${mit_chain_start_hour_crontab_utc}%g"		\
+	-e "s%@@(C:MIT_CHAIN_CHECK_HOUR_CRONTAB_UTC)%${mit_chain_check_hour_crontab_utc}%g"		\
+	-e "s%@@(C:MIT_CHAIN_START_HOUR_CRONTAB_TZ)%${mit_chain_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_CHAIN_CHECK_HOUR_CRONTAB_TZ)%${mit_chain_check_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_CRON_COMMENT)%${cron_comment}%g"		\
+	-e "s%@@(C:MIT_SUBMIT_WEEKDAY)%${mit_submit_weekday}%g"						\
+	-e "s%@@(C:MIT_SUBMIT_WEEKDAY_NAME)%${mit_submit_weekday_name}%g"				\
+	-e "s%@@(C:MIT_CHECK_WEEKDAY)%${mit_check_weekday}%g"						\
+	-e "s%@@(C:MIT_CHECK_WEEKDAY_NAME)%${mit_check_weekday_name}%g"					\
+	-e "s%@@(C:MIT_WEEKDAY)%${mit_weekday}%g"							\
+	-e "s%@@(C:MIT_WEEKDAY_NAME)%${mit_weekday_name}%g"						\
+	-e "s%@@(C:MIT_REPORT_DAY)%${MIT_REPORT_DAY}%g"							\
+	-e "s%@@(C:MIT_CRON_REPORT_DAY)%${MIT_CRON_REPORT_DAY}%g"					\
+	-e "s%@@(C:MIT_CRON_PART_REPORT_DAY)%${MIT_CRON_PART_REPORT_DAY}%g"
 }
 
 if ! $kernel_only ; then
   # head
-  sed_tpl_file "$OPA_ETCDIR/crontab/head" || errors=$(( $errors + 1 ))
+  sed_tpl_file "$MIT_ETCDIR/crontab/head" || errors=$(( $errors + 1 ))
 fi
 
 # kernel
-for opa_weekday in $opa_weekdays ; do
-  opa_weekday_name="${weekday_names[opa_weekday]}"
-  opa_submit_weekday=$(( ( $opa_weekday + $OPA_SUBMIT_DAY_OFFSET + 7 ) % 7 ))
-  opa_submit_weekday_name="${weekday_names[opa_submit_weekday]}"
-  opa_check_weekday=$(( ( $opa_submit_weekday + $opa_check_days_offset ) % 7 ))
-  opa_check_weekday_name="${weekday_names[opa_check_weekday]}"
-  echo "opa_check_days_offset=$opa_check_days_offset"
-  echo "opa_check_weekday=$opa_check_weekday"
-  sed_tpl_file "$OPA_ETCDIR/crontab/weekday" || errors=$(( $errors + 1 ))
+for mit_weekday in $mit_weekdays ; do
+  mit_weekday_name="${weekday_names[mit_weekday]}"
+  mit_submit_weekday=$(( ( $mit_weekday + $MIT_SUBMIT_DAY_OFFSET + 7 ) % 7 ))
+  mit_submit_weekday_name="${weekday_names[mit_submit_weekday]}"
+  mit_check_weekday=$(( ( $mit_submit_weekday + $mit_check_days_offset ) % 7 ))
+  mit_check_weekday_name="${weekday_names[mit_check_weekday]}"
+  echo "mit_check_days_offset=$mit_check_days_offset"
+  echo "mit_check_weekday=$mit_check_weekday"
+  sed_tpl_file "$MIT_ETCDIR/crontab/weekday" || errors=$(( $errors + 1 ))
 done
 
 if ! $kernel_only ; then
   # producers
-  prodir="$OPA_ETCDIR/crontab/producers"
+  prodir="$MIT_ETCDIR/crontab/producers"
   if [[ -d $prodir ]] ; then
     for profile in $(cd $prodir && ls -1 *.producer 2>/dev/null) ; do
       sed_tpl_producer "$prodir/$profile" || errors=$(( $errors + 1 ))
@@ -214,10 +214,10 @@ fi
 
 if ! $kernel_only ; then
   # tail
-  sed_tpl_file "$OPA_ETCDIR/crontab/tail" || errors=$(( $errors + 1 ))
+  sed_tpl_file "$MIT_ETCDIR/crontab/tail" || errors=$(( $errors + 1 ))
 
   # externals
-  extdir="$OPA_ETCDIR/crontab/externals"
+  extdir="$MIT_ETCDIR/crontab/externals"
   if [[ -d $extdir ]] ; then
     for extfile in $(cd $extdir && ls -1 *.external 2>/dev/null) ; do
       sed_tpl_file "$extdir/$extfile" || errors=$(( $errors + 1 ))
@@ -253,11 +253,11 @@ fi
 install_crontab_cmd="/bin/ksh -c 'crontab -l | diff - $tmp_crontab >/dev/null 2>&1 || { echo \\\"WARNING: installing new crontab on \\\$(hostname)\\\"; crontab $tmp_crontab; }'"
 echo "installing crontab if necessary..."
 if $all ; then
-  for login_node in $OPA_LOGIN_NODES ; do
-    opa_prex "ssh $login_node \"$install_crontab_cmd\""
+  for login_node in $MIT_LOGIN_NODES ; do
+    mit_prex "ssh $login_node \"$install_crontab_cmd\""
   done
 else
-  opa_prex "ssh localhost \"$install_crontab_cmd\""
+  mit_prex "ssh localhost \"$install_crontab_cmd\""
 fi
 
-opa_exit "$errors"
+mit_exit "$errors"

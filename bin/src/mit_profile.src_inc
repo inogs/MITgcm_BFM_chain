@@ -80,7 +80,7 @@ I_MIT_COMPILER="@@(I:MIT_COMPILER)"				# Compiler
 MIT_MPI="$MIT_UNDEFINED"					# type of the MPI library
 
 
-MIT_START_HOUR_UTC="07:30:00"					# UTC time for chain submission
+MIT_START_HOUR_UTC="05:00:00"					# UTC time for chain submission
 MIT_GET_ADVANCE_MIN="90"					# minutes for advance execution of mit_get
 MIT_GET_TARGET_TIME="07:30:00"
 MIT_TEST=false
@@ -354,7 +354,7 @@ OPA_LOW__FREQ_VARIABLES='O4n N6r B1n B1p     P1s P1n P1p P2n P2p P3n P3p P4n P4p
 
 
 MIT_SUBMIT_DAY_OFFSET=1					# number of days after rundate for submission
-MIT_CHECK_HOURS_OFFSET=6				# number of hours for mit_check_run after run submission
+MIT_CHECK_HOURS_OFFSET=3				# number of hours for mit_check_run after run submission
 
 export LD_LIBRARY_PATH="${MIT_LIBDIR}:${LD_LIBRARY_PATH}"
 

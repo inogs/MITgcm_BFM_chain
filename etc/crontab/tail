@@ -1,12 +1,6 @@
-   # Daily download:
-@@(C:OPA_DOWNLOAD_HOUR_CRONTAB_TZ) * * * @@(C:OPA_SCRDIR)/opa_is_login_node.ksh && @@(C:OPA_SCRDIR)/opa_downloader.ksh > @@(C:OPA_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).opa_download.out 2>&1
-
+    # Daily forecast:
+@@(C:MIT_CHAIN_START_HOUR_CRONTAB_TZ) * * * @@(C:MIT_SCRDIR)/mit_is_login_node.ksh && @@(C:MIT_SCRDIR)/mit_start.ksh --pass --job-multiple --rundate $(date +%Y%m%d) --force --try-resume 1> @@(C:MIT_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).mit_start.out 2>&1
+@@(C:MIT_CHAIN_CHECK_HOUR_CRONTAB_TZ) * * * @@(C:MIT_SCRDIR)/mit_is_login_node.ksh && @@(C:MIT_SCRDIR)/mit_check_run.ksh --refresh --notify --weekday @@(C:MIT_WEEKDAY_NAME) --run 1> @@(C:MIT_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).mit_check_run.out 2>&1
+   
    # Reset crontab:
-00 00 * * * @@(C:OPA_SCRDIR)/opa_setup_crontab.ksh --force 1> @@(C:OPA_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).opa_setup_crontab.out 2>&1
-
-   # Check remote crontab:
-00 01 * * * @@(C:OPA_SCRDIR)/opa_check_remote_cron.ksh >> @@(C:OPA_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).opa_setup_crontab.out 2>&1
-
-   # Report:
-@@(C:OPA_CRON_COMMENT)00 10 @@(C:OPA_CRON_REPORT_DAY) * * @@(C:OPA_SCRDIR)/opa_is_login_node.ksh && @@(C:OPA_SCRDIR)/opa_report.ksh --notify 1> @@(C:OPA_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).opa_report.out 2>&1
-@@(C:OPA_CRON_COMMENT)00 10 @@(C:OPA_CRON_PART_REPORT_DAY) * * @@(C:OPA_SCRDIR)/opa_is_login_node.ksh && @@(C:OPA_SCRDIR)/opa_report.ksh --notify 1> @@(C:OPA_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).opa_report.out 2>&1
+00 00 * * * @@(C:MIT_SCRDIR)/mit_setup_crontab.ksh --force 1> @@(C:MIT_VARDIR)/log/$(hostname).$(date +\%Y\%m\%d).mit_setup_crontab.out 2>&1

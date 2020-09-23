@@ -1,10 +1,10 @@
-export PATH="@@(T:OPA_BINDIR):@@(T:OPA_SCRDIR):${PATH}"
-export LD_LIBRARY_PATH="@@(T:OPA_LIBDIR):${LD_LIBRARY_PATH}"
-_src_host="@@(T:OPA_HOME)/src/ENV/@@(T:OPA_HOSTNAME)"
+export PATH="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/HOST/galileo/bin:/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/bin:${PATH}"
+export LD_LIBRARY_PATH="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/HOST/galileo/lib:${LD_LIBRARY_PATH}"
+_src_host="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/src/ENV/galileo"
 if [[ -f "$_src_host" ]] ; then
   . "$_src_host"
 fi
-_env_host="@@(T:OPA_ETCDIR)/ENV/env.@@(T:OPA_HOSTNAME)"
+_env_host="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/etc/ENV/env.galileo"
 if [[ -f "$_env_host" ]] ; then
   . "$_env_host"
 fi
