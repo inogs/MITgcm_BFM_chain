@@ -6,3 +6,5 @@
 
 ./configure_MITgcm_bfm.sh
 ./builder_MITgcm_bfm.sh -o MITgcm
+
+cp MITGCM_BUILD/mitgcmuv ../../HOST/${MIT_HOSTNAME}/bin/mitgcmuv_130

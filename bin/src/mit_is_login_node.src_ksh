@@ -3,7 +3,7 @@
 # 
 
 # Load common profile
-. @@(I:OPA_HOME)/bin/opa_profile.inc
+. @@(I:MIT_HOME)/bin/mit_profile.inc
 
 
 function print_help {
@@ -31,7 +31,7 @@ while [[ ${#@} -ne 0 ]] ; do
   esac
 done
 
-if opa_is_login_node ; then
+if mit_is_login_node ; then
   return 0
 else
   return 1

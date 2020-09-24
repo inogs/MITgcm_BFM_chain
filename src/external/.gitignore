@@ -1,0 +1,8 @@
+*
+!builder_MITgcm_bfm.sh
+!build_script.sh
+!configure_MITgcm_bfm.sh
+!downloader_MITgcm_bfm.sh
+!pkg_groups
+!presets
+!compilers

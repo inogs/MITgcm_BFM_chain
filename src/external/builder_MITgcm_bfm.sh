@@ -36,13 +36,6 @@ done
 
 
 
-MIT_ARCH=x86_64
-MIT_OS=LINUX
-MIT_COMPILER=intel
-DEBUG=       # this is the choice for production flags 
-#DEBUG=.dbg   # this is the one for debug flags
-
-
 ################################################################### 
 #  Section 2. Use of OpenMP threads, to improve the parallelization of ogstm.
 # Just comment one of thes lines:
@@ -60,6 +53,10 @@ export OPENMP_FLAG=          # OpenMP deactivated
 # Just comment the two following lines you are not using modules. 
 export MODULEFILE=$PWD/compilers/machine_modules/galileo.intel
 source $MODULEFILE
+MIT_ARCH=x86_64
+MIT_OS=LINUX
+MIT_COMPILER=intel
+DEBUG=       # this is the choice for production flags 
 
 COUPLERDIR=$PWD/BFMCOUPLER
 BFMDIR=$PWD/bfm
