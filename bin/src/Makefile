@@ -6,6 +6,7 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_check_input_files.ksh			\
 		mit_get.ksh					\
 		mit_input_files.inc				\
+		mit_log_inspect.py				\
 		mit_link_analyses.ksh				\
 		mit_link_forecast.ksh				\
 		mit_input_stagein.ksh				\

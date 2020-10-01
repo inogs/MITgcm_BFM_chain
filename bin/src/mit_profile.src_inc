@@ -353,7 +353,7 @@ OPA_HIGH_FREQ_VARIABLES='O2o N1p N3n N4n N5s B1c P1c P1l P2c P2l P3c P3l P4c P4l
 OPA_LOW__FREQ_VARIABLES='O4n N6r B1n B1p     P1s P1n P1p P2n P2p P3n P3p P4n P4p Z3n Z3p Z4n Z4p Z5n Z5p Z6n Z6p R1c R1n R1p R2c R3c R6n R6p R6s O5c'
 
 
-MIT_SUBMIT_DAY_OFFSET=1					# number of days after rundate for submission
+MIT_SUBMIT_DAY_OFFSET=0					# number of days after rundate for submission
 MIT_CHECK_HOURS_OFFSET=3				# number of hours for mit_check_run after run submission
 
 export LD_LIBRARY_PATH="${MIT_LIBDIR}:${LD_LIBRARY_PATH}"
