@@ -298,8 +298,27 @@ OBEptrFile(63)='../input/binaries/OBCs/ptracers_CG/OBC_E_CG_ptr12.dat',
  OBCSsponge_S=.TRUE.
  OBCSsponge_E=.FALSE.
  OBCSsponge_W=.FALSE.
- useOBCSbalance=.FALSE.,
+ useOBCSbalance=.TRUE.,
+ OBCS_balanceFacN=0.,
+ OBCS_balanceFacS=-1.,
+ OBCS_balanceFacE=0.,
+ OBCS_balanceFacW=0.,
+# OBCSbalanceSurf=.FALSE.,
  OBCSprintDiags=.FALSE.,
+#
+ useOBCStides=.TRUE.,
+# components   = M2       S2     N2       K2       K1      O1       P1       Q1
+# periods (hr) = 12.4206  12     12.6583  11.9672  23.9345 25.8193  24.0659  26.8684
+ tidalPeriod  = 44714.16,43200.,45569.88,43081.92,86164.2,92949.48,86637.24,96726.24,
+ OBSamFile='../input/binaries/OBSam_med_CADEAU.tide_obcs',
+ OBEamFile='../input/binaries/OBEam_med_CADEAU.tide_obcs',
+ OBNamFile='../input/binaries/OBNam_med_CADEAU.tide_obcs',
+ OBWamFile='../input/binaries/OBWam_med_CADEAU.tide_obcs',
+ OBSphFile='../input/binaries/OBSph_med_CADEAU.tide_obcs',
+ OBEphFile='../input/binaries/OBEph_med_CADEAU.tide_obcs',
+ OBNphFile='../input/binaries/OBNph_med_CADEAU.tide_obcs',
+ OBWphFile='../input/binaries/OBWph_med_CADEAU.tide_obcs',
+#
  &END
 #
 # *****************************************
