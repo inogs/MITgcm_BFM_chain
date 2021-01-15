@@ -12,7 +12,7 @@ mit_prex "source $MIT_VENV_1/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
 DATESTART=$( date -d "${MIT_RUNDATE}  -  7 days  " +%Y%m%d-%H:%M:%S )
-DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
+DATE__END=$( date -d "${MIT_RUNDATE}  + 72 hours " +%Y%m%d-%H:%M:%S )
 
 MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc
 
