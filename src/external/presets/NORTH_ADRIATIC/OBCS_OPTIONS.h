@@ -40,7 +40,7 @@ C balance barotropic velocity
 C add tidal contributions to normal OB flow
 C NOTE that at the moment tidal forcing is applied
 C only to "normal" flow.
-#undef ALLOW_OBCS_TIDES
+#define ALLOW_OBCS_TIDES
 
 C Use older implementation of obcs in seaice-dynamics
 C note: most of the "experimental" options listed below have not yet
