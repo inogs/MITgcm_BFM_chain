@@ -59,6 +59,8 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_domain_decomposition.ksh			\
 		mit_is_login_node.ksh				\
 		mit_check_remote_cron.ksh			\
+                motu_downloader.ksh                             \
+ 
 
 
 default:	compile

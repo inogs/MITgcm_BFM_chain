@@ -49,7 +49,7 @@ MODEL_DIRS='MODEL
             MODEL/results_merged'
 
 
-wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS "
+wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS MARINE_COPERNICUS"
 
 # reset input directories
 for subdir in $wrk_subdirs ; do

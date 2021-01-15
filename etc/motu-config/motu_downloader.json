@@ -1,0 +1,50 @@
+{
+	"motu_user": "MED_OGS_TRIESTE_IT",
+	"motu_password": "NEdifupa",
+	"domain_lat_min": 43.47265625,
+	"domain_lat_max": 45.81640625,
+	"domain_lon_min": 12.22265625,
+	"domain_lon_max": 16.08203125,
+	"days_before": 7,
+	"days_after": 3,
+	"output_dir": "out_dir",
+	"motu_dir": "/galileo/home/usera07ogs/a07ogs00/MIT/V1-dev/HOST/galileo/bin/motuclient-python",
+	"motu_server": "http://nrt.cmems-du.eu/motu-web/Motu",
+	"csw_catalog_url_template": "https://resources.marine.copernicus.eu/?option=com_csw&view=details&tab=info&product_id=%s&format=xml",
+	"services": [
+		{
+			"name": "MEDSEA_ANALYSIS_FORECAST_PHY_006_013",
+			"products": [
+				{
+					"name": "cur",
+					"variables": ["uo", "vo"]
+				},
+				{
+					"name": "sal",
+					"variables": ["so"]
+				},
+				{
+					"name": "tem",
+					"variables": ["thetao"]
+				}
+			]
+		},
+		{
+			"name": "MEDSEA_ANALYSIS_FORECAST_BIO_006_014",
+			"products": [
+				{
+					"name": "nut",
+					"variables": ["no3", "po4"]
+				},
+				{
+					"name": "bio",
+					"variables": ["o2"]
+				},
+				{
+					"name": "car",
+					"variables": ["dissic"]
+				}
+			]
+		}
+	]
+}
