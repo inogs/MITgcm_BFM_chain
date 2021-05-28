@@ -20,7 +20,7 @@ OPA_RUNDATE_A=$( date -d "last tuesday" +%Y%m%d )
 
 
 
-OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V6C/prod/archive
+OPA_ARCDIR_ROOT=/gpfs/work/OGS_prod_0/OPA/V7C/prod/archive
 
        ARCHIVE_AVE_W=$OPA_ARCDIR_ROOT/analysis/$OPA_RUNDATE_A/POSTPROC/AVE_FREQ_2
        AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
@@ -102,8 +102,8 @@ BATHY=$MIT_WRKDIR/BC_IC/bathy.bin
 mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
 
-MASK__PHYS="$HOME/OPA/V6C/etc/static-data/MED24_141/meshmask.nc"
-MASK_OGSTM="$HOME/OPA/V6C/etc/static-data/MED24_125/meshmask.nc"
+MASK__PHYS="$HOME/OPA/V7C/etc/static-data/MED24_141/meshmask.nc"
+MASK_OGSTM="$HOME/OPA/V7C/etc/static-data/MED24_125/meshmask.nc"
 
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK__PHYS -f $MASKFILE > $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_OGSTM -f $MASKFILE > $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh "
