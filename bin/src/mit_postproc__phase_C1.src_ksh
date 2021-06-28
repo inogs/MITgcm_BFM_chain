@@ -24,6 +24,15 @@ MIT_POSTPROC=$MIT_WRKDIR/POSTPROC
 mit_mkdir "$MIT_POSTPROC"
 mit_mkdir "$MIT_POSTPROC/IMG"
 
+RUNDIR=$MIT_WRKDIR/MODEL/run
+TMPDIR=$MIT_WRKDIR/POSTPROC/TMP
+NETCDF_DIR=$MIT_WRKDIR/POSTPROC/AVE
+TARDIR=$MIT_WRKDIR/POSTPROC/tars
+
+mit_mkdir $TMPDIR
+mit_mkdir $NETCDF_DIR
+mit_mkdir $TARDIR
+
 INPUTDIR=$MIT_WRKDIR/MODEL/results_merged
 OUTPUTDIR=$MIT_POSTPROC/IMG
 
@@ -31,13 +40,38 @@ OUTPUTDIR=$MIT_POSTPROC/IMG
 MEDEAF_DIR=$MIT_HOSTDIR/medeaf/cadeau/
 MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
 mit_prex_or_die "python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE" 
+
+VARLIST=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist
+VARDESCRIPTOR=$MIT_ETCDIR/static-data/POSTPROC/VarDescriptor.xml
+mit_prex_or_die "mpirun python $MEDEAF_DIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -d $MIT_RUNDATE -m $MASKFILE -v $VARLIST"
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/var_aggregator.py -l ave*N1p.nc -i $NETCDF_DIR -t $TMPDIR -m $MASKFILE -d $VARDESCRIPTOR"
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/archive/netcdf4_compress.py -i $TMPDIR -o $NETCDF_DIR -l *nc "
+
+PUBLIST=$MIT_WRKDIR/POSTPROC/publist.txt
+grep var $MEDEAF_DIR/Plotlist.xml | awk '{print $2}' | cut -d "\"" -f 2 > $PUBLIST
+echo -e "U\nV" >> $PUBLIST
+
+
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/archive/pack.py -i $NETCDF_DIR -o $TARDIR -v $PUBLIST "
+mit_date > $TARDIR/timestamp
+
+
+mit_prex_or_die "mv $MIT_ARCDIR_ROOT/current/tars/ $MIT_ARCDIR_ROOT/current/tars_old/"
+mit_prex_or_die "mv $TARDIR $MIT_ARCDIR_ROOT/current/tars/ "
+mit_prex_or_die "rm -rf $MIT_ARCDIR_ROOT/current/tars_old/"
+
+mit_exit
+
 mit_prex_or_die "mpirun -np 36 python $MEDEAF_DIR/build_layer_map.py -i $INPUTDIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $MEDEAF_DIR/Plotlist.xml"
 
 mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
+
+
 cd $MIT_POSTPROC/
 mit_prex_or_die "tar -cf $MIT_ARCDIR_ROOT/current/maps.tar IMG/"
 
 mit_prex_or_die "md5sum $MIT_ARCDIR_ROOT/current/maps.tar > $MIT_ARCDIR_ROOT/current/maps.tar.md5"
+
 
 
 mit_exit "$errors"
