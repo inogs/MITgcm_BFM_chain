@@ -59,7 +59,7 @@ MPI="mpirun -np 36 "
 
 cd $AVE_DAILY_ZIPPED_DIR
 for D in `mit_days `; do
-  ARCHIVE_DIR=`python $MIT_BITSEA/validation/online/V6C_archive_info.py -d $D --dir`
+  ARCHIVE_DIR=`python $MIT_BITSEA/validation/online/V7C_archive_info.py -d $D --dir`
   mit_prex_or_die "mit_linker $OPA_ARCDIR_ROOT/$ARCHIVE_DIR/POSTPROC/AVE_FREQ_1/ARCHIVE/ave.${D}-12:00:00.*.nc.gz "
 done
 
@@ -85,7 +85,7 @@ done
 
 ####### link phys  ###########################
 for D in `mit_days `; do
-  ARCHIVE_PHYS_PREFIX=`python ${MIT_BITSEA}/validation/online/V6C_archive_info.py -d $D --phys `
+  ARCHIVE_PHYS_PREFIX=`python ${MIT_BITSEA}/validation/online/V7C_archive_info.py -d $D --phys `
   for var in U V T ; do
     phys_file=$OPA_ARCDIR_ROOT/${ARCHIVE_PHYS_PREFIX}${var}.nc
     filename=${D}_${var}.nc  # 20200510_U.nc
