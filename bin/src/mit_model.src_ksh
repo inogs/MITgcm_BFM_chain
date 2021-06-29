@@ -24,11 +24,6 @@ mit_step_has_phase model B2 && {
 }
 
 
-### Phase B3 - preparation of products creating with bfm-v5
-mit_step_has_phase model B3 && {
-   mit_exec_and_log mit_model__phase_B3 || errors=$(( $errors + 1 ))
-}
-
 
 mit_exit "$errors"
 

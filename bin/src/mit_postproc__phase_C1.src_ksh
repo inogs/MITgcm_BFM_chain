@@ -33,7 +33,6 @@ mit_mkdir $TMPDIR
 mit_mkdir $NETCDF_DIR
 mit_mkdir $TARDIR
 
-INPUTDIR=$MIT_WRKDIR/MODEL/results_merged
 OUTPUTDIR=$MIT_POSTPROC/IMG
 
 
@@ -60,9 +59,9 @@ mit_prex_or_die "mv $MIT_ARCDIR_ROOT/current/tars/ $MIT_ARCDIR_ROOT/current/tars
 mit_prex_or_die "mv $TARDIR $MIT_ARCDIR_ROOT/current/tars/ "
 mit_prex_or_die "rm -rf $MIT_ARCDIR_ROOT/current/tars_old/"
 
-mit_exit
 
-mit_prex_or_die "mpirun -np 36 python $MEDEAF_DIR/build_layer_map.py -i $INPUTDIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $MEDEAF_DIR/Plotlist.xml"
+
+mit_prex_or_die "mpirun python $MEDEAF_DIR/build_layer_map.py -i $NETCDF_DIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $MEDEAF_DIR/Plotlist.xml"
 
 mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
 
