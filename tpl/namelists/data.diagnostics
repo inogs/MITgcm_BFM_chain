@@ -77,7 +77,7 @@
 #
  fields(1,12)  = 'TRAC04',
  fileName(12)  = 'N4n',
- frequency(12) = 86400,
+ frequency(12) = 3600,
 # timePhase(12) = 0,
 #
  fields(1,13)  = 'TRAC05',
@@ -87,7 +87,7 @@
 #
  fields(1,14)  = 'TRAC06',
  fileName(14)  = 'N5s',
- frequency(14) = 86400,
+ frequency(14) = 3600,
 # timePhase(14) = 0,
 #
  fields(1,15)  = 'TRAC07',
@@ -197,7 +197,7 @@
 #
  fields(1,36)  = 'TRAC28',
  fileName(36)  = 'Z3c',
- frequency(36) = 86400,
+ frequency(36) = 3600,
 # timePhase(36) = 0,
 #
  fields(1,37)  = 'TRAC29',
@@ -212,7 +212,7 @@
 #
  fields(1,39)  = 'TRAC31',
  fileName(39)  = 'Z4c',
- frequency(39) = 86400,
+ frequency(39) = 3600,
 # timePhase(39) = 0,
 #
  fields(1,40)  = 'TRAC32',
@@ -227,7 +227,7 @@
 #
  fields(1,42)  = 'TRAC34',
  fileName(42)  = 'Z5c',
- frequency(42) = 86400,
+ frequency(42) = 3600,
 # timePhase(42) = 0,
 #
  fields(1,43)  = 'TRAC35',
@@ -242,7 +242,7 @@
 #
  fields(1,45)  = 'TRAC37',
  fileName(45)  = 'Z6c',
- frequency(45) = 86400,
+ frequency(45) = 3600,
 # timePhase(45) = 0,
 #
  fields(1,46)  = 'TRAC38',
@@ -302,12 +302,12 @@
 #
  fields(1,57)  = 'TRAC49',
  fileName(57)  = 'O3c',
- frequency(57) = 86400,
+ frequency(57) = 3600,
 # timePhase(57) = 0,
 #
  fields(1,58)  = 'TRAC50',
  fileName(58)  = 'O3h',
- frequency(58) = 86400,
+ frequency(58) = 3600,
 # timePhase(58) = 0,
 #
  fields(1,59)  = 'TRAC51',
@@ -430,9 +430,9 @@
  frequency(82) = 86400,
 # timePhase(82) = 0,
 #
- fields(1,83)  = 'CO2airfl',
- fileName(83)  = 'CO2airfl',
- frequency(83) = 86400,
+ fields(1,83)  = 'CO2airflux',
+ fileName(83)  = 'CO2airflux',
+ frequency(83) = 3600,
 # timePhase(83) = 0,
 #
  fields(1,84)  = 'SUNQ',

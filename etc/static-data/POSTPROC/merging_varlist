@@ -1,5 +1,7 @@
 N1p
 N3n
+N4n
+N5s
 O2o
 P1c
 P2c
@@ -9,6 +11,10 @@ P1l
 P2l
 P3l
 P4l
+Z3c
+Z4c
+Z5c
+Z6c
 ruPPYc
 resPPYc
 exR2acP1
@@ -17,9 +23,12 @@ exR2acP3
 exR2acP4
 pH
 pCO2
+O3c
+O3h
 DIC
 ALK
 S
 T
 U
 V
+CO2airflux
