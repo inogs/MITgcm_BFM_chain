@@ -1,0 +1,7 @@
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/lib64
+LDFLAGS=-L/usr/lib64
+LDFLAGS=-L/usr/lib64 ./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME
+echo $LD_LIBRARY_PATH
+make
+make install

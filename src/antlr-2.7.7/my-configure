@@ -1,0 +1,4 @@
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME
+make
+make install
