@@ -102,7 +102,7 @@ case "$I_MIT_HOSTNAME" in
     MIT_RM=pbs
     MIT_MPI=openmpi
     ;;
-  pico|galileo|marconi)
+  pico|galileo|marconi|g100)
     MIT_RM=slurm
     MIT_MPI=intelmpi
     ;;
@@ -126,7 +126,7 @@ MIT_BASE_ARCDIR="@@(I:MIT_WORKDIR)"				# Directory for Arcdir, depends on the mo
 MIT_VENV_1=$MIT_HOSTDIR/venvs/venv1				# Directory for maps virtualenv
 MIT_BITSEA=$MIT_HOSTDIR/bitsea					# Directory for bit.sea
 MIT_POSTPROCDIR=$MIT_HOSTDIR/postproc
-MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/BC_IC_from_ogstm		# Directory for BC,IC from COPERNICUS chain
+MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/MITgcm_BC_IC		# Directory for BC,IC from COPERNICUS chain
 MIT_TMPDIR=$MIT_VARDIR/tmp					# Directory for:
 MIT_NAME='mit_chain'						# This is the name of the last dir in $I_MIT_HOME
 
