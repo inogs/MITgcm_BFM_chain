@@ -23,7 +23,22 @@ for directory in $MIT_VARDIR/log $MIT_VARDIR/tmp $MIT_ARCDIR $I_MIT_HOME/HOST/$I
   mit_mkdir $directory
 done
 
+ETC_DIRS="
+MODEL
+"
+
+for directory in $ETC_DIRS; do
+    cd $MIT_ETCDIR/static-data/$directory
+    echo "Decompressing $MIT_ETCDIR/static-data/$directory  "
+    for I in `ls *gz `; do
+        gzip -dc $I > ${I%.gz} ;
+    done
+done
+
+
 setup_link "$MIT_ARCDIR_ROOT"	"$MIT_ARCDIR_ROOT_LINK"
 setup_link "$MIT_WRKDIR_ROOT"	"$MIT_WRKDIR_ROOT_LINK"
 setup_link "$MIT_INPDIR_ROOT"	"$MIT_INPDIR_ROOT_LINK"
+
+mkdir -p $MIT_ARCDIR_ROOT/current/products
 
