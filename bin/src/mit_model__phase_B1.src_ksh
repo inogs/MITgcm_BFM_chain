@@ -61,12 +61,12 @@ done
 ## Step 3 -- Chioggia -- da eliminare a breve
 
 cd $wrkdir/input/binaries
-for chioggia_file in /gpfs/scratch/userexternal/squerin0/CADEAU_updated/work_dir/input/binaries/CG* ; do
+for chioggia_file in /g100_scratch/usera07ogs/a07ogs00/MIT/CADEAU_updated/work_dir/input/binaries/CG* ; do
 	mit_prex_or_die "ln -fs ${chioggia_file}";
 done
 
 cd $wrkdir/input/binaries/OBCs/ptracers_CG/
-for chioggia_file in /gpfs/scratch/userexternal/squerin0/CADEAU_updated/work_dir/input/binaries/OBCs/ptracers_CG/* ; do
+for chioggia_file in /g100_scratch/usera07ogs/a07ogs00/MIT/CADEAU_updated/work_dir/input/binaries/OBCs/ptracers_CG/* ; do
 	mit_prex_or_die "ln -fs ${chioggia_file}";
 done
 
