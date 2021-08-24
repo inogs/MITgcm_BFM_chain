@@ -39,7 +39,7 @@ OUTPUTDIR=$MIT_POSTPROC/IMG
 
 MEDEAF_DIR=$MIT_HOSTDIR/medeaf/cadeau/
 MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
-mit_prex_or_die "python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE" 
+mit_prex_or_die "mpirun -np 1 python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE"
 
 VARLIST=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist
 VARDESCRIPTOR=$MIT_ETCDIR/static-data/POSTPROC/VarDescriptor.xml
