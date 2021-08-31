@@ -1,0 +1,12 @@
+. $MIT_HOME/src/ENV/$MIT_HOSTNAME
+export CC=mpiicc
+export CFLAGS="-g -O2 -qopenmp"
+export CXXFLAGS="-g -O2 -qopenmp"
+export FCFLAGS="-g -qopenmp"
+export F90=mpiifort
+export F77=mpiifort
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$MIT_HOME/HOST/$MIT_HOSTNAME/lib
+./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME LDFLAGS="$LDFLAGS -L$MIT_HOME/HOST/$MIT_HOSTNAME/lib" CPPFLAGS="$CPPFLAGS -I$MIT_HOME/HOST/$MIT_HOSTNAME/include"
+make
+make install
+

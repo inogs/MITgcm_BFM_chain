@@ -1,0 +1,3 @@
+module load autoload profile/advanced
+module load intelmpi/oneapi-2021--binary
+
