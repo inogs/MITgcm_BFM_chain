@@ -1,3 +1,6 @@
 . $MIT_HOME/src/ENV/$MIT_HOSTNAME
 ./configure --prefix=$MIT_HOME/HOST/$MIT_HOSTNAME
+sed -i 's/^Bookmark/extern Bookmark/' sh_util/gpshare.c
+make
+make install
 

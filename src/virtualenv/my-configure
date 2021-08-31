@@ -24,6 +24,14 @@ case $MIT_HOSTNAME in
       module load profile/advanced intelmpi/2017--binary netcdf/4.4.1--intelmpi--2017--binary
       module load python/2.7.12 numpy/1.11.2--python--2.7.12
       ;;
+    g100)
+      module load autoload
+      module load intelmpi/oneapi-2021--binary
+      #module load python/2.7.12
+      export HDF5_DIR=$MIT_HOME/HOST/$MIT_HOSTNAME
+      export NETCDF4_DIR=$MIT_HOME/HOST/$MIT_HOSTNAME
+      export GEOS_DIR=$MIT_HOME/HOST/$MIT_HOSTNAME
+      ;;
     *)
       module load python
       ;;
@@ -32,11 +40,12 @@ esac
 #creazione di venv1
 VENV_PATH=$MIT_HOME/HOST/$MIT_HOSTNAME/venvs/venv1
 
-virtualenv $VENV_PATH
+virtualenv-2 $VENV_PATH
 
 source $VENV_PATH/bin/activate
 pip install --upgrade pip
-CFLAGS+="-L/cineca/prod/opt/compilers/intel/pe-xe-2018/binary/lib/intel64 -lsvml -limf  -lirc" CC=mpiicc pip install netcdf4 --global-option=build_ext
+pip install configparser
+CC=mpiicc pip install netcdf4==1.5.6
 pip install ipython
 pip install python-dateutil
 pip install seawater
@@ -45,4 +54,6 @@ pip install xlrd
 pip install git+https://github.com/matplotlib/basemap.git
 pip install scipy
 pip install mpi4py
+pip install pathlib
+pip install openpyxl==2.6.4
 #installare Pillow per concludere la configurazione di venv1
