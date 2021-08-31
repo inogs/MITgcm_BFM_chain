@@ -565,10 +565,10 @@ case $mit_job_type in
       ll)
         for mit_step in $mit_steps ; do
           case "$mit_step" in
-            pre|post)
+            pre)
               mit_type=serial
               ;;
-            model)
+            model|post)
               mit_type=parallel
               ;;
             *)
@@ -620,10 +620,10 @@ case $mit_job_type in
 # QUA è da METTERE TUTTA LA PARTE DI PBS MULTIPLE
         for mit_step in $mit_steps ; do
           case "$mit_step" in
-            pre|post)
+            pre)
               mit_type=serial
               ;;
-            model)
+            model|post)
               mit_type=parallel
               ;;
             *)
