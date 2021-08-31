@@ -44,7 +44,7 @@ mit_prex_or_die "mpirun -np 1 python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODE
 VARLIST=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist
 VARDESCRIPTOR=$MIT_ETCDIR/static-data/POSTPROC/VarDescriptor.xml
 mit_prex_or_die "mpirun python $MEDEAF_DIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -d $MIT_RUNDATE -m $MASKFILE -v $VARLIST"
-mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/var_aggregator.py -l ave*N1p.nc -i $NETCDF_DIR -t $TMPDIR -m $MASKFILE -d $VARDESCRIPTOR"
+mit_prex_or_die "mpirun -np 36 python $MIT_POSTPROCDIR/var_aggregator.py -l ave*N1p.nc -i $NETCDF_DIR -t $TMPDIR -m $MASKFILE -d $VARDESCRIPTOR"
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/archive/netcdf4_compress.py -i $TMPDIR -o $NETCDF_DIR -l *nc "
 
 SM_DAYS="$MIT_WRKDIR/POSTPROC/sm_days.txt"
