@@ -4,6 +4,7 @@ if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
 # Load environment for pbs, modules:
 #. /etc/profile.d/pbs.sh
 . /etc/profile.d/modules.sh
+. /etc/profile.d/slurm.sh
 
 MIT_GRADS_HOME="$MIT_HOSTDIR"
 MIT_GRADS_GADDIR="${MIT_GRADS_HOME}/etc/grads/data"
@@ -55,6 +56,8 @@ mit_batch_prex "module load mkl/oneapi-2021--binary"
 mit_batch_prex "module load netcdf/4.7.4--intelmpi--oneapi-2021--binary"
 mit_batch_prex "module load netcdff/4.5.3--intelmpi--oneapi-2021--binary"
 mit_batch_prex "module load gsl/2.5--oneapi--2021.2.0-ifort"
+mit_batch_prex "module load profile/advanced"
+mit_batch_prex "module load jq/1.6--gcc--10.2.0"
 
 #mit_batch_prex "module list"
 mit_batch_prex "ulimit -s unlimited"
