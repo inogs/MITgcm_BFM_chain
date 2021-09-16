@@ -5,46 +5,49 @@
 	"domain_lat_max": 45.81640625,
 	"domain_lon_min": 12.22265625,
 	"domain_lon_max": 16.08203125,
+        "domain_depth_min": 0.0,
+        "domain_depth_max": 300.0,
 	"days_before": 7,
 	"days_after": 3,
 	"output_dir": "out_dir",
-	"motu_dir": "/galileo/home/usera07ogs/a07ogs00/MIT/V1-dev/HOST/galileo/bin/motuclient-python",
+	"motu_dir": "/g100/home/usera07ogs/a07ogs00/MIT/V1-dev/HOST/galileo/bin/motuclient-python",
 	"motu_server": "http://nrt.cmems-du.eu/motu-web/Motu",
 	"csw_catalog_url_template": "https://resources.marine.copernicus.eu/?option=com_csw&view=details&tab=info&product_id=%s&format=xml",
 	"services": [
 		{
-			"name": "MEDSEA_ANALYSIS_FORECAST_PHY_006_013",
+			"name": "MEDSEA_ANALYSISFORECAST_PHY_006_013",
 			"products": [
 				{
-					"name": "cur",
+					"name": "med-cmcc-cur-an-fc-d",
 					"variables": ["uo", "vo"]
 				},
 				{
-					"name": "sal",
+					"name": "med-cmcc-sal-an-fc-d",
 					"variables": ["so"]
 				},
 				{
-					"name": "tem",
+					"name": "med-cmcc-tem-an-fc-d",
 					"variables": ["thetao"]
 				}
 			]
 		},
 		{
-			"name": "MEDSEA_ANALYSIS_FORECAST_BIO_006_014",
+			"name": "MEDSEA_ANALYSISFORECAST_BGC_006_014",
 			"products": [
 				{
-					"name": "nut",
-					"variables": ["no3", "po4"]
+					"name": "med-ogs-nut-an-fc-d",
+					"variables": ["no3", "po4","nh4", "si"]
 				},
 				{
-					"name": "bio",
+					"name": "med-ogs-bio-an-fc-d",
 					"variables": ["o2"]
 				},
 				{
-					"name": "car",
-					"variables": ["dissic"]
+					"name": "med-ogs-car-an-fc-d",
+					"variables": ["dissic","talk"]
 				}
 			]
 		}
 	]
 }
+

@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
 
 # This script download a specific domain of a list of Copernicus products
 
@@ -8,20 +12,22 @@
 # - jq
 # - motuclient.py (https://pypi.org/project/motuclient/)
 
-declare -r VERSION="1.0";
+typeset -r VERSION="1.1";
 
-declare CONF_FILE;
-declare RUN_DATE;
-declare MOTU_DIR;
-declare -r MOTU_FILE="motuclient.py";  
-declare -r JQ="jq";
-declare OUTPUT_DIR;
+typeset -r PYTHON="python3";
 
-declare -f usage;
-declare -f getConfItem;
-declare -f printConfSkeleton;
+typeset CONF_FILE;
+typeset RUN_DATE;
+typeset MOTU_DIR;
+typeset -r MOTU_FILE="motuclient.py";
+typeset -r JQ="jq";
+typeset OUTPUT_DIR;
 
-usage() {
+typeset -f usage;
+typeset -f getConfItem;
+typeset -f printConfSkeleton;
+
+function usage {
 	echo -e -n "\n";
 	echo "NAME";
 	echo -e "\t$(basename $0) - Download a specific domain of a list of Copernicus products";
@@ -54,7 +60,7 @@ usage() {
 	echo -e -n "\n";
 }
 
-getConfItem() {
+function getConfItem {
 	RESULT=$(${JQ} --compact-output --raw-output --monochrome-output ".${1}" ${CONF_FILE});
 
 	if [ "${RESULT}" != "null" ]; then
@@ -64,7 +70,7 @@ getConfItem() {
 	fi
 }
 
-printConfSkeleton() {
+function printConfSkeleton {
 ${JQ} <<EOF
 {
 "motu_user": "username",
@@ -84,6 +90,11 @@ ${JQ} <<EOF
 "services": [{"name": "MEDSEA_ANALYSIS_FORECAST_PHY_006_013","products": [{"name": "cur","variables": ["uo", "vo"]},{"name": "sal","variables": ["so"]},{"name": "tem","variables": ["thetao"]}]},{"name": "MEDSEA_ANALYSIS_FORECAST_BIO_006_014","products": [{"name": "nut","variables": ["no3", "po4"]},{"name": "bio","variables": ["o2"]},{"name": "car","variables": ["dissic"]}]}]}
 EOF
 }
+
+function log_message {
+	echo "[$(date --rfc-3339=seconds)] $1";
+}
+
 
 # list of arguments expected in the input
 optstring="c:d:m:o:hvs"
@@ -158,26 +169,26 @@ if [ -z "${RUN_DATE}" ]; then
 	RUN_DATE=$(date +"%Y%m%d");
 fi
 
-declare -r MOTU_SERVER=$(getConfItem "motu_server");
-declare -r MOTU_USER=$(getConfItem "motu_user");
-declare -r MOTU_PWD=$(getConfItem "motu_password");
+typeset -r MOTU_SERVER=$(getConfItem "motu_server");
+typeset -r MOTU_USER=$(getConfItem "motu_user");
+typeset -r MOTU_PWD=$(getConfItem "motu_password");
 
-declare -r DOMAIN_LAT_MIN=$(getConfItem "domain_lat_min");
-declare -r DOMAIN_LAT_MAX=$(getConfItem "domain_lat_max");
-declare -r DOMAIN_LON_MIN=$(getConfItem "domain_lon_min");
-declare -r DOMAIN_LON_MAX=$(getConfItem "domain_lon_max");
-declare DOMAIN_DEPTH_MIN=$(getConfItem "domain_depth_min");
-declare DOMAIN_DEPTH_MAX=$(getConfItem "domain_depth_max");
+typeset -r DOMAIN_LAT_MIN=$(getConfItem "domain_lat_min");
+typeset -r DOMAIN_LAT_MAX=$(getConfItem "domain_lat_max");
+typeset -r DOMAIN_LON_MIN=$(getConfItem "domain_lon_min");
+typeset -r DOMAIN_LON_MAX=$(getConfItem "domain_lon_max");
+typeset DOMAIN_DEPTH_MIN=$(getConfItem "domain_depth_min");
+typeset DOMAIN_DEPTH_MAX=$(getConfItem "domain_depth_max");
 
-declare -i -r DAYS_BEFORE=$(getConfItem "days_before");
-declare -i -r DAYS_AFTER=$(getConfItem "days_after");
+typeset -i -r DAYS_BEFORE=$(getConfItem "days_before");
+typeset -i -r DAYS_AFTER=$(getConfItem "days_after");
 
-declare -r CSW_CATALOG_URL_TEMPLATE=$(getConfItem "csw_catalog_url_template");
+typeset -r CSW_CATALOG_URL_TEMPLATE=$(getConfItem "csw_catalog_url_template");
 
-declare TEMP_FILE;
+typeset TEMP_FILE;
 
-declare DOMAIN_DATE_MIN;
-declare DOMAIN_DATE_MAX;
+typeset DOMAIN_DATE_MIN;
+typeset DOMAIN_DATE_MAX;
 
 # compute start and end dates
 DOMAIN_DATE_MIN=$(date --date "${RUN_DATE} - ${DAYS_BEFORE} days" +"%F") || exit 2;
@@ -199,49 +210,34 @@ seq 0 $(($(getConfItem "services | length") - 1)) |\
 while read SERVICE_INDEX
 do
 	SERVICE=$(getConfItem "services[${SERVICE_INDEX}].name");
-	printf -v CSW_CATALOG_URL "${CSW_CATALOG_URL_TEMPLATE}" "${SERVICE}";
-
-	# download catalog file
-	curl \
-		--silent \
-		"${CSW_CATALOG_URL}" > ${TEMP_FILE};
 
 	# loop on product of the current service
 	getConfItem "services[${SERVICE_INDEX}].products[].name" |\
-	while read PRODUCT
+	while read PRODUCT_ID
 	do
-		# xpath query to identify product id
-		XPATH=$(cat <<EOF
-//*[local-name()='CI_OnlineResource' and child::*[local-name()='protocol'] and descendant::*[local-name()='CharacterString']/text() = 'MYO:MOTU-SUB']
-//*[local-name()='CharacterString' and contains(text(), "-${PRODUCT}-") and contains(text(), "-d") and substring-after(text(), "-d") = '' and parent::*[local-name()='name']]/text()
-EOF
-);
-
-		PRODUCT_ID=$(xmllint --xpath "${XPATH}" ${TEMP_FILE});
-
 		# get vars from configuration file
-		VAR_OPTS=$(getConfItem "services[${SERVICE_INDEX}].products[] | select (.name == \"${PRODUCT}\")  | .variables[] | walk(\"--variable \" + .)");
+		VAR_OPTS=$(getConfItem "services[${SERVICE_INDEX}].products[] | select (.name == \"${PRODUCT_ID}\")  | .variables[] | walk(\"--variable \" + .)" | tr '\n' ' ');
 
-		${MOTU_DIR}/${MOTU_FILE} \
-			--quiet \
-			--user="${MOTU_USER}" \
-			--pwd="${MOTU_PWD}" \
-			--motu="${MOTU_SERVER}" \
-			--service-id="${SERVICE}-TDS" \
-			--product-id="${PRODUCT_ID}" \
-			--date-min="${DOMAIN_DATE_MIN}" \
-			--date-max="${DOMAIN_DATE_MAX}" \
-			--latitude-min=${DOMAIN_LAT_MIN} \
-			--latitude-max=${DOMAIN_LAT_MAX} \
-			--longitude-min=${DOMAIN_LON_MIN} \
-			--longitude-max=${DOMAIN_LON_MAX} \
-			--depth-min=${DOMAIN_DEPTH_MIN} \
-			--depth-max=${DOMAIN_DEPTH_MAX} \
-			${VAR_OPTS} \
-			--out-dir="${OUTPUT_DIR}" \
-			--out-name="${PRODUCT_ID}-${RUN_DATE}.nc" \
-		;
+		mit_prex "${PYTHON} ${MOTU_DIR}/${MOTU_FILE} \
+--quiet \
+--user=${MOTU_USER} \
+--pwd=${MOTU_PWD} \
+--motu=${MOTU_SERVER} \
+--service-id=${SERVICE}-TDS \
+--product-id=${PRODUCT_ID} \
+--date-min=${DOMAIN_DATE_MIN} \
+--date-max=${DOMAIN_DATE_MAX} \
+--latitude-min=${DOMAIN_LAT_MIN} \
+--latitude-max=${DOMAIN_LAT_MAX} \
+--longitude-min=${DOMAIN_LON_MIN} \
+--longitude-max=${DOMAIN_LON_MAX} \
+--depth-min=${DOMAIN_DEPTH_MIN} \
+--depth-max=${DOMAIN_DEPTH_MAX} \
+${VAR_OPTS} \
+--out-dir=${OUTPUT_DIR} \
+--out-name=${PRODUCT_ID}-${RUN_DATE}.nc"
+
 	done
 done
 
-exit 0;
+exit 0
