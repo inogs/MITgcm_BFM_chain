@@ -10,19 +10,14 @@ mit_set_run
 mit_start
 mit_prex "source $MIT_VENV_1/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
-
+#mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR"
 typeset -i exit_code=0
 
     DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
     DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
-OPA_RUNDATE_A=$( date -d "last tuesday" +%Y%m%d )
-       DATE_W=$( date -d "${OPA_RUNDATE_A} - 5 days +  12  hours " +%Y%m%d-%H:%M:%S )
 
 
 
-OPA_ARCDIR_ROOT=/g100_work/OGS_prod100/OPA/V7C/prod/archive/
-
-       ARCHIVE_AVE_W=$OPA_ARCDIR_ROOT/analysis/$OPA_RUNDATE_A/POSTPROC/AVE_FREQ_2
        AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/DAILY
       AVE_WEEKLY_DIR=$MIT_WRKDIR/BC_IC/BIO/UNZIPPED/AVE/WEEKLY
 AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
@@ -40,9 +35,10 @@ AVE_DAILY_ZIPPED_DIR=$MIT_WRKDIR/BC_IC/BIO/ZIPPED/AVE/DAILY
       TIMELIST_START=$MIT_WRKDIR/t0.txt
          TIMES_DAILY=$MIT_WRKDIR/daily.txt
 
-            MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc    # to be generated
-      MASK_OGSTM_RED=$MIT_WRKDIR/BC_IC/mask_ogstm_reduced.nc
-
+            MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc              # to be generated
+        MASK_006_014=$MIT_WRKDIR/BC_IC/meshmask_006_014.nc  # to be generated
+    MASK_006_014_RED=$MIT_WRKDIR/BC_IC/mask_006_014_reduced.nc
+       PRODUCT_TABLE=$MIT_WRKDIR/BC_IC/product_table.txt
           MODEL_VARS=$MIT_WRKDIR/ogstm_state_vars.txt
 
            RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_N2.xlsx
@@ -55,67 +51,54 @@ echo ${MIT_OUTPUT_VARIABLES} | sed --regexp-extended -e 's/ +/ /g' | tr ' ' '\n'
 for D in $(mit_days); do echo "$D-12:00:00" ; done > $TIMES_DAILY
 
 MPI="mpirun -np 36 "
-MPI_1="mpirun -np 1"
 
 
-cd $AVE_DAILY_ZIPPED_DIR
-for D in `mit_days `; do
-  ARCHIVE_DIR=`python $MIT_BITSEA/validation/online/V7C_archive_info.py -d $D --dir`
-  mit_prex_or_die "mit_linker $OPA_ARCDIR_ROOT/$ARCHIVE_DIR/POSTPROC/AVE_FREQ_1/ARCHIVE/ave.${D}-12:00:00.*.nc.gz "
-done
-
-
-cd $MIT_WRKDIR
-# Parallel uncompressing of OPA_HIGH_FREQ_VARIABLES
-for var in  N O[23][ohc] P[1-4][lc] Z R6c B1c; do
-   mit_prex_or_die "mpirun -np 24 python $MIT_POSTPROCDIR/archive/uncompress.py -i $AVE_DAILY_ZIPPED_DIR    -o $AVE_DAILY_DIR  -l ave*${var}*.nc.gz "
-done
-
-# Parallel uncompressing of all weekly vars
-mit_prex_or_die "mpirun -np 24 python $MIT_POSTPROCDIR/archive/uncompress.py -i $ARCHIVE_AVE_W  -o $AVE_WEEKLY_DIR -l *gz "
 
 # completes AVE_DAILY_DIR generation
 for var in $OPA_LOW__FREQ_VARIABLES ; do
    mit_prex_or_die "mit_weekly_linker $AVE_WEEKLY_DIR/ave.${DATE_W}.${var}.nc $AVE_DAILY_DIR "
 done
 
-# questo crea gli ave.yyyymmdd-00:00:00.var.nc non mi ricordo se è utile
-#for var in $OPA_HIGH_FREQ_VARIABLES ; do
-#	prex_or_die "ln -fs $AVE_DAILY_DIR/ave.${DATESTART:0:8}-12:00:00.${var}.nc ${AVE_DAILY_DIR}/ave.${DATESTART}.${var}.nc "
-#done
-
-####### link phys  ###########################
-for D in `mit_days `; do
-  ARCHIVE_PHYS_PREFIX=`python ${MIT_BITSEA}/validation/online/V7C_archive_info.py -d $D --phys `
-  for var in U V T ; do
-    phys_file=$OPA_ARCDIR_ROOT/${ARCHIVE_PHYS_PREFIX}${var}.nc
-    filename=${D}_${var}.nc  # 20200510_U.nc
-    mit_prex_or_die "ln -fs $phys_file $PHYS_DIR/$filename"
-  done
-done
-##################################################################
-
-
 
 ### Step 0.  GET MASK INFO  #####################################
 
 BATHY=$MIT_WRKDIR/BC_IC/bathy.bin
 mit_prex_or_die "gzip -dc $MIT_ETCDIR/static-data/ADRI_128/bathy.gz > $BATHY"
-mit_prex_or_die "$MPI_1 python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/maskgen.py -b $BATHY -o $MASKFILE"
 
-MASK__PHYS="$HOME/OPA/V7C/etc/static-data/MED24_141/meshmask.nc"
-MASK_OGSTM="$HOME/OPA/V7C/etc/static-data/MED24_125/meshmask.nc"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/maskgen_006_014.py -i $MIT_WRKDIR/MARINE_COPERNICUS -o $MASK_006_014"
 
-mit_prex_or_die "$MPI_1 python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK__PHYS -f $MASKFILE | grep -v I_MPI_PMI_LIBRARY > $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
-mit_prex_or_die "$MPI_1 python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_OGSTM -f $MASKFILE | grep -v I_MPI_PMI_LIBRARY > $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh "
-
-mit_prex_or_die "chmod 744 $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_006_014 -f $MASKFILE             > $MIT_WRKDIR/BC_IC/set_cut_indexes_006_014_vs_local.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_006_014_RED -f $MASK_006_014_RED > $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh "
+mit_prex_or_die "chmod 744 $MIT_WRKDIR/BC_IC/set_cut_indexes_006_014_vs_local.sh $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh"
 
 # getting OGSTM mask reduced on local
-#mit_prex_or_die ". $MIT_BC_IC_FROM_OGSTM_DIR/nco_indexer.sh $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
-mit_prex_or_die ". $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
-mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1)) $MASK_OGSTM -O $MASK_OGSTM_RED"
+INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
+mit_prex_or_die ". $MIT_WRKDIR/BC_IC/set_cut_indexes_006_014_vs_local.sh"
+mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1)) $MASK_006_014 -O $MASK_006_014_RED"
 ##################################################################
+
+
+### Step 1.  FROM PRODUCTS TO AVE CUTTED #########################
+
+jq '.services[].products[] | .name as $name | .variables[] | $name + " " + .' $JSON | cut -d "\"" -f 2 > $PRODUCT_TABLE
+
+
+grep cmcc $PRODUCT_TABLE | while read dataset var ; do
+   INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
+   medmit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $PHYS_DIR -m $MASK_006_014_RED"
+done
+
+OUTPUTDIR=/g100_scratch/userexternal/gbolzon0/MIT_CHAIN/AVE/BIO
+
+grep ogs $PRODUCT_TABLE | while read dataset var ; do
+   INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
+   medmit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $OUTPUTDIR -m $MASK_006_014_RED"
+done
+
+
+##################################################################
+
 
 
 ### Step 2. INITIAL CONDITIONS ###################################
@@ -129,16 +112,15 @@ for I in `ls $PHYS_DIR/*${DATESTART}* ` ; do
    mit_prex_or_die " ln -fs $I $START_PHYS/$filename "
 done
 
-mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
-mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $START_PHYS -o $PHYSCUT_IC_DIR -c '$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1))'"
-mit_prex_or_die "mpirun -np 4 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_OGSTM_RED  -i $PHYSCUT_IC_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
+
+mit_prex_or_die "mpirun -np 4 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED  -i $PHYSCUT_IC_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
 
 
 ## bio ##
 
 mit_prex_or_die ". $MIT_WRKDIR/BC_IC/set_cut_indexes_OGSTM_vs_local.sh"
 ### here ogstm_cutter.py is not parallel because it works in parallel in timelist
-mit_prex_or_die "$MPI_1  python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_N -i $AVE_DAILY_DIR  --datatype ave -o $BIOCUT_IC_DIR -v $MODEL_VARS -t $TIMELIST_START -m $MASK_OGSTM"
+mit_prex_or_die "mpirun -np 1  python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_N -i $AVE_DAILY_DIR  --datatype ave -o $BIOCUT_IC_DIR -v $MODEL_VARS -t $TIMELIST_START -m $MASK_OGSTM"
 mit_prex_or_die "mpirun -np 10 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_OGSTM_RED -i $BIOCUT_IC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
 
 ##################################################################
@@ -147,7 +129,7 @@ mit_prex_or_die "mpirun -np 10 python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py 
 ### Step 4. BOUNDARY CONDITIONS ##################################
 
 ## phys ##
-mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_PHYS_vs_local.sh "
+mit_prex_or_die " . $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh "
 mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $PHYS_DIR -o $PHYSCUT_BC_DIR/SOUTH  -c '${MIT_BINDIR}/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_S+1)) ' "
 
 mit_prex_or_die " $MPI_1 python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s E -o $PHYS_BC_DIR"
