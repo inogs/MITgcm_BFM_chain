@@ -24,6 +24,16 @@ mit_step_has_phase pre GET && {
 }
 
 
+### PHASE A1
+mit_step_has_phase pre A1 && {
+  mit_exec_and_log mit_preproc__phase_A1        || errors=$(( $errors + 1 ))
+}
+
+### PHASE A2
+mit_step_has_phase pre A2 && {
+  mit_exec_and_log mit_preproc__phase_A2        || errors=$(( $errors + 1 ))
+}
+
 
 
 mit_exit "$errors"

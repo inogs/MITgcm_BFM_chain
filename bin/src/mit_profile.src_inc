@@ -358,10 +358,10 @@ MIT_CHECK_HOURS_OFFSET=3				# number of hours for mit_check_run after run submis
 
 export LD_LIBRARY_PATH="${MIT_LIBDIR}:${LD_LIBRARY_PATH}"
 
-MIT_ENABLE_PRE_PHASES="${RT_MIT_ENABLE_PRE_PHASES:- SETUP GET A1 A2 A4}"	# List of phases in step pre
+MIT_ENABLE_PRE_PHASES="${RT_MIT_ENABLE_PRE_PHASES:- SETUP GET A1 A2 }"	# List of phases in step pre
 MIT_DISABLE_PRE_PHASES="${RT_MIT_DISABLE_PRE_PHASES}"			# List of phases in step pre
 
-MIT_ENABLE_MODEL_PHASES="${RT_MIT_ENABLE_MODEL_PHASES:- B1 B2 B3 C1}"	# List of phases in step model
+MIT_ENABLE_MODEL_PHASES="${RT_MIT_ENABLE_MODEL_PHASES:- B1 B2 C1}"	# List of phases in step model
 MIT_DISABLE_MODEL_PHASES="${RT_MIT_DISABLE_MODEL_PHASES}"		# List of phases in step model
 
 MIT_ENABLE_POST_PHASES="${RT_MIT_ENABLE_POST_PHASES:- PUT_INGV PUT_CMCC C1 C3 C4 PUT_SALON}"	# List of phases in step post
