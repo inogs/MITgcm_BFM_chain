@@ -32,10 +32,9 @@ DOWNTIMELISTFILE=$METEODIR/to_download_timelist.txt
 mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR "
 
 # download Arso files
-mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END -d \"days = 1 \" > $DOWNTIMELISTFILE "
+mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END --days 1 --dateformat %Y%m%d " > $DOWNTIMELISTFILE "
 CONFIG_FILE=$MIT_ETCDIR/nc-config/.aladin.ncconfig
-for I in `cat $DOWNTIMELISTFILE`; do
-  YYYYMMDD=${I:0:8}
+for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
   FILENAME=asogsasc_${YYYYMMDD}00.tar.gz
   mit_prex_or_die "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $LOCALDIR /ALADIN_SI/$FILENAME"
 done
