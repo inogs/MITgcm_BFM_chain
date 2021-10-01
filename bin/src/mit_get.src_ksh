@@ -46,6 +46,9 @@ done
 
 # download Copernicus and dsecho data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
-mit_prex_or_die "@@(I:MIT_HOME)/bin/motu_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR} -m ${MIT_BINDIR}/motuclient-python";
+mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR} -m ${MIT_BINDIR}/motuclient-python"
+
+mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
+
 
 mit_exit "$errors"

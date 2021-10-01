@@ -9,10 +9,7 @@
         "domain_depth_max": 300.0,
 	"days_before": 7,
 	"days_after": 3,
-	"output_dir": "out_dir",
-	"motu_dir": "/g100/home/usera07ogs/a07ogs00/MIT/V1-dev/HOST/galileo/bin/motuclient-python",
 	"motu_server": "http://nrt.cmems-du.eu/motu-web/Motu",
-	"csw_catalog_url_template": "https://resources.marine.copernicus.eu/?option=com_csw&view=details&tab=info&product_id=%s&format=xml",
 	"services": [
 		{
 			"name": "MEDSEA_ANALYSISFORECAST_PHY_006_013",
