@@ -4,7 +4,8 @@
 . @@(I:MIT_HOME)/bin/mit_profile.inc
 
 
-# This script downloads a specific domain state variables on dsecho.inogs.it
+# This script downloads a for specific domain all the bfm state variables from dsecho.inogs.it
+# it dumps in output dir 51 files like N1p.nc, N3n.nc ...
 
 # It needs the following software to be installed:
 # - curl
@@ -15,8 +16,6 @@ typeset -r VERSION="1.1";
 
 
 typeset CONF_FILE;
-
-
 typeset -r JQ="jq";
 typeset OUTPUT_DIR;
 
@@ -36,11 +35,6 @@ function getConfItem {
 	fi
 }
 
-
-
-function log_message {
-	echo "[$(date --rfc-3339=seconds)] $1";
-}
 
 
 # list of arguments expected in the input
@@ -84,7 +78,6 @@ fi
 
 
 
-
 # check output directory
 if [ -z "${OUTPUT_DIR}" ]; then
 	OUTPUT_DIR=$(getConfItem "output_dir");
@@ -95,11 +88,6 @@ if [ ! -d "${OUTPUT_DIR}" ]; then
 	exit 5;
 fi
 
-# check rundate
-# if missing uses current date
-if [ -z "${RUN_DATE}" ]; then
-	RUN_DATE=$(date +"%Y%m%d");
-fi
 
 
 typeset -r DOMAIN_LAT_MIN=$(getConfItem "domain_lat_min");

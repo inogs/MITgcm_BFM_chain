@@ -44,10 +44,11 @@ for filename in MED_MFC_006_014_coordinates.nc MED_MFC_006_014_mask_bathy.nc; do
    mit_prex_or_die "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $COPERNICUSDIR ${REMOTEDIR}/${filename}"
 done
 
-# download Copernicus and dsecho data
+# download Copernicus data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
 mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR} -m ${MIT_BINDIR}/motuclient-python"
 
+# download dsecho data
 mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
 
 

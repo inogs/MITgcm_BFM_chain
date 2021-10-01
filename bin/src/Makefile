@@ -59,7 +59,8 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_domain_decomposition.ksh			\
 		mit_is_login_node.ksh				\
 		mit_check_remote_cron.ksh			\
-                motu_downloader.ksh                             \
+        mit_cmems_downloader.ksh             \
+        mit_clim_downlaoder.ksh
  
 
 
@@ -134,28 +135,4 @@ clean:		check
 			$(COMPILER) $< $@
 			chmod $(COMP_INCMOD) $@
 			chmod $(SRC_INCMOD) $<
-
-odd:			odd.src_py
-			-@[[ -f $@ ]] && chmod u+w $@ 2>/dev/null || return 0
-			$(COMPILER) odd.src_py $@
-			chmod $(COMP_PYMOD) $@
-			chmod $(SRC_PYMOD) odd.src_py
-
-odd_verify:		odd_verify.src_py
-			-@[[ -f $@ ]] && chmod u+w $@ 2>/dev/null || return 0
-			$(COMPILER) odd_verify.src_py $@
-			chmod $(COMP_PYMOD) $@
-			chmod $(SRC_PYMOD) odd_verify.src_py
-
-odd_compare:		odd_compare.src_py
-			-@[[ -f $@ ]] && chmod u+w $@ 2>/dev/null || return 0
-			$(COMPILER) odd_compare.src_py $@
-			chmod $(COMP_PYMOD) $@
-			chmod $(SRC_PYMOD) odd_compare.src_py
-
-odd_guess_alpha:	odd_guess_alpha.src_py
-			-@[[ -f $@ ]] && chmod u+w $@ 2>/dev/null || return 0
-			$(COMPILER) odd_guess_alpha.src_py $@
-			chmod $(COMP_PYMOD) $@
-			chmod $(SRC_PYMOD) odd_guess_alpha.src_py
 

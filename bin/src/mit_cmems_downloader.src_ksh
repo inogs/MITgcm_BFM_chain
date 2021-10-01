@@ -4,7 +4,8 @@
 . @@(I:MIT_HOME)/bin/mit_profile.inc
 
 
-# This script download a specific domain of a list of Copernicus products
+# This script downloads a specific domain of a list of Copernicus products
+# it dumps in output dir files like med-cmcc-cur-an-fc-d-20210916.nc
 
 # It needs the following software to be installed:
 # - curl
@@ -242,14 +243,4 @@ done
 
 
 
-for var in ${MIT_OUTPUT_VARIABLES} ; do
-   filename=https://dsecho.inogs.it/thredds/ncss/grid/echo_models/reanalysis24_CMEMS/clim_annually/clim_annually_${var}.nc
-   box="north=${DOMAIN_LAT_MAX}&west=${DOMAIN_LON_MIN}&east=${DOMAIN_LON_MAX}&south=${DOMAIN_LAT_MIN}"   # &vertCoord=${DOMAIN_DEPTH_MAX}"
-   url="${filename}?${box}&var=${var}&horizStride=1&time_start=1970-01-01T00:00:00Z&time_end=1970-01-01T00:00:00Z&timeStride=1&vertCoord=&accept=netcdf3"
-
-   outfile=${OUTPUT_DIR}/${var}.nc
-   mit_prex "curl -o $outfile \"${url}\" "
-
-
-done
 mit_exit 0
