@@ -18,13 +18,11 @@ typeset -i exit_code=0
 
 
 
-   AVE_DAILY_CLIM_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_CLIM
-   AVE_DAILY_PROD_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_PROD
-        AVE_DAILY_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY
+  DAILY_BGC_CLIM_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_CLIM
+  DAILY_BGC_PROD_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_PROD
+       DAILY_BGC_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY
             PHYS_DIR=$MIT_WRKDIR/BC_IC/PHYS/
-          START_PHYS=$MIT_WRKDIR/BC_IC/PHYS/IC
           PHYSIC_DIR=$MIT_WRKDIR/BC_IC/IC/PHYS
-       BIOCUT_IC_DIR=$MIT_WRKDIR/BC_IC/BIO/IC/CUT_3D
           BIO_IC_DIR=$MIT_WRKDIR/BC_IC/IC/BIO
       PHYSCUT_BC_DIR=${MIT_WRKDIR}/PHYS/CUTTED_SLICES
          PHYS_BC_DIR=${MIT_WRKDIR}/BC/PHYS
@@ -38,7 +36,7 @@ typeset -i exit_code=0
         MASK_006_014=$MIT_WRKDIR/BC_IC/meshmask_006_014.nc  # to be generated
     MASK_006_014_RED=$MIT_WRKDIR/BC_IC/mask_006_014_reduced.nc
        PRODUCT_TABLE=$MIT_WRKDIR/BC_IC/product_table.txt
-          MODEL_VARS=$MIT_WRKDIR/ogstm_state_vars.txt
+          MODEL_VARS=$MIT_WRKDIR/bfm_state_vars.txt
 
            RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_N2.xlsx
        RIVERMETEODIR=$MIT_WRKDIR
@@ -50,10 +48,10 @@ echo ${MIT_OUTPUT_VARIABLES} | sed --regexp-extended -e 's/ +/ /g' | tr ' ' '\n'
 for D in $(mit_days); do echo "$D-12:00:00" ; done > $TIMES_DAILY
 
 
-mkdir -p $AVE_DAILY_CLIM_DIR $AVE_DAILY_PROD_DIR $AVE_DAILY_DIR
+mkdir -p $DAILY_BGC_CLIM_DIR $DAILY_BGC_PROD_DIR $DAILY_BGC_DIR
 
 for var in $MIT_OUTPUT_VARIABLES ; do
-   mit_prex_or_die "mit_climatologies_linker $MIT_WRKDIR/MARINE_COPERNICUS/${var}.nc $AVE_DAILY_CLIM_DIR "
+   mit_prex_or_die "mit_climatologies_linker $MIT_WRKDIR/MARINE_COPERNICUS/${var}.nc $DAILY_BGC_CLIM_DIR "
 done
 
 
@@ -82,19 +80,19 @@ jq '.services[].products[] | .name as $name | .variables[] | $name + " " + .' $J
 
 grep cmcc $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
-   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $PHYS_DIR -m $MASK_006_014_RED"
+   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_PHYS_DIR -m $MASK_006_014_RED"
 done
 
 
 grep ogs $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
-   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $AVE_DAILY_PROD_DIR -m $MASK_006_014_RED"
+   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_BGC_PROD_DIR -m $MASK_006_014_RED"
 done
 
 # gathering all ave files in AVE_DAILY_DIR
-cd $AVE_DAILY_DIR
-for I in `ls ${AVE_DAILY_CLIM_DIR}/*nc `; do ln -fs $I ; done
-for I in `ls ${AVE_DAILY_PROD_DIR}/*nc `; do ln -fs $I ; done
+cd $DAILY_BGC_DIR
+for I in `ls ${DAILY_BGC_CLIM_DIR}/*nc `; do ln -fs $I ; done
+for I in `ls ${DAILY_BGC_PROD_DIR}/*nc `; do ln -fs $I ; done
 
 
 ##################################################################
@@ -108,7 +106,7 @@ echo "${DATESTART}-12:00:00" > $TIMELIST_START
 #phys
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED  -i $PHYS_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
 ## bio ##
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED -i $AVE_DAILY_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED -i $DAILY_BGC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
 
 ##################################################################
 
@@ -127,7 +125,7 @@ mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIME
 ## bio ##
 
 # South Boundary
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_S -i $AVE_DAILY_DIR --datatype ave -o ${BIOCUT_BC_DIR}/SOUTH -v $MODEL_VARS -t $TIMES_DAILY -m $MASK_006_014_RED"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_S -i $DAILY_BGC_DIR --datatype ave -o ${BIOCUT_BC_DIR}/SOUTH -v $MODEL_VARS -t $TIMES_DAILY -m $MASK_006_014_RED"
 
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s N -o $BIO_BC_DIR"
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s E -o $BIO_BC_DIR"
