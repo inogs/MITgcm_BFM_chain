@@ -11,6 +11,16 @@ mit_start
 
 typeset -i errors=0
 
+### PHASE A1
+mit_step_has_phase pre A1 && {
+  mit_exec_and_log mit_preproc__phase_A1        || errors=$(( $errors + 1 ))
+}
+
+### PHASE A2
+mit_step_has_phase pre A2 && {
+  mit_exec_and_log mit_preproc__phase_A2        || errors=$(( $errors + 1 ))
+}
+
 
 # ### Setup of namelists and initial conditions
 mit_step_has_phase model B1 && {
