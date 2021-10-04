@@ -37,10 +37,10 @@ cp $COUPLERDIR/BFMcoupler*.F $MYCODE
 cp $COUPLERDIR/BFMcoupler*.h $MYCODE
 
 cd $COUPLERDIR
-python passivetrc_reducer_8chars.py -i $BFMDIR/build/tmp/OGS_PELAGIC/namelist.passivetrc -o $NAMELISTS/namelist.passivetrc
+python2 passivetrc_reducer_8chars.py -i $BFMDIR/build/tmp/OGS_PELAGIC/namelist.passivetrc -o $NAMELISTS/namelist.passivetrc
 
-python bfm_config_gen.py -i $NAMELISTS/namelist.passivetrc --type code     -o $MYCODE
-python bfm_config_gen.py -i $NAMELISTS/namelist.passivetrc --type namelist -o $NAMELISTS
+python2 bfm_config_gen.py -i $NAMELISTS/namelist.passivetrc --type code     -o $MYCODE
+python2 bfm_config_gen.py -i $NAMELISTS/namelist.passivetrc --type namelist -o $NAMELISTS
 
-python diff_apply.py -i $MITGCM_ROOT  -o $MYCODE
+python2 diff_apply.py -i $MITGCM_ROOT  -o $MYCODE
 
