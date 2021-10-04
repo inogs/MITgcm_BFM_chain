@@ -60,7 +60,7 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_is_login_node.ksh				\
 		mit_check_remote_cron.ksh			\
         mit_cmems_downloader.ksh             \
-        mit_clim_downlaoder.ksh
+        mit_clim_downloader.ksh              \
  
 
 
