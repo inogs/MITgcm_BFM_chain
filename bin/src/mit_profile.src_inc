@@ -42,7 +42,7 @@ for (( days=0; days<$MIT_DAYS ; days++ )) ; do
 done
 }
 
-function mit_weekly_linker {
+function mit_climatologies_linker {
 
 sourcefile=$1
 typeset AVE_DAILY_DIR=$2
