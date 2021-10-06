@@ -21,7 +21,7 @@ typeset -i exit_code=0
   DAILY_BGC_CLIM_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_CLIM
   DAILY_BGC_PROD_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY_FROM_PROD
        DAILY_BGC_DIR=$MIT_WRKDIR/BC_IC/BIO/AVE/DAILY
-            PHYS_DIR=$MIT_WRKDIR/BC_IC/PHYS/
+      DAILY_PHYS_DIR=$MIT_WRKDIR/BC_IC/PHYS/
           PHYSIC_DIR=$MIT_WRKDIR/BC_IC/IC/PHYS
           BIO_IC_DIR=$MIT_WRKDIR/BC_IC/IC/BIO
       PHYSCUT_BC_DIR=${MIT_WRKDIR}/PHYS/CUTTED_SLICES
@@ -104,7 +104,7 @@ for I in `ls ${DAILY_BGC_PROD_DIR}/*nc `; do ln -fs $I ; done
 echo "${DATESTART}-12:00:00" > $TIMELIST_START
 
 #phys
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED  -i $PHYS_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED  -i $DAILY_PHYS_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
 ## bio ##
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED -i $DAILY_BGC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
 
@@ -115,7 +115,7 @@ mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE -
 
 ## phys ##
 source $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh
-mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $PHYS_DIR -o $PHYSCUT_BC_DIR/SOUTH  -c '${MIT_BINDIR}/ncks -F -d longitude,$((Index_W+1)),$((Index_E+1)) -d latitude,$((Index_S+1)),$((Index_S+1)) ' "
+mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $DAILY_PHYS_DIR -o $PHYSCUT_BC_DIR/SOUTH  -c '${MIT_BINDIR}/ncks -F -d longitude,$((Index_W+1)),$((Index_E+1)) -d latitude,$((Index_S+1)),$((Index_S+1)) ' "
 
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s E -o $PHYS_BC_DIR"
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s N -o $PHYS_BC_DIR"
