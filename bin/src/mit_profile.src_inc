@@ -33,7 +33,7 @@ case "$MIT_VERSION" in
 esac
 
 
-MIT_DAYS=12
+MIT_DAYS=11
 
 function mit_days {
 
@@ -45,7 +45,7 @@ done
 function mit_weekly_linker {
 
 sourcefile=$1
-AVE_DAILY_DIR=$2
+typeset AVE_DAILY_DIR=$2
 var=${sourcefile:${#sourcefile}-6:3}
 
 
