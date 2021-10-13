@@ -1,0 +1,512 @@
+# Diagnostic Package Choices
+#--------------------
+#  dumpAtLast (logical): always write output at the end of simulation (default=F)
+#  diag_mnc   (logical): write to NetCDF files (default=useMNC)
+#--for each output-stream:
+#  fileName(n) : prefix of the output file name (max 80c long) for outp.stream n
+#  frequency(n):< 0 : write snap-shot output every |frequency| seconds
+#               > 0 : write time-average output every frequency seconds
+#  timePhase(n)     : write at time = timePhase + multiple of |frequency|
+#    averagingFreq  : frequency (in s) for periodic averaging interval
+#    averagingPhase : phase     (in s) for periodic averaging interval
+#    repeatCycle    : number of averaging intervals in 1 cycle
+#  levels(:,n) : list of levels to write to file (Notes: declared as REAL)
+#                when this entry is missing, select all common levels of this list
+#  fields(:,n) : list of selected diagnostics fields (8.c) in outp.stream n
+#                (see "available_diagnostics.log" file for the full list of diags)
+#  missing_value(n) : missing value for real-type fields in output file "n"
+#  fileFlags(n)     : specific code (8c string) for output file "n"
+#--------------------
+ &DIAGNOSTICS_LIST
+# diag_mnc     = .FALSE.,
+# dumpAtLast   = .TRUE.,
+ fields(1,1)  = 'ETAN',
+ fileName(1)  = 'Eta',
+ frequency(1) = 3600,
+# timePhase(1) = 0,
+#
+ fields(1,2)  = 'THETA',
+ fileName(2)  = 'T',
+ frequency(2) = 3600,
+# timePhase(2) = 0,
+#
+ fields(1,3)  = 'SALT',
+ fileName(3)  = 'S',
+ frequency(3) = 3600,
+# timePhase(3) = 0,
+#
+ fields(1,4)  = 'UE_VEL_C',
+ fileName(4)  = 'U',
+ frequency(4) = 3600,
+# timePhase(4) = 0,
+#
+ fields(1,5)  = 'VN_VEL_C',
+ fileName(5)  = 'V',
+ frequency(5) = 3600,
+# timePhase(5) = 0,
+#
+ fields(1,6)  = 'WVEL',
+ fileName(6)  = 'W',
+ frequency(6) = 3600,
+# timePhase(6) = 0,
+#
+ fields(1,7)  = 'RHOAnoma',
+ fileName(7)  = 'RHOAnoma',
+ frequency(7) = 86400,
+# timePhase(7) = 0,
+#
+ fields(1,8)  = 'MXLDEPTH',
+ fileName(8)  = 'mld',
+ frequency(8) = 86400,
+# timePhase(8) = 0,
+#
+ fields(1,9)  = 'TRAC01',
+ fileName(9)  = 'O2o',
+ frequency(9) = 3600,
+# timePhase(9) = 0,
+#
+ fields(1,10)  = 'TRAC02',
+ fileName(10)  = 'N1p',
+ frequency(10) = 3600,
+# timePhase(10) = 0,
+#
+ fields(1,11)  = 'TRAC03',
+ fileName(11)  = 'N3n',
+ frequency(11) = 3600,
+# timePhase(11) = 0,
+#
+ fields(1,12)  = 'TRAC04',
+ fileName(12)  = 'N4n',
+ frequency(12) = 3600,
+# timePhase(12) = 0,
+#
+ fields(1,13)  = 'TRAC05',
+ fileName(13)  = 'O4n',
+ frequency(13) = 86400,
+# timePhase(13) = 0,
+#
+ fields(1,14)  = 'TRAC06',
+ fileName(14)  = 'N5s',
+ frequency(14) = 3600,
+# timePhase(14) = 0,
+#
+ fields(1,15)  = 'TRAC07',
+ fileName(15)  = 'N6r',
+ frequency(15) = 86400,
+# timePhase(15) = 0,
+#
+ fields(1,16)  = 'TRAC08',
+ fileName(16)  = 'B1c',
+ frequency(16) = 86400,
+# timePhase(16) = 0,
+#
+ fields(1,17)  = 'TRAC09',
+ fileName(17)  = 'B1n',
+ frequency(17) = 86400,
+# timePhase(17) = 0,
+#
+ fields(1,18)  = 'TRAC10',
+ fileName(18)  = 'B1p',
+ frequency(18) = 86400,
+# timePhase(18) = 0,
+#
+ fields(1,19)  = 'TRAC11',
+ fileName(19)  = 'P1c',
+ frequency(19) = 3600,
+# timePhase(19) = 0,
+#
+ fields(1,20)  = 'TRAC12',
+ fileName(20)  = 'P1n',
+ frequency(20) = 86400,
+# timePhase(20) = 0,
+#
+ fields(1,21)  = 'TRAC13',
+ fileName(21)  = 'P1p',
+ frequency(21) = 86400,
+# timePhase(21) = 0,
+#
+ fields(1,22)  = 'TRAC14',
+ fileName(22)  = 'P1l',
+ frequency(22) = 3600,
+# timePhase(22) = 0,
+#
+ fields(1,23)  = 'TRAC15',
+ fileName(23)  = 'P1s',
+ frequency(23) = 86400,
+# timePhase(23) = 0,
+#
+ fields(1,24)  = 'TRAC16',
+ fileName(24)  = 'P2c',
+ frequency(24) = 3600,
+# timePhase(24) = 0,
+#
+ fields(1,25)  = 'TRAC17',
+ fileName(25)  = 'P2n',
+ frequency(25) = 86400,
+# timePhase(25) = 0,
+#
+ fields(1,26)  = 'TRAC18',
+ fileName(26)  = 'P2p',
+ frequency(26) = 86400,
+# timePhase(26) = 0,
+#
+ fields(1,27)  = 'TRAC19',
+ fileName(27)  = 'P2l',
+ frequency(27) = 3600,
+# timePhase(27) = 0,
+#
+ fields(1,28)  = 'TRAC20',
+ fileName(28)  = 'P3c',
+ frequency(28) = 3600,
+# timePhase(28) = 0,
+#
+ fields(1,29)  = 'TRAC21',
+ fileName(29)  = 'P3n',
+ frequency(29) = 86400,
+# timePhase(29) = 0,
+#
+ fields(1,30)  = 'TRAC22',
+ fileName(30)  = 'P3p',
+ frequency(30) = 86400,
+# timePhase(30) = 0,
+#
+ fields(1,31)  = 'TRAC23',
+ fileName(31)  = 'P3l',
+ frequency(31) = 3600,
+# timePhase(31) = 0,
+#
+ fields(1,32)  = 'TRAC24',
+ fileName(32)  = 'P4c',
+ frequency(32) = 3600,
+# timePhase(32) = 0,
+#
+ fields(1,33)  = 'TRAC25',
+ fileName(33)  = 'P4n',
+ frequency(33) = 86400,
+# timePhase(33) = 0,
+#
+ fields(1,34)  = 'TRAC26',
+ fileName(34)  = 'P4p',
+ frequency(34) = 86400,
+# timePhase(34) = 0,
+#
+ fields(1,35)  = 'TRAC27',
+ fileName(35)  = 'P4l',
+ frequency(35) = 3600,
+# timePhase(35) = 0,
+#
+ fields(1,36)  = 'TRAC28',
+ fileName(36)  = 'Z3c',
+ frequency(36) = 3600,
+# timePhase(36) = 0,
+#
+ fields(1,37)  = 'TRAC29',
+ fileName(37)  = 'Z3n',
+ frequency(37) = 86400,
+# timePhase(37) = 0,
+#
+ fields(1,38)  = 'TRAC30',
+ fileName(38)  = 'Z3p',
+ frequency(38) = 86400,
+# timePhase(38) = 0,
+#
+ fields(1,39)  = 'TRAC31',
+ fileName(39)  = 'Z4c',
+ frequency(39) = 3600,
+# timePhase(39) = 0,
+#
+ fields(1,40)  = 'TRAC32',
+ fileName(40)  = 'Z4n',
+ frequency(40) = 86400,
+# timePhase(40) = 0,
+#
+ fields(1,41)  = 'TRAC33',
+ fileName(41)  = 'Z4p',
+ frequency(41) = 86400,
+# timePhase(41) = 0,
+#
+ fields(1,42)  = 'TRAC34',
+ fileName(42)  = 'Z5c',
+ frequency(42) = 3600,
+# timePhase(42) = 0,
+#
+ fields(1,43)  = 'TRAC35',
+ fileName(43)  = 'Z5n',
+ frequency(43) = 86400,
+# timePhase(43) = 0,
+#
+ fields(1,44)  = 'TRAC36',
+ fileName(44)  = 'Z5p',
+ frequency(44) = 86400,
+# timePhase(44) = 0,
+#
+ fields(1,45)  = 'TRAC37',
+ fileName(45)  = 'Z6c',
+ frequency(45) = 3600,
+# timePhase(45) = 0,
+#
+ fields(1,46)  = 'TRAC38',
+ fileName(46)  = 'Z6n',
+ frequency(46) = 86400,
+# timePhase(46) = 0,
+#
+ fields(1,47)  = 'TRAC39',
+ fileName(47)  = 'Z6p',
+ frequency(47) = 86400,
+# timePhase(47) = 0,
+#
+ fields(1,48)  = 'TRAC40',
+ fileName(48)  = 'R1c',
+ frequency(48) = 86400,
+# timePhase(48) = 0,
+#
+ fields(1,49)  = 'TRAC41',
+ fileName(49)  = 'R1n',
+ frequency(49) = 86400,
+# timePhase(49) = 0,
+#
+ fields(1,50)  = 'TRAC42',
+ fileName(50)  = 'R1p',
+ frequency(50) = 86400,
+# timePhase(50) = 0,
+#
+ fields(1,51)  = 'TRAC43',
+ fileName(51)  = 'R2c',
+ frequency(51) = 86400,
+# timePhase(51) = 0,
+#
+ fields(1,52)  = 'TRAC44',
+ fileName(52)  = 'R3c',
+ frequency(52) = 86400,
+# timePhase(52) = 0,
+#
+ fields(1,53)  = 'TRAC45',
+ fileName(53)  = 'R6c',
+ frequency(53) = 86400,
+# timePhase(53) = 0,
+#
+ fields(1,54)  = 'TRAC46',
+ fileName(54)  = 'R6n',
+ frequency(54) = 86400,
+# timePhase(54) = 0,
+#
+ fields(1,55)  = 'TRAC47',
+ fileName(55)  = 'R6p',
+ frequency(55) = 86400,
+# timePhase(55) = 0,
+#
+ fields(1,56)  = 'TRAC48',
+ fileName(56)  = 'R6s',
+ frequency(56) = 86400,
+# timePhase(56) = 0,
+#
+ fields(1,57)  = 'TRAC49',
+ fileName(57)  = 'O3c',
+ frequency(57) = 3600,
+# timePhase(57) = 0,
+#
+ fields(1,58)  = 'TRAC50',
+ fileName(58)  = 'O3h',
+ frequency(58) = 3600,
+# timePhase(58) = 0,
+#
+ fields(1,59)  = 'TRAC51',
+ fileName(59)  = 'O5c',
+ frequency(59) = 86400,
+# timePhase(59) = 0,
+#
+ fields(1,60)  = 'ETW',
+ fileName(60)  = 'Temp',
+ frequency(60) = 86400,
+# timePhase(60) = 0,
+#
+ fields(1,61)  = 'ESW',
+ fileName(61)  = 'Sal',
+ frequency(61) = 86400,
+# timePhase(61) = 0,
+#
+ fields(1,62)  = 'ERHO',
+ fileName(62)  = 'Dens',
+ frequency(62) = 86400,
+# timePhase(62) = 0,
+#
+ fields(1,63)  = 'EIR',
+ fileName(63)  = 'PAR',
+ frequency(63) = 86400,
+# timePhase(63) = 0,
+#
+ fields(1,64)  = 'CO2',
+ fileName(64)  = 'CO2',
+ frequency(64) = 86400,
+# timePhase(64) = 0,
+#
+ fields(1,65)  = 'HCO3',
+ fileName(65)  = 'HCO3',
+ frequency(65) = 86400,
+# timePhase(65) = 0,
+#
+ fields(1,66)  = 'CO3',
+ fileName(66)  = 'CO3',
+ frequency(66) = 86400,
+# timePhase(66) = 0,
+#
+ fields(1,67)  = 'ALK',
+ fileName(67)  = 'ALK',
+ frequency(67) = 3600,
+# timePhase(67) = 0,
+#
+ fields(1,68)  = 'pH',
+ fileName(68)  = 'pH',
+ frequency(68) = 3600,
+# timePhase(68) = 0,
+#
+ fields(1,69)  = 'pCO2',
+ fileName(69)  = 'pCO2',
+ frequency(69) = 3600,
+# timePhase(69) = 0,
+#
+ fields(1,70)  = 'DIC',
+ fileName(70)  = 'DIC',
+ frequency(70) = 3600,
+# timePhase(70) = 0,
+#
+ fields(1,71)  = 'ruPPYc',
+ fileName(71)  = 'ruPPYc',
+ frequency(71) = 3600,
+# timePhase(71) = 0,
+#
+ fields(1,72)  = 'resPPYc',
+ fileName(72)  = 'resPPYc',
+ frequency(72) = 3600,
+# timePhase(72) = 0,
+#
+ fields(1,73)  = 'exR2acP1',
+ fileName(73)  = 'exR2acP1',
+ frequency(73) = 3600,
+# timePhase(73) = 0,
+#
+ fields(1,74)  = 'exR2acP2',
+ fileName(74)  = 'exR2acP2',
+ frequency(74) = 3600,
+# timePhase(74) = 0,
+#
+ fields(1,75)  = 'exR2acP3',
+ fileName(75)  = 'exR2acP3',
+ frequency(75) = 3600,
+# timePhase(75) = 0,
+#
+ fields(1,76)  = 'exR2acP4',
+ fileName(76)  = 'exR2acP4',
+ frequency(76) = 3600,
+# timePhase(76) = 0,
+#
+ fields(1,77)  = 'flPTN6r',
+ fileName(77)  = 'flPTN6r',
+ frequency(77) = 86400,
+# timePhase(77) = 0,
+#
+ fields(1,78)  = 'flN3O4n',
+ fileName(78)  = 'flN3O4n',
+ frequency(78) = 86400,
+# timePhase(78) = 0,
+#
+ fields(1,79)  = 'flN4N3n',
+ fileName(79)  = 'flN4N3n',
+ frequency(79) = 86400,
+# timePhase(79) = 0,
+#
+ fields(1,80)  = 'sediR2',
+ fileName(80)  = 'sediR2',
+ frequency(80) = 86400,
+# timePhase(80) = 0,
+#
+ fields(1,81)  = 'sediR6',
+ fileName(81)  = 'sediR6',
+ frequency(81) = 86400,
+# timePhase(81) = 0,
+#
+ fields(1,82)  = 'sediO5',
+ fileName(82)  = 'sediO5',
+ frequency(82) = 86400,
+# timePhase(82) = 0,
+#
+ fields(1,83)  = 'CO2airflux',
+ fileName(83)  = 'CO2airflux',
+ frequency(83) = 3600,
+# timePhase(83) = 0,
+#
+ fields(1,84)  = 'SUNQ',
+ fileName(84)  = 'SUNQ',
+ frequency(84) = 86400,
+# timePhase(84) = 0,
+#
+ fields(1,85)  = 'EWIND',
+ fileName(85)  = 'Wind',
+ frequency(85) = 86400,
+# timePhase(85) = 0,
+#
+ fields(1,86)  = 'EPCO2air',
+ fileName(86)  = 'EPCO2air',
+ frequency(86) = 86400,
+# timePhase(86) = 0,
+#
+ fields(1,99)  = 'TRAC01',
+ fileName(99)  = 'O2o_s',
+# levels(1,99)  =  1.,9.,
+ frequency(99) = -3600,
+# timePhase(99) = 0,
+#
+ fields(1,113)  = 'THETA',
+ filename(113)  = 'SST',
+ levels(1,113)  =  1.,
+ frequency(113) = -3600,
+# timePhase(113) = 0,
+#
+# wind fields added (for 3D movie)
+#
+ fields(1,114)  = 'EXFuwind',
+ fileName(114)  = 'EXFuwind',
+ frequency(114) = 3600,
+# timePhase(114) = 0,
+#
+ fields(1,115)  = 'EXFvwind',
+ fileName(115)  = 'EXFvwind',
+ frequency(115) = 3600,
+# timePhase(115) = 0,
+#
+#
+ fields(1,116)  = 'sedi_P1',
+ fileName(116)  = 'sedi_P1',
+ frequency(116) = 86400,
+# timePhase(116) = 0,
+#
+ fields(1,117)  = 'sedi_P2',
+ fileName(117)  = 'sedi_P2',
+ frequency(117) = 86400,
+# timePhase(117) = 0,
+#
+ fields(1,118)  = 'sedi_P3',
+ fileName(118)  = 'sedi_P3',
+ frequency(118) = 86400,
+# timePhase(118) = 0,
+#
+ fields(1,119)  = 'sedi_P4',
+ fileName(119)  = 'sedi_P4',
+ frequency(119) = 86400,
+# timePhase(119) = 0,
+ &END
+  
+# Parameter for Diagnostics of per level statistics:
+#-----------------
+# for each output-stream:
+#  stat_fname(n) : prefix of the output file name (only 8.c long) for outp.stream n
+#  stat_freq(n):< 0 : write snap-shot output every |stat_freq| seconds
+#               > 0 : write time-average output every stat_freq seconds
+#  stat_phase(n)    : write at time = stat_phase + multiple of |stat_freq|
+#  stat_region(:,n) : list of "regions" (default: 1 region only=global)
+#  stat_fields(:,n) : list of diagnostics fields (8.c) (see "available_diagnostics.log"
+#                 file for the list of all available diag. in th
+#-----------------
+ &DIAG_STATIS_PARMS
+ &END
+#--

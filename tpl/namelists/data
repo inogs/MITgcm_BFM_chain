@@ -1,0 +1,116 @@
+# run CADEAU - OPERATIONAL
+# Model parameters
+
+# Continuous equation parameters
+ &PARM01
+# tRef=27*25.,
+# sRef=27*38.,
+
+ viscAh=0.0,
+
+ viscAz=1.E-6,
+ viscA4=0.,
+ diffKhT=0.01,
+ diffKzT=1.E-6,
+ diffK4T=0.,
+ diffKhS=0.01,
+ diffKzS=1.E-6,
+ diffK4S=0.,
+
+ useFullLeith=.TRUE.,
+# This uses the Strain-Tension form for calculating viscous terms
+ useStrainTensionVisc=.TRUE.,
+
+# This is the standard Leith Viscosity coefficient, 
+# visc=(visc2leith/pi)**3 grad(curl v_h)
+ viscC2leith=0.5,
+ viscC4leith=0.05,
+
+# This is an additional Leith Viscosity, prop to grad(div.v_h)
+# It traps instabilities that have no signal in grad(curl v_h)
+ viscC2leithD=0.5,
+ viscC4leithD=0.05,
+
+# for this grid
+ viscC2Smag=0.5,
+ viscC4Smag=0.05,
+
+# This is the max Viscosity used, be it Smag or Leith, and it scales 
+# with grid size and timestep
+ viscAhGridMax=1.E-2,
+ viscA4GridMax=1.E-9,
+
+ staggerTimeStep=.TRUE.,
+
+ useConstantF=.FALSE.,
+ useBetaPlaneF=.FALSE.,
+ useSphereF=.TRUE.,
+ use3dCoriolis=.TRUE.,
+ eosType='JMD95Z',
+ hFacMin=0.2,
+ no_slip_sides=.TRUE.,
+ no_slip_bottom=.TRUE.,
+ 
+ exactConserv=.TRUE.,
+ addFrictionHeating=.TRUE.,
+
+ implicitDiffusion=.TRUE.,
+ implicitViscosity=.TRUE.,
+ nonHydrostatic=.TRUE.,
+ useNHMTerms=.TRUE.,
+ useRealFreshwaterFlux=.TRUE.,
+ selectAddFluid=1, 
+ linFSConserveTr=.FALSE.,
+ 
+ globalFiles=.FALSE.,
+ useSingleCpuIO=.TRUE.,
+ 
+ bottomDragLinear=0.0000,
+ bottomDragQuadratic=0.002,
+ tempAdvScheme=33,
+ saltAdvScheme=33,
+
+ readBinaryPrec=32,
+ writeBinaryPrec=32,
+ &END
+
+# Elliptic solver parameters
+ &PARM02
+ &END
+
+# Time stepping parameters
+ &PARM03
+ deltaT=200.,
+ startTime=0.,
+ endTime=864000.,
+ chkPtFreq=86400.,
+ dumpFreq=0.,
+ pChkPtFreq=86400.,
+ periodicExternalForcing=.FALSE.,
+ monitorFreq=3600.,
+ tauThetaClimRelax=0.,
+ &END
+
+# Gridding parameters
+ &PARM04
+ usingCartesianGrid=.FALSE.,
+ usingSphericalPolarGrid=.TRUE.,
+ ygOrigin=43.46875,
+ xgOrigin=12.21875,
+ delX=494*0.0078125,
+ delY=300*0.0078125,
+ delZ= 1.500,  1.501,  3.234,  3.483,  3.750,  4.035,  4.339,  4.665,  5.012,  5.384,
+       5.781,  6.206,  6.659,  7.144,  7.661,  8.215,  8.806,  9.437, 10.112, 10.833,
+      11.603, 12.426, 13.305, 14.244, 15.247, 16.319, 17.463,
+ &END
+
+# Input datasets
+ &PARM05
+# the_run_name='run OPERATIONAL @@START_DATE@@',
+ the_run_name='run OPERATIONAL',
+ bathyFile='bathy.bin',
+ hydrogThetaFile='../input/binaries/ICs/PHYS/IC_T.dat',
+ hydrogSaltFile='../input/binaries/ICs/PHYS/IC_S.dat',
+ uVelInitFile='../input/binaries/ICs/PHYS/IC_U.dat',
+ vVelInitFile='../input/binaries/ICs/PHYS/IC_V.dat',
+&END

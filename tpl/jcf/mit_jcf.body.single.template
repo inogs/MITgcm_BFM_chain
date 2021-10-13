@@ -1,0 +1,12 @@
+errors=0
+for mit_step in @@(S:MIT_STEPS) ; do
+  command=@@(S:MIT_RUNLOGDIR)/@@(S:MIT_STEP_SCRIPT_BASE).$mit_step
+  echo ">>> $command"
+  $command ; ec=$?
+  if [[ $ec -ne 0 ]] ; then
+    echo "ERR: command "$command" exited with status [${ec}]" 1>&2
+    errors=$(( $errors + 1 ))
+    break
+  fi
+done
+exit_code=$errors

@@ -1,0 +1,24 @@
+# ***************
+# RBCS Parameters
+# ***************
+&RBCS_PARM01
+useRBCptracers=.FALSE.,
+useRBCsalt=.TRUE.,
+useRBCtemp=.FALSE.,
+rbcsIniter=0,
+rbcsForcingOffset=0.0,
+rbcsForcingPeriod=0.0,
+rbcsForcingCycle=0.0,
+# tauRelaxT=86400.,
+# tauRelaxS=200.,
+# tauRelaxS=86400.,
+# tauRelaxS=3600.,
+tauRelaxS=10800.,
+relaxTFile='',
+relaxSFile='../input/binaries/RBCs/S_rbcs_V3.dat',
+relaxMaskFile(1) ='',
+relaxMaskFile(2) ='../input/binaries/S_source_mask_V3.dat',
+&END
+
+&RBCS_PARM02
+&END

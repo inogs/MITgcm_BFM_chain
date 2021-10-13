@@ -1,0 +1,167 @@
+! bfm_nml !-------------------------------------------------------------------------!
+! Main initialisation and output specifications
+! NAME           KIND    DESCRIPTION
+! bio_calc       logical Switch on/off BFM (for coupled configurations)
+! bfm_init       integer Initialization state
+!                        0. from constant values in bfm_init_nml below
+!                        1. from restart
+! bfm_rstctl     logical Save initial state of bfm in the output file.
+! bio_setup      integer BFM configuration:
+!                        1. pelagic
+!                        2. benthic
+!                        3. pelagic and benthic
+!                        4. sea ice
+!                        5. pelagic and sea ice
+! out_fname      string  Name of NetCDF output file
+! out_dir        string  Path to the output file
+! out_title      string  Name of the experiment in NetCDF file
+! out_delta      integer Output is saved every out_delta timesteps
+!                        Use -1 to store with real monthly frequency
+! parallel_log   logical Set true in parallel jobs for a single log file 
+!-------------------------------------------------------------------------!
+&bfm_nml          
+    bio_calc      =  .TRUE.                    
+    bfm_init      =  0                         
+    bfm_rstctl    =  .FALSE.                   
+    bio_setup     =  1                         
+    out_fname     =  'BFM_standalone_pelagic'  
+    out_dir       =  '.'                       
+    out_title     =  'BFM_STANDALONE_PELAGIC'  
+    in_rst_fname  =  'in_bfm_restart'          
+    out_delta     =  300                       
+    parallel_log  =  .TRUE.
+/                 
+
+
+
+! Param_parameters !-------------------------------------------------------------------------!
+! Global Switches : turn on/off or choose model components 
+! NAME                          KIND    DESCRIPTION
+! CalcPelagicFlag               logical Pelagic System
+! CalcBenthicFlag               numeric Benthic system
+!                                       0 = No Benthic System
+!                                       The following are Not Yet Activated
+!                                       1 = Simple Benthic Return
+!                                       2 = Benthic organisms and intermediate 
+!                                           complexity nutrient regeneration 
+!                                       3 = Benthic organisms and full nutrient 
+!                                           regeneration (early diagenesis)
+! CalcTransportFlag             logical Compute Transport Term (when coupled
+!                                       with a OGCM)
+! CalcConservationFlag          logical Mass Conservation Check
+! CalcPhytoPlankton             logical Pelagic Phytoplankton (vector)
+! CalcPelBacteria               logical Pelagic Bacteria (vector)
+! CalcMesoZooPlankton           logical Mesozooplankton (vector)
+! CalcMicroZooPlankton          logical Microzooplankton (vector)
+! CalcPelChemistry              logical Pelagic Hydrochemical Processes
+! AssignPelBenFluxesInBFMFlag   logical Benthic-pelagic fluxes are added to the
+!                                       time integration
+! AssignAirPelFluxesInBFMFlag   logical Air-sea fluxes are added to the
+!                                       time integration
+! ChlDynamicsFlag    numeric Choose the dynamics of Chl-a
+!                            1 = diagnostic, optimal light property
+!                                in phytoplankton
+!                                (Ebenhoeh et al 1995, ERSEM-II)
+!                            2 = state variable, constituent of
+!                                phytoplankton
+!
+! Global Parameters : used throughout the model and not related 
+!                     to a specific component
+! NAME          UNIT          DESCRIPTION
+! p_small      [-]           Smallest numeric value (the model "zero")
+! slp0         [mbar]        Reference sea level pressure
+! p_pe_R1c     [-]           Fractional content of C in cytoplasm 
+! p_pe_R1n     [-]           Fractional content of N in cytoplasm
+! p_pe_R1p     [-]           Fractional content of P in cytoplasm
+! p_qro        [mmolHS-/     Stoichiometric coefficient for
+!               mmolO2]      anaerobic reactions
+! p_qon_dentri [mmolO2/      Stoichiometric coefficient for 
+!               mmolN]       denitrification 
+! p_qon_nitri  [mmolO2/      Stoichiometric coefficient for 
+!               mmolN]       nitrification 
+!-------------------------------------------------------------------------!
+&Param_parameters                
+    CalcPelagicFlag              =  .TRUE.     
+    CalcBenthicFlag              =  0          
+    CalcConservationFlag         =  .FALSE.    
+    CalcTransportFlag            =  .FALSE.    
+    CalcPhytoPlankton(1)         =  .TRUE.     
+    CalcPhytoPlankton(2)         =  .TRUE.     
+    CalcPhytoPlankton(3)         =  .TRUE.     
+    CalcPhytoPlankton(4)         =  .TRUE.     
+    CalcPelBacteria(1)           =  .TRUE.     
+    CalcMicroZooPlankton(1)      =  .TRUE.     
+    CalcMicroZooPlankton(2)      =  .TRUE.     
+    CalcMesoZooPlankton(1)       =  .TRUE.     
+    CalcMesoZooPlankton(2)       =  .TRUE.     
+    CalcPelChemistry             =  .TRUE.     
+    AssignPelBenFluxesInBFMFlag  =  .FALSE.    
+    AssignAirPelFluxesInBFMFlag  =  .TRUE.     
+    ChlDynamicsFlag              =  2          
+    p_small                      =  1.0e-20    
+    p_atm0                       =  1013.25E0  
+    p_pe_R1c                     =  0.60       
+    p_pe_R1n                     =  0.72       
+    p_pe_R1p                     =  0.832      
+    p_qro                        =  0.5        
+    p_qon_dentri                 =  1.25       
+    p_qon_nitri                  =  2.0        
+/                                
+
+
+
+! bfm_init_nml !-------------------------------------------------------------------------!
+!Pelagic initialisation of standard variables
+!<variablename>0 = <realvalue>
+!-------------------------------------------------------------------------!
+! Index of parameters for using inside InitVar structure
+!   EPCO2air=1, O2o=1, ETW=1, ESW=2, N1p=2, CO2airflux=2, N3n=3, ERHO=3, Area2d=3, 
+!   N4n=4, ThereIsLight=4, EIR=4, SUNQ=5, O4n=5, ESS=5, EPR=6, EWIND=6, N5s=6, 
+!   totsysc=7, N6r=7, Depth=7, totsysn=8, B1c=8, Volume=8, B1n=9, Area=9, totsysp=9, 
+!   totsyss=10, DIC=10, B1p=10, P1c=11, EICE=11, CO2=11, pCO2=12, P1n=12, HCO3=13, 
+!   P1p=13, CO3=14, P1l=14, P1s=15, ALK=15, P2c=16, pH=16, OCalc=17, P2n=17, 
+!   OArag=18, P2p=18, P2l=19, totpelc=19, totpeln=20, P3c=20, totpelp=21, P3n=21, totpels=22, 
+!   P3p=22, cxoO2=23, P3l=23, eO2mO2=24, P4c=24, P4n=25, Chla=25, ffCO2=26, P4p=26, 
+!   P4l=27, flPTN6r=27, flN3O4n=28, Z3c=28, Z3n=29, flN4N3n=29, Z3p=30, sediR2=30, Z4c=31, 
+!   sediR6=31, sediO5=32, Z4n=32, Z4p=33, xEPS=33, ABIO_eps=34, Z5c=34, Z5n=35, Z5p=36, 
+!   Z6c=37, Z6n=38, Z6p=39, R1c=40, R1n=41, R1p=42, R2c=43, R3c=44, R6c=45, 
+!   R6n=46, R6p=47, R6s=48, O3c=49, O3h=50, O5c=51, 
+&bfm_init_nml  
+    O2o0       =  300.0     
+    N1p0       =  1.0       
+    N3n0       =  5.0       
+    N4n0       =  1.0       
+    N5s0       =  8.0       
+    N6r0       =  1.0       
+    O3c0       =  27060.00  
+    O3h0       =  2660.0    
+    O4n0       =  200.0     
+    P1c0       =  1.0       
+    P2c0       =  1.0       
+    P3c0       =  1.0       
+    P4c0       =  1.0       
+    Z3c0       =  1.0       
+    Z4c0       =  1.0       
+    Z5c0       =  1.0       
+    Z6c0       =  1.0       
+    B1c0       =  1.0       
+    R1c0       =  1.0       
+    R2c0       =  0.1       
+    R3c0       =  1.0       
+    R6c0       =  1.0       
+/              
+
+
+
+! bfm_save_nml !-------------------------------------------------------------------------!
+! Stored variables
+!ave_save: average values over the output interval
+!var_save: instantaneous value at the output interval
+!-------------------------------------------------------------------------!
+&bfm_save_nml  
+    var_save   =  ''  
+    ave_save   =  ''  
+/              
+
+
+
