@@ -13,8 +13,7 @@ mit_start
 
 typeset -i _errors=0
 mit_prex "source $MIT_VENV_1/bin/activate"
-PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
-
+export PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
 DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
 DOWNSTART=$( date -d "${MIT_RUNDATE}  -  8  days " +%Y%m%d-%H:%M:%S )

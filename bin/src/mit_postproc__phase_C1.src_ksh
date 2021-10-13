@@ -15,7 +15,7 @@ mit_set_run
 mit_start
 mit_prex "source $MIT_VENV_1/bin/activate"
 
-PYTHONPATH=${PYTHONPATH}:$MIT_BITSEA
+export PYTHONPATH=${PYTHONPATH}:$MIT_BITSEA
 typeset -i errors=0
 
 
