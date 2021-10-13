@@ -1,0 +1,38 @@
+#!/bin/ksh
+# This script returns 0 if current node is login node
+# 
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options]
+[options]
+$(opa_set_default_run__print_options)
+	--help|-h			show this help
+EofCat
+}
+
+opa_set_default_run_options=' '
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    *)
+      echo "ERROR: wrong command line option <$arg>" 1>&2
+      exit 2
+      ;;
+  esac
+done
+
+if mit_is_login_node ; then
+  return 0
+else
+  return 1
+fi

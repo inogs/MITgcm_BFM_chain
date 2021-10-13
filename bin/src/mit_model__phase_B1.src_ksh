@@ -1,0 +1,131 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+
+# Load MPI profile:
+. $MIT_SCRDIR/mit_mpi.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+
+wrkdir=$MIT_WRKDIR/MODEL
+
+#### Step 1 -- Initial Conditions --
+BIO_IC_DIR=$MIT_WRKDIR/BC_IC/IC/BIO
+PHYS_ICDIR=$MIT_WRKDIR/BC_IC/IC/PHYS
+
+cd $wrkdir/input/binaries/ICs/BIO
+for var in $MIT_OUTPUT_VARIABLES; do
+  mit_prex_or_die "ln -fs $BIO_IC_DIR/IC_${var}.dat"
+done  
+
+cd $wrkdir/input/binaries/ICs/PHYS
+for var in U V T S ; do 
+   mit_prex_or_die "ln -fs $PHYS_ICDIR/IC_${var}.dat"
+done
+
+### Step 2 -- Boundary conditions --
+
+cd $wrkdir/input/binaries/OBCs/BIO
+BIO_BC_DIR=${MIT_WRKDIR}/BC/BIO
+PHYS_BC_DIR=${MIT_WRKDIR}/BC/PHYS
+
+for var in $MIT_OUTPUT_VARIABLES; do
+  for side in N S E W ; do
+     mit_prex_or_die "ln -fs $BIO_BC_DIR/OBC_${side}_${var}.dat"
+  done
+done
+
+cd $wrkdir/input/binaries/OBCs/PHYS
+for var in U V T S ; do 
+  for side in N S E W ; do
+     mit_prex_or_die "ln -fs $PHYS_BC_DIR/OBC_${side}_${var}.dat"
+  done
+done
+
+cd $wrkdir/input/binaries/meteo
+BC_METEO=$MIT_WRKDIR/METEO/BC
+for bc_meteo_file in ${BC_METEO}/BC_* ; do
+	mit_prex_or_die "ln -fs $bc_meteo_file";
+done
+
+
+
+
+# Step 4 -- Rest of input/  ---
+
+mit_stage_in "$wrkdir/input/binaries/RBCs" "$MIT_ETCDIR/static-data/MODEL/S_rbcs_V3.dat"  || {
+errors=$(( $errors + $? )) 
+}
+
+mit_stage_in "$wrkdir/input/binaries/" \
+             "$MIT_ETCDIR/static-data/MODEL/OBEam_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBEph_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBNam_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBNph_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBSam_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBSph_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBWam_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/OBWph_med_CADEAU.tide_obcs" \
+             "$MIT_ETCDIR/static-data/MODEL/Kext_CADEAU_365.dat"        \
+             "$MIT_ETCDIR/static-data/MODEL/N1p_surface_fluxes_V3.dat"  \
+             "$MIT_ETCDIR/static-data/MODEL/N3n_surface_fluxes_V3.dat"  \
+             "$MIT_ETCDIR/static-data/MODEL/N_bottom_fluxes_V4_x2.dat"  \
+             "$MIT_ETCDIR/static-data/MODEL/O_bottom_fluxes_V3_bis.dat" \
+             "$MIT_ETCDIR/static-data/MODEL/P_bottom_fluxes_V4_x3.dat"  \
+             "$MIT_ETCDIR/static-data/MODEL/S_source_mask_V3.dat"  || {
+errors=$(( $errors + $? )) 
+}
+
+
+
+## Step 5 -- Setting up run/  ----
+
+### Instantiation of namelist templates:
+nml_dir="$MIT_TPLDIR/namelists"
+
+mit_stage_in    "$wrkdir/run"                              \
+                "$nml_dir/Benthic_Environment.nml"         \
+                "$nml_dir/BFM_General.nml"                 \
+                "$nml_dir/Carbonate_Dynamics.nml"          \
+                "$nml_dir/Pelagic_Ecology.nml"             \
+                "$nml_dir/Pelagic_Environment.nml"         \
+                "$nml_dir/Standalone.nml"   	           \
+                "$nml_dir/data"                            \
+                "$nml_dir/data.BFMcoupler"                 \
+                "$nml_dir/data.diagnostics"                \
+                "$nml_dir/data.gchem"                      \
+                "$nml_dir/data.kpp"                        \
+                "$nml_dir/data.longstep"                   \
+                "$nml_dir/data.obcs"                       \
+                "$nml_dir/data.pkg"                        \
+                "$nml_dir/data.ptracers"                   \
+                "$nml_dir/data.rbcs"                       \
+                "$nml_dir/eedata"          || {
+errors=$(( $errors + $? )) 
+}
+
+START_DATE=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d ) 
+
+sed -e "s%@@START_DATE@@%${START_DATE}%g" $nml_dir/data.cal.tpl > $wrkdir/run/data.cal
+
+sed -e "s%@@START_DATE@@%${START_DATE}%g" $nml_dir/data.exf.tpl > $wrkdir/run/data.exf
+
+
+BATHY=$MIT_WRKDIR/BC_IC/bathy.bin
+cd $wrkdir/run/
+mit_prex_or_die "ln -fs $BATHY"
+
+
+mit_exit "$errors"
+
+
+

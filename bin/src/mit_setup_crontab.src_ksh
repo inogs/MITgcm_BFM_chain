@@ -1,0 +1,263 @@
+#!/bin/ksh
+# This command sets the correct crontab
+#
+# You must run this script only if you need to change
+# the crontab-file template ($MIT_ETCDIR/crontab-file)
+#
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $MIT_PROGNAME [options]
+[options]
+	--help|-h				show this help
+	--weekdays|-w WEEKDAY-LIST		submit weekdays WEEKDAY-LIST
+	--kernel-only|--kernel|-k		only crontab kernel, without head/tail/external producers
+	--force|-f				really change crontab
+	--all|-a				change crontab on all login nodes
+
+EofCat
+}
+
+mit_submit_options=' '
+force=false
+all=false
+kernel_only=false
+mit_weekdays="$MIT_WEEKDAYS"
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --kernel|-k)
+      kernel_only=true
+      ;;
+    --force|-f)
+      force=true
+      ;;
+    --all|-a)
+      all=true
+      ;;
+    --weekdays|-w)
+      mit_weekdays="$1"
+      shift 1
+      ;;
+    *)
+      echo "ERROR: unknown option <$arg>" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+
+if $all ; then
+  [[ "$MIT_HOST_PRIMARY_HOSTNAME" != '' ]]   && mit_prex "ssh $MIT_HOST_PRIMARY_HOSTNAME $MIT_SCRDIR/mit_setup_crontab.ksh -f "
+  [[ "$MIT_HOST_SECONDARY_HOSTNAME" != '' ]] && mit_prex "ssh $MIT_HOST_SECONDARY_HOSTNAME $MIT_SCRDIR/mit_setup_crontab.ksh -f"
+  exit 0
+fi
+
+for d in log tmp ; do
+  [[ -d $MIT_VARDIR/$d ]] || mit_mkdir $MIT_VARDIR/$d
+done
+
+unset tmp_crontab
+while [[ -f ${tmp_crontab:=$MIT_VARDIR/tmp/crontab-file.part.$$.$RANDOM} ]] ; do
+  unset tmp_crontab
+done
+
+trap "exit 101" 1
+trap "exit 102" 2
+trap "exit 103" 3
+trap "exit 115" 15
+trap "rm -f $tmp_crontab" 0
+
+typeset -i errors=0
+
+mit_download_start_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC $MIT_GET_ADVANCE_MIN minutes ago" +"%M %H")
+mit_chain_start_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC" +"%M %H")
+mit_download_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_DOWNLOAD_HOUR_UTC UTC" +"%M %H")
+
+
+if [[ "$NODE" = "$MIT_HOST_PRIMARY_HOSTNAME" ]] ; then
+  cron_deltatime="00:10:00"
+  cron_comment=""
+else
+  cron_deltatime="00:00:00"
+  cron_comment="#"
+fi
+
+if $I_MIT_BACKUP; then
+  backup_deltatime="00:30:00"
+else
+  backup_deltatime="00:00:00"
+fi
+
+mit_start=$( time_sum $MIT_START_HOUR_UTC $cron_deltatime f )
+mit_start=$( time_sum $mit_start $backup_deltatime f )
+
+mit_chain_start_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $mit_start UTC" +"%M %H")
+
+mit_chain_check_hour_crontab_utc=$($MIT_BINDIR/date --utc --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC ${MIT_CHECK_HOURS_OFFSET} hours" +"%M %H")
+mit_chain_check_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC ${MIT_CHECK_HOURS_OFFSET} hours" +"%M %H")
+
+#20 minutes delay (10 mins + 10 mins)
+mit_download=$( time_sum $MIT_DOWNLOAD_HOUR_UTC $cron_deltatime f )
+mit_download=$( time_sum $mit_download $cron_deltatime f )
+mit_download_hour_crontab_tz=$($MIT_BINDIR/date        --date="$MIT_TODAY $mit_download UTC" +"%M %H")
+
+
+
+# mit_advance_min=$( time_sum $MIT_GET_ADVANCE_MIN $cron_deltatime f )
+mit_download_start_hour_crontab_tz=$($MIT_BINDIR/date --date="$MIT_TODAY $MIT_START_HOUR_UTC UTC $MIT_GET_ADVANCE_MIN minutes ago" +"%M %H")
+#echo "DBG: mit_download_start_hour_crontab_utc=$mit_download_start_hour_crontab_utc" 1>&2
+#echo "DBG: mit_chain_start_hour_crontab_utc=$mit_chain_start_hour_crontab_utc" 1>&2
+
+mit_check_days_offset=$(( $MIT_CHECK_HOURS_OFFSET / 24 ))
+cat <<EOFCAT
+mit_chain_check_hour_crontab_utc=$mit_chain_start_hour_crontab_utc
+mit_chain_check_hour_crontab_tz=$mit_chain_start_hour_crontab_tz
+mit_check_days_offset=$mit_check_days_offset
+EOFCAT
+
+set -A weekday_names -- 'Sunday' 'Monday' 'Tuesday' 'Wednesday' 'Thursday' 'Friday' 'Saturday'
+typeset -i mit_weekday
+typeset -i mit_submit_weekday
+
+function get_file_override {
+  typeset _filename="$1"
+  typeset _filename_override="${_filename}.override"
+  if [[ -f "$_filename_override" ]] ; then
+    echo "$_filename_override"
+  else
+    echo "$_filename"
+  fi
+}
+
+function _sed_tpl_file {
+  typeset _tpl=$(get_file_override "$1")
+  echo "### from template <${_tpl}>"
+  cat "$_tpl" | _sed_tpl 
+  echo
+}
+
+function _sed_tpl_producer {
+  typeset _producer=$(get_file_override "$1")
+  echo "### from producer <${_producer}>"
+  eval "$_producer" | _sed_tpl 
+  echo
+}
+
+function sed_tpl_file {
+  _sed_tpl_file "$@" >> "$tmp_crontab"
+}
+
+function sed_tpl_producer {
+  _sed_tpl_producer "$@" >> "$tmp_crontab"
+}
+
+function _sed_tpl {
+  sed	-e "s%@@(C:MIT_BINDIR)%${MIT_BINDIR}%g"								\
+	-e "s%@@(C:MIT_SCRDIR)%${MIT_SCRDIR}%g"								\
+	-e "s%@@(C:MIT_VARDIR)%${MIT_VARDIR}%g"								\
+	-e "s%@@(C:MIT_HOME)%${I_MIT_HOME}%g"								\
+	-e "s%@@(C:MIT_DOWNLOAD_START_HOUR_CRONTAB_UTC)%${mit_download_start_hour_crontab_utc}%g"	\
+	-e "s%@@(C:MIT_DOWNLOAD_START_HOUR_CRONTAB_TZ)%${mit_download_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_DOWNLOAD_HOUR_CRONTAB_UTC)%${mit_download_hour_crontab_utc}%g"			\
+	-e "s%@@(C:MIT_DOWNLOAD_HOUR_CRONTAB_TZ)%${mit_download_hour_crontab_tz}%g"			\
+	-e "s%@@(C:MIT_CHAIN_START_HOUR_CRONTAB_UTC)%${mit_chain_start_hour_crontab_utc}%g"		\
+	-e "s%@@(C:MIT_CHAIN_CHECK_HOUR_CRONTAB_UTC)%${mit_chain_check_hour_crontab_utc}%g"		\
+	-e "s%@@(C:MIT_CHAIN_START_HOUR_CRONTAB_TZ)%${mit_chain_start_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_CHAIN_CHECK_HOUR_CRONTAB_TZ)%${mit_chain_check_hour_crontab_tz}%g"		\
+	-e "s%@@(C:MIT_CRON_COMMENT)%${cron_comment}%g"		\
+	-e "s%@@(C:MIT_SUBMIT_WEEKDAY)%${mit_submit_weekday}%g"						\
+	-e "s%@@(C:MIT_SUBMIT_WEEKDAY_NAME)%${mit_submit_weekday_name}%g"				\
+	-e "s%@@(C:MIT_CHECK_WEEKDAY)%${mit_check_weekday}%g"						\
+	-e "s%@@(C:MIT_CHECK_WEEKDAY_NAME)%${mit_check_weekday_name}%g"					\
+	-e "s%@@(C:MIT_WEEKDAY)%${mit_weekday}%g"							\
+	-e "s%@@(C:MIT_WEEKDAY_NAME)%${mit_weekday_name}%g"						\
+	-e "s%@@(C:MIT_REPORT_DAY)%${MIT_REPORT_DAY}%g"							\
+	-e "s%@@(C:MIT_CRON_REPORT_DAY)%${MIT_CRON_REPORT_DAY}%g"					\
+	-e "s%@@(C:MIT_CRON_PART_REPORT_DAY)%${MIT_CRON_PART_REPORT_DAY}%g"
+}
+
+if ! $kernel_only ; then
+  # head
+  sed_tpl_file "$MIT_ETCDIR/crontab/head" || errors=$(( $errors + 1 ))
+fi
+
+# kernel
+for mit_weekday in $mit_weekdays ; do
+  mit_weekday_name="${weekday_names[mit_weekday]}"
+  mit_submit_weekday=$(( ( $mit_weekday + $MIT_SUBMIT_DAY_OFFSET + 7 ) % 7 ))
+  mit_submit_weekday_name="${weekday_names[mit_submit_weekday]}"
+  mit_check_weekday=$(( ( $mit_submit_weekday + $mit_check_days_offset ) % 7 ))
+  mit_check_weekday_name="${weekday_names[mit_check_weekday]}"
+  echo "mit_check_days_offset=$mit_check_days_offset"
+  echo "mit_check_weekday=$mit_check_weekday"
+  sed_tpl_file "$MIT_ETCDIR/crontab/weekday" || errors=$(( $errors + 1 ))
+done
+
+if ! $kernel_only ; then
+  # producers
+  prodir="$MIT_ETCDIR/crontab/producers"
+  if [[ -d $prodir ]] ; then
+    for profile in $(cd $prodir && ls -1 *.producer 2>/dev/null) ; do
+      sed_tpl_producer "$prodir/$profile" || errors=$(( $errors + 1 ))
+    done
+  fi
+fi
+
+if ! $kernel_only ; then
+  # tail
+  sed_tpl_file "$MIT_ETCDIR/crontab/tail" || errors=$(( $errors + 1 ))
+
+  # externals
+  extdir="$MIT_ETCDIR/crontab/externals"
+  if [[ -d $extdir ]] ; then
+    for extfile in $(cd $extdir && ls -1 *.external 2>/dev/null) ; do
+      sed_tpl_file "$extdir/$extfile" || errors=$(( $errors + 1 ))
+    done
+  fi
+fi
+
+cat $tmp_crontab || errors=$(( $errors + 1 ))
+
+if [[ $errors -ne 0 ]] ; then
+  echo "### ERROR: found $errors errors" 1>&2
+  exit 2
+fi
+
+if ! $force ; then
+  #echo "          ###########################################################################" 1>&2
+  #echo "          ### WARNING: use the --force option to really install this crontab file ###" 1>&2
+  #echo "          ###########################################################################" 1>&2
+  exit 0
+fi
+
+min_crontab_size=10
+if [[ $( cat $tmp_crontab | wc -c ) -lt $min_crontab_size ]] ; then
+  echo "### ERROR: empty crontab file" 1>&2
+  errors=$(( $errors + 1 ))
+fi
+
+if [[ $errors -gt 0 ]] ; then
+  echo "### ERROR: $errors errors found" 1>&2
+  exit 1
+fi
+
+install_crontab_cmd="/bin/ksh -c 'crontab -l | diff - $tmp_crontab >/dev/null 2>&1 || { echo \\\"WARNING: installing new crontab on \\\$(hostname)\\\"; crontab $tmp_crontab; }'"
+echo "installing crontab if necessary..."
+if $all ; then
+  for login_node in $MIT_LOGIN_NODES ; do
+    mit_prex "ssh $login_node \"$install_crontab_cmd\""
+  done
+else
+  mit_prex "ssh localhost \"$install_crontab_cmd\""
+fi
+
+mit_exit "$errors"

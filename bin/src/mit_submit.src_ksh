@@ -1,0 +1,814 @@
+#!/bin/ksh
+# This command submits an MIT-offline operational chain
+# for a specific rundate.
+# The JCF is created using two templates:
+# - $MIT_TPLDIR/jcf/mit_jcf.${MIT_RM}.template
+#   contains the definition of RM-specific keywords
+# - $MIT_TPLDIR/jcf/mit_jcf.body.{$mit_job_type}.template
+#   contains the code to be executed inside the batch job;
+#   it simply executes the mit step script
+# - $MIT_TPLDIR/jcf/mit_jcf.step.template
+#   contains the code to be executed for the specific step;
+#   it simply exports some variable and run the mit_wrapper.ksh
+# These templates contains @@(...) macros that are expanded
+# by this script, using values defined by command line arguments
+# or by a default (in profile).
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Load specific profile for resource manager $MIT_RM
+. $MIT_SCRDIR/mit_rm.inc
+
+# Load list library
+. $MIT_SCRDIR/mit_lists.inc
+
+JOB_TYPE__SINGLE=single		# All the steps in a single parallel job
+JOB_TYPE__MULTIPLE=multiple	# Each step in a separate job, with dependencies;
+				#  currently supported only with LL
+JOB_TYPE__DEFAULT=default	# For LL, default->multiple; for other RM, default->single
+
+JOB_TYPES=" $JOB_TYPE__DEFAULT $JOB_TYPE__SINGLE $JOB_TYPE__MULTIPLE "
+
+function print_help {
+  typeset _enable_phases=" "
+  for index in $enable_step_phase__indices ; do
+    _enable_phases="$_enable_phases${enable_step_phase__step[index]}:${enable_step_phase__phase[index]} "
+  done
+  typeset _disable_phases=" "
+  for index in $disable_step_phase__indices ; do
+    _disable_phases="$_disable_phases${disable_step_phase__step[index]}:${disable_step_phase__phase[index]} "
+  done
+  cat <<EofCat
+Usage: $MIT_PROGNAME [options]
+[options]
+$(mit_set_default_run__print_options)
+	--help|-h				show this help
+	--wall-clock-limit|-w [[HH:]MM:]SS	set the wall clock limit
+						[DEFAULT: "$mit_wall_clock_limit"]
+	--queue|-q QUEUE			set the queue
+						[DEFAULT: "$mit_queue"]
+	--tasks|-t TASKS			set the number of MPI tasks
+						[DEFAULT: "$mit_tasks"]
+	--submit|-s				submit the JCF
+						[DEFAULT: "$mit_submit"]
+	--no-submit				do not submit the JCF
+						[DEFAULT: "$mit_submit"]
+	--job-type|-j J				set job type [${JOB_TYPES}]
+						[DEFAULT: "$mit_job_type"]
+	--job-default				set the '$JOB_TYPE__DEFAULT' job type
+	--job-single				set the '$JOB_TYPE__SINGLE' job type
+	--job-multiple				set the '$JOB_TYPE__MULTIPLE' job type
+	--keep-input|-k				do not clean input files
+						[DEFAULT: "$keep_input"]
+	--steps|-S STEPLIST			what to do
+						[DEFAULT: "$mit_steps"]
+						[AVAILABLE: "$mit_steps__available"]
+	--enable-step-phase|-d S:P0[,P1[...]]	enable phases P0[, P1[...]] for step S
+						["$_enable_phases"]
+	--disable-step-phase|-d S:P0[,P1[...]]	disable phases P0[, P1[...]] for step S
+						["$_disable_phases"]
+	--enable-data-assimilation|-d		enable data assimilation
+						["$enable_data_assimilation"]
+	--disable-data-assimilation|-D		disable data assimilation
+						["! $enable_data_assimilation"]
+	--enable-transfer-pro|-p		enable transfer of pro data
+						["$enable_transfer_pro"]
+	--disable-transfer-pro|-P		disable transfer of pro data
+						["! $enable_transfer_pro"]
+	--enable-update-tds-catalog|-x		enable update of the tds catalog
+						["$enable_update_tds_catalog"]
+	--disable-update-tds-catalog|-X		disable update of the tds catalog
+						["! $enable_update_tds_catalog"]
+	--enable-transfer-images|-i		enable transfer of images
+						["$enable_transfer_images"]
+	--disable-transfer-images|-I		disable transfer of images
+						["! $enable_transfer_images"]
+	--enable-input-timeout|-z		enable timeout on input data
+						["$enable_input_timeout"]
+	--disable-input-timeout|-Z		disable timeout on input data
+						["! $enable_input_timeout"]
+	--enable-abort-on-errors|-a		abort download in case of errors (missing files)
+						["$enable_input_abort_on_errors"]
+	--disable-abort-on-errors|-A		continue download of remaining files in case of errors
+						["! $enable_input_abort_on_errors"]
+	--try-resume				try to resume the download
+						["! $mit_force_download"]
+	--force-download			force the download of input files, even if already downloaded
+						["$mit_force_download"]
+	--without-timeout			disable timeout and abort on errors
+	--with-timeout				dummy option: timeout and abort on errors are enabled as default
+	--restart-weekday|-W			restart from weekday
+						[: "${mit_restart_weekday:-<default>}"]
+	--debug					debug mode
+						[DEFAULT: ${mit_debug_mode}]
+	--test					test submission
+	--simulate-transfer			simulate transfer
+						[DEFAULT: ${mit_simulate_transfer}]
+						[=> --disable-transfer-pro
+						    --disable-update-tds-catalog
+						    --disable-transfer-images]
+	--alpha|-a				change the alpha value for ODD partitioning
+						[DEFAULT: $mit_oddalpha}]
+EofCat
+}
+
+# parse command line arguments
+mit_steps__available="pre,model,post"
+mit_rundate="$MIT_UNDEFINED"
+mit_queue="$MIT_DEFAULT_QUEUE"
+mit_queue_par="$MIT_DEFAULT_QUEUE_PAR"
+mit_queue_ser="$MIT_DEFAULT_QUEUE_SER"
+mit_queue_qos="$MIT_DEFAULT_QOS"
+mit_wall_clock_limit="$MIT_DEFAULT_WALL_CLOCK_LIMIT"
+mit_wall_clock_limit_par="$MIT_DEFAULT_WALL_CLOCK_LIMIT_PAR"
+mit_wall_clock_limit_ser="$MIT_DEFAULT_WALL_CLOCK_LIMIT_SER"
+mit_tasks="$MIT_DEFAULT_TASKS"
+mit_cores_per_node="$MIT_CORES_PER_NODE"
+mit_multiple_jobs=true
+mit_submit=false
+mit_keep_input=true
+mit_steps="$mit_steps__available"
+mit_job_type="$JOB_TYPE__DEFAULT"
+enable_data_assimilation="$MIT_UNDEFINED"
+enable_transfer_pro="$MIT_UNDEFINED"
+enable_update_tds_catalog="$MIT_UNDEFINED"
+enable_transfer_images="$MIT_UNDEFINED"
+enable_input_timeout="$MIT_UNDEFINED"
+enable_input_abort_on_errors="$MIT_UNDEFINED"
+mit_recovery_mode="$MIT_UNDEFINED"
+mit_force_download="$MIT_FORCE_DOWNLOAD"
+
+set -A enable_step_phase__step --
+set -A enable_step_phase__phase --
+enable_step_phase__indices=' '
+typeset -i enable_step_phase__num=0
+
+set -A disable_step_phase__step --
+set -A disable_step_phase__phase --
+disable_step_phase__indices=' '
+typeset -i disable_step_phase__num=0
+
+mit_restart_weekday=""
+mit_batch=true
+mit_debug_mode=$MIT_DEBUG_MODE
+mit_simulate_transfer=$MIT_SIMULATE_TRANSFER
+mit_odd_alpha=$MIT_ODD_ALPHA
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  #echo "ARG:> '$arg'"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--today|-t|--submit-day-offset|-s)
+      mit_set_default_run_options="${mit_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --queue|-q)
+      mit_queue="$1"
+      shift 1
+      ;;
+    --wall-clock-limit|-w)
+      mit_wall_clock_limit="$1"
+      shift 1
+      ;;
+    --tasks|-t)
+      mit_tasks="$1"
+      shift 1
+      ;;
+    --submit|-s)
+      mit_submit=true
+      ;;
+    --no-submit|-s)
+      mit_submit=false
+      ;;
+    --job-type|-j)
+      mit_job_type="$1"
+      shift 1
+      if [[ $( echo " $JOB_TYPES " | grep -c " $mit_job_type " ) -eq 0 ]] ; then
+        echo "ERR: invalid job type '$mit_job_type'; valid types are: $JOB_TYPES" 1>&2
+        exit 1
+      fi
+      ;;
+    --job-default)
+      mit_job_type=$JOB_TYPE__DEFAULT
+      ;;
+    --job-multiple)
+      mit_job_type=$JOB_TYPE__MULTIPLE
+      ;;
+    --job-single)
+      mit_job_type=$JOB_TYPE__SINGLE
+      ;;
+    --steps|-S)
+      mit_steps="$1"
+      shift 1
+      ;;
+    --keep-input|--keep|-k)
+      mit_keep_input=true
+      ;;
+    --clean-input|--clean|-c)
+      mit_keep_input=false
+      ;;
+    --enable-step-phase?(s)|-d)
+      if [[ $(echo "$1" | grep -c :) -ne 0 ]] ; then
+        step=$(echo "$1" | $MIT_BINDIR/cut -d: -f1)
+        phases=$(echo "$1" | $MIT_BINDIR/cut -d: -f2-)
+        shift 1
+      else
+        step="$1"
+        phases="$2"
+      fi
+      for phase in $(echo "$phases" | sed -e 's/[, ][, ]*/ /g') ; do
+        echo "WRN: [${enable_step_phase__num}] : DISABLING ${step}::${phase}"
+        enable_step_phase__step[enable_step_phase__num]="$step"
+        enable_step_phase__phase[enable_step_phase__num]="$phase"
+        enable_step_phase__indices="${enable_step_phase__indices}${enable_step_phase__num} "
+        enable_step_phase__num=$(( $enable_step_phase__num + 1 ))
+      done
+      ;;
+    --disable-step-phase?(s)|-d)
+      if [[ $(echo "$1" | grep -c :) -ne 0 ]] ; then
+        step=$(echo "$1" | $MIT_BINDIR/cut -d: -f1)
+        phases=$(echo "$1" | $MIT_BINDIR/cut -d: -f2-)
+        shift 1
+      else
+        step="$1"
+        phases="$2"
+      fi
+      for phase in $(echo "$phases" | sed -e 's/[, ][, ]*/ /g') ; do
+        echo "WRN: [${disable_step_phase__num}] : DISABLING ${step}::${phase}"
+        disable_step_phase__step[disable_step_phase__num]="$step"
+        disable_step_phase__phase[disable_step_phase__num]="$phase"
+        disable_step_phase__indices="${disable_step_phase__indices}${disable_step_phase__num} "
+        disable_step_phase__num=$(( $disable_step_phase__num + 1 ))
+      done
+      ;;
+    --enable-data-assimilation|-d)
+      enable_data_assimilation=true
+      ;;
+    --disable-data-assimilation|-D)
+      enable_data_assimilation=false
+      ;;
+    --enable-transfer-pro|-p)
+      enable_transfer_pro=true
+      ;;
+    --disable-transfer-pro|-P)
+      enable_transfer_pro=false
+      ;;
+    --enable-update-tds-catalog|-x)
+      enable_update_tds_catalog=true
+      ;;
+    --disable-update-tds-catalog|-X)
+      enable_update_tds_catalog=false
+      ;;
+    --enable-transfer-images|-i)
+      enable_transfer_images=true
+      ;;
+    --disable-transfer-images|-I)
+      enable_transfer_images=false
+      ;;
+    --enable-input-timeout|-z)
+      enable_input_timeout=true
+      ;;
+    --disable-input-timeout|-Z)
+      enable_input_timeout=false
+      ;;
+    --enable-abort-on-errors|-a)
+      enable_input_abort_on_errors=true
+      ;;
+    --disable-abort-on-errors|-A)
+      enable_input_abort_on_errors=false
+      ;;
+    --without-timeout)
+      enable_input_timeout=false
+      enable_input_abort_on_errors=false
+      ;;
+    --with-timeout)
+      ;;
+    --alpha)
+      mit_odd_alpha="$1"
+      shift 1
+      ;;
+    --try-resume)
+      mit_force_download=false
+      ;;
+    --force-download)
+      mit_force_download=true
+      ;;
+    --test)
+      subargs=" "
+      for subarg in "$@" ; do
+        subargs="${subargs}'$subarg' "
+      done
+      eval "set -- --disable-transfer-pro --disable-update-tds-catalog --disable-transfer-images $subargs"
+      ;;
+    --debug)
+      mit_debug_mode=true
+      ;;
+    --recovery)
+      mit_recovery_mode=true
+      ;;
+    --simulate-transfer)
+      mit_simulate_transfer=true
+      ;;
+    *)
+      echo "ERROR: wrong command line option <$arg>" 1>&2
+      exit 2
+      ;;
+  esac
+done
+
+mit_prex "mit_set_default_run $mit_set_default_run_options"
+mit_prex "mit_set_run $MIT_DEFAULT_RUNDATE"
+
+#echo "MIT_LOGFILE=$MIT_LOGFILE"
+#mit_log_to_file 0 "MIT_LOGFILE=$MIT_LOGFILE"
+#read a
+
+
+domain_suff=$(mit_defdomain "$mit_tasks")
+
+
+mit_steps=$( echo "$mit_steps" | sed -e 's/,/ /g' )
+
+RT_MIT_RESTART_WEEKDAY="${mit_restart_weekday}"
+
+# apply defaults:
+if [[ $enable_data_assimilation == "$MIT_UNDEFINED" ]] ; then
+  enable_data_assimilation="$MIT_DA_ENABLE"
+fi
+if [[ $enable_transfer_pro == "$MIT_UNDEFINED" ]] ; then
+  enable_transfer_pro="$MIT_TRANSFER_PRO"
+fi
+if [[ $enable_update_tds_catalog == "$MIT_UNDEFINED" ]] ; then
+  enable_update_tds_catalog="$MIT_UPDATE_TDS_CATALOG"
+fi
+if [[ $enable_transfer_images == "$MIT_UNDEFINED" ]] ; then
+  enable_transfer_images="$MIT_TRANSFER_IMAGES"
+fi
+if [[ $enable_input_timeout == "$MIT_UNDEFINED" ]] ; then
+  enable_input_timeout="$MIT_INPUT_TIMEOUT_ENABLED"
+fi
+if [[ $enable_input_abort_on_errors == "$MIT_UNDEFINED" ]] ; then
+  enable_input_abort_on_errors="$MIT_INPUT_ABORT_ON_ERRORS"
+fi
+if [[ $mit_recovery_mode == "$MIT_UNDEFINED" ]] ; then
+  mit_recovery_mode="$MIT_RECOVERY_MODE"
+fi
+
+# check number of tasks:
+typeset -i num_missing_odd_files=0
+#for ij in i j ; do
+#  if [[ ! -f "$odd_file" ]] ; then
+#    mit_log_to_file 1 "ERR: missing file '$odd_file'"
+#    num_missing_odd_files=$(( $num_missing_odd_files + 1 ))
+#  fi
+#done
+if [[ $num_missing_odd_files -ne 0 ]] ; then
+  mit_log_to_file 0 "ERR: [${mit_tasks}] is not allowed as number of tasks" 1>&2
+  exit 2
+fi
+
+## rundate definition
+#if [ "$mit_rundate" != "$MIT_UNDEFINED" ] ; then
+#  mit_set_run "$mit_rundate"
+#else
+#  mit_set_run
+#fi
+
+mit_rm_tasks="$(mit_rm_mpi_tasks $mit_tasks)"
+#echo "MPI TASKS: $mit_tasks -> $mit_rm_tasks"
+#read aaa
+
+# default job type
+case "$mit_job_type" in
+  $JOB_TYPE__DEFAULT)
+    case "$MIT_RM" in
+      ll)
+        mit_job_type="$JOB_TYPE__MULTIPLE"
+        ;;
+      *)
+        mit_job_type="$JOB_TYPE__SINGLE"
+        ;;
+    esac
+    ;;
+  $JOB_TYPE__MULTIPLE)
+    case "$MIT_RM" in
+      ll|pbs|slurm)
+        # all fine!
+        ;;
+      *)
+        echo "ERR: job type '$JOB_TYPE__MULTIPLE' is not available for scheduler '$MIT_RM'" 1>&1
+        exit 1
+        ;;
+    esac
+    ;;
+esac
+
+# start
+mit_start
+
+mit_jcf_list=" "
+mit_job_name="mit_$MIT_VERSION"
+
+# new job command file and runid
+# Each job command file in the same $MIT_RUNLOGDIR has
+# a different, incremental RUN IDentifier ($MIT_RUNID)
+
+mit_runid=$(mit_new_runid)
+echo "MIT_RUNID: $mit_runid"
+
+#echo "MIT_RUNJOBID_FILE: $(mit_runjobid_file $mit_runid)"
+#mit_runjobid_filename=$(mit_runjobid_file "$mit_runid")
+mit_jcf_base=mit.${I_MIT_HOSTNAME}.${mit_runid}.jcf_${MIT_RM}
+mit_step_script_base=mit.${I_MIT_HOSTNAME}.${mit_runid}.step
+mit_job_eo_file="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.${mit_runid}.eo"
+mit_rm_eo_file="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.${mit_runid}.${MIT_RM_EO_FILENAME_PART}eo_${MIT_RM}"
+
+# convert wall clock limit 
+mit_wall_clock_limit=$( mit_rm_wall_clock_limit "$mit_wall_clock_limit" )
+
+# If queue is not defined, comment queue requirement line in JCF
+if [ $mit_queue = "$MIT_UNDEFINED" ] ; then
+  if [[ "$MIT_DEFAULT_QUEUE" != '' && "$MIT_DEFAULT_QUEUE" != "$MIT_UNDEFINED" ]] ; then
+    mit_queue=$MIT_DEFAULT_QUEUE
+  fi
+fi
+
+#echo "$mit_queue $MIT_DEFAULT_QUEUE"
+#read aaa
+
+# If queue is not defined, comment queue requirement line in JCF
+if [ $mit_queue = "$MIT_UNDEFINED" ] ; then
+  mit_queue_comment='#QUEUE IS NOT USED '
+else
+  mit_queue_comment=''
+fi
+
+prev_step="$MIT_UNDEFINED"
+function sed_tpl {
+  if [[ $prev_step = "$MIT_UNDEFINED" ]] ; then
+    mit_dependency_comment='#DEPENDENCY ARE NOT USED '
+    mit_dependency=''
+   else
+    mit_dependency_comment=''
+    case "$MIT_RM" in
+      ll)
+        mit_dependency="( $prev_step == 0 )"
+        ;;
+      lsf)
+        echo "ERROR: dependency don't work correctly with LFS!"
+        exit 1
+        ;;
+      pbs|slurm)
+        mit_dependency_comment='#DEPENDENCY IS OUTSIDE THE SCRIPT '
+        ;;
+      *)
+        mit_dependency="..."
+        ;;
+    esac
+   fi
+   sed	-e "s%@@(S:MIT_HOME)%${I_MIT_HOME}%g"						\
+	-e "s%@@(S:MIT_HOSTNAME)%${I_MIT_HOSTNAME}%g"					\
+	-e "s%@@(S:MIT_RUNDATE)%${MIT_RUNDATE}%g"					\
+	-e "s%@@(S:MIT_RUNLOGDIR)%${MIT_RUNLOGDIR}%g"					\
+	-e "s%@@(S:MIT_MAIL_ADDRESS)%${MIT_MAIL_ADDRESS}%g"				\
+	-e "s%@@(S:MIT_NOTIFY_ADDRESS)%${MIT_NOTIFY_ADDRESSES}%g"			\
+	-e "s%@@(S:MIT_WALL_CLOCK_LIMIT)%${mit_wall_clock_limit}%g"			\
+	-e "s%@@(S:MIT_WALL_CLOCK_LIMIT_PAR)%${mit_wall_clock_limit_par}%g"		\
+	-e "s%@@(S:MIT_WALL_CLOCK_LIMIT_SER)%${mit_wall_clock_limit_ser}%g"		\
+	-e "s%@@(S:MIT_TASKS)%${mit_tasks}%g"						\
+	-e "s%@@(S:MIT_CORES_PER_NODE)%${mit_cores_per_node}%g"				\
+	-e "s%@@(S:MIT_RM_MPI_TASKS)%${mit_rm_tasks}%g"					\
+	-e "s%@@(S:MIT_QUEUE)%${mit_queue}%g"						\
+	-e "s%@@(S:MIT_QUEUE_PAR)%${mit_queue_par}%g"					\
+	-e "s%@@(S:MIT_QUEUE_SER)%${mit_queue_ser}%g"					\
+	-e "s%@@(S:MIT_QUEUE_QOS)%${mit_queue_qos}%g"					\
+	-e "s%@@(S:MIT_QUEUE_COMMENT)%${mit_queue_comment}%g"				\
+	-e "s%@@(S:MIT_DEPENDENCY)%${mit_dependency}%g"					\
+	-e "s%@@(S:MIT_DEPENDENCY_COMMENT)%${mit_dependency_comment}%g"			\
+	-e "s%@@(S:MIT_BINDIR)%${MIT_BINDIR}%g"						\
+	-e "s%@@(S:MIT_SCRDIR)%${MIT_SCRDIR}%g"						\
+	-e "s%@@(S:MIT_RM)%${MIT_RM}%g"							\
+	-e "s%@@(S:MIT_RUNID)%${mit_runid}%g"						\
+	-e "s%@@(S:MIT_KEEP_INPUT)%${mit_keep_input}%g"					\
+	-e "s%@@(S:MIT_STEP)%${mit_step}%g"						\
+	-e "s%@@(S:MIT_STEP_NAME)%${mit_step}%g"					\
+	-e "s%@@(S:MIT_JOB_NAME)%${mit_job_name}%g"					\
+	-e "s%@@(S:MIT_BATCH)%${mit_batch}%g"						\
+	-e "s%@@(S:MIT_DA_ENABLE)%${enable_data_assimilation}%g"			\
+	-e "s%@@(S:MIT_FORCE_DOWNLOAD)%${mit_force_download}%g"				\
+	-e "s%@@(S:MIT_TRANSFER_PRO)%${enable_transfer_pro}%g"				\
+	-e "s%@@(S:MIT_UPDATE_TDS_CATALOG)%${enable_update_tds_catalog}%g"		\
+	-e "s%@@(S:MIT_TRANSFER_IMAGES)%${enable_transfer_images}%g"			\
+	-e "s%@@(S:MIT_ENABLE_PRE_PHASES)%${enable_pre_phases}%g"			\
+	-e "s%@@(S:MIT_ENABLE_MODEL_PHASES)%${enable_model_phases}%g"			\
+	-e "s%@@(S:MIT_ENABLE_POST_PHASES)%${enable_post_phases}%g"			\
+	-e "s%@@(S:MIT_DISABLE_PRE_PHASES)%${disable_pre_phases}%g"			\
+	-e "s%@@(S:MIT_DISABLE_MODEL_PHASES)%${disable_model_phases}%g"			\
+	-e "s%@@(S:MIT_DISABLE_POST_PHASES)%${disable_post_phases}%g"			\
+	-e "s%@@(S:MIT_RESTART_WEEKDAY)%${MIT_RESTART_WEEKDAY}%g"			\
+	-e "s%@@(S:MIT_INPUT_TIMEOUT_ENABLED)%${enable_input_timeout}%g"		\
+	-e "s%@@(S:MIT_INPUT_ABORT_ON_ERRORS)%${enable_input_abort_on_errors}%g"	\
+	-e "s%@@(S:MIT_STEP_SCRIPT_BASE)%${mit_step_script_base}%g"			\
+	-e "s%@@(S:MIT_JOB_EO_FILE)%${mit_job_eo_file}%g"				\
+	-e "s%@@(S:MIT_RM_EO_FILE)%${mit_rm_eo_file}%g"					\
+	-e "s%@@(S:MIT_DEBUG_MODE)%${mit_debug_mode}%g"					\
+	-e "s%@@(S:MIT_SIMULATE_TRANSFER)%${mit_simulate_transfer}%g"			\
+	-e "s%@@(S:MIT_RECOVERY_MODE)%${mit_recovery_mode}%g"				\
+	-e "s%@@(S:MIT_ODD_ALPHA)%${mit_odd_alpha}%g"					\
+	-e "s%@@(S:MIT_STEPS)%${mit_steps}%g"
+}
+
+### I n i t :
+
+mit_jcf="${mit_jcf_base}.${mit_job_type}"
+mit_jcf_list="$mit_jcf_list$mit_jcf "
+# job command file creation
+mit_log 1 "Creating JCF [${mit_jcf}]..."
+mit_log 2 "JCF is [${MIT_RUNLOGDIR}/${mit_jcf}]"
+cat $MIT_TPLDIR/jcf/mit_jcf.head.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf || {
+  errors=$(( $errors + 1 ))
+}
+
+disable_pre_phases=''
+disable_model_phases=''
+disable_post_phases=''
+
+enable_pre_phases=''
+enable_model_phases=''
+enable_post_phases=''
+
+mit_single_step=''
+mit_separator=''
+for mit_step in $mit_steps ; do
+  mit_single_step="$mit_single_step$mit_separator$mit_step"
+  mit_separator='_'
+done
+
+### R m - H e a d :
+echo "mit_steps=$mit_steps"
+case $mit_job_type in
+  $JOB_TYPE__SINGLE)
+    mit_type=parallel
+    echo "### Adding steps $mit_steps"
+    mit_step="$mit_single_step"
+    cat $MIT_TPLDIR/jcf/mit_jcf.${mit_type}.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf || {
+      errors=$(( $errors + 1 ))
+    }
+    ;;
+  $JOB_TYPE__MULTIPLE)
+    case "$MIT_RM" in
+      ll)
+        for mit_step in $mit_steps ; do
+          case "$mit_step" in
+            pre)
+              mit_type=serial
+              ;;
+            model|post)
+              mit_type=parallel
+              ;;
+            *)
+              echo "ERR: step [${mit_step}] is not defined" 1>&2
+              exit 1
+              ;;
+          esac
+          mit_step_script="${mit_step_script_base}.$mit_step"
+          enable_phases=' '
+          for index in $enable_step_phase__indices ; do
+            if [[ "$mit_step" == "${enable_step_phase__step[index]}" ]] ; then
+              enable_phases="${enable_phases}${enable_step_phase__phase[index]} "
+            fi
+          done
+          disable_phases=' '
+          for index in $disable_step_phase__indices ; do
+            if [[ "$mit_step" == "${disable_step_phase__step[index]}" ]] ; then
+              disable_phases="${disable_phases}${disable_step_phase__phase[index]} "
+            fi
+          done
+          # trimming is needed, because mit_profile sets the default value if the variable is empty; no spaces are allowed
+          enable_phases=$(list_trim "$enable_phases")
+          disable_phases=$(list_trim "$disable_phases")
+          #echo "DBG: enable_${mit_step}_phases=<${enable_phases}>"
+          #echo "DBG: disable_${mit_step}_phases=<${disable_phases}>"
+          case "$mit_step" in
+            pre)
+              enable_pre_phases="$enable_phases"
+              disable_pre_phases="$disable_phases"
+              ;;
+            model)
+              enable_model_phases="$enable_phases"
+              disable_model_phases="$disable_phases"
+              ;;
+            post)
+              enable_post_phases="$enable_phases"
+              disable_post_phases="$disable_phases"
+              ;;
+          esac
+          #echo "mit_job_type=<${mit_job_type}>"
+          echo "### Adding step $mit_step"
+          cat $MIT_TPLDIR/jcf/mit_jcf.${mit_type}.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf || {
+            errors=$(( $errors + 1 ))
+          }
+          prev_step="$mit_step"
+        done
+        ;;
+      pbs|slurm)
+# QUA è da METTERE TUTTA LA PARTE DI PBS MULTIPLE
+        for mit_step in $mit_steps ; do
+          case "$mit_step" in
+            pre)
+              mit_type=serial
+              ;;
+            model|post)
+              mit_type=parallel
+              ;;
+            *)
+              echo "ERR: step [${mit_step}] is not defined" 1>&2
+              exit 1
+              ;;
+          esac
+          mit_step_script="${mit_step_script_base}.$mit_step"
+          enable_phases=' '
+          for index in $enable_step_phase__indices ; do
+            if [[ "$mit_step" == "${enable_step_phase__step[index]}" ]] ; then
+              enable_phases="${enable_phases}${enable_step_phase__phase[index]} "
+            fi
+          done
+          disable_phases=' '
+          for index in $disable_step_phase__indices ; do
+            if [[ "$mit_step" == "${disable_step_phase__step[index]}" ]] ; then
+              disable_phases="${disable_phases}${disable_step_phase__phase[index]} "
+            fi
+          done
+          # trimming is needed, because mit_profile sets the default value if the variable is empty; no spaces are allowed
+          enable_phases=$(list_trim "$enable_phases")
+          disable_phases=$(list_trim "$disable_phases")
+          #echo "DBG: enable_${mit_step}_phases=<${enable_phases}>"
+          #echo "DBG: disable_${mit_step}_phases=<${disable_phases}>"
+          case "$mit_step" in
+            pre)
+              enable_pre_phases="$enable_phases"
+              disable_pre_phases="$disable_phases"
+              ;;
+            model)
+              enable_model_phases="$enable_phases"
+              disable_model_phases="$disable_phases"
+              ;;
+            post)
+              enable_post_phases="$enable_phases"
+              disable_post_phases="$disable_phases"
+              ;;
+          esac
+          #echo "mit_job_type=<${mit_job_type}>"
+
+          echo "### Adding step $mit_step (${mit_type}.${MIT_RM})"
+
+          mit_job_name="mit_$MIT_VERSION.$mit_step"
+
+          cat $MIT_TPLDIR/jcf/mit_jcf.head.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+            errors=$(( $errors + 1 ))
+          }
+
+          cat $MIT_TPLDIR/jcf/mit_jcf.${mit_type}.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+            errors=$(( $errors + 1 ))
+          }
+
+#           cat $MIT_TPLDIR/jcf/mit_jcf.tail.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+#             errors=$(( $errors + 1 ))
+#           }
+
+#           cat $MIT_TPLDIR/jcf/mit_jcf.tail.${MIT_RM}.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+#             errors=$(( $errors + 1 ))
+#           }
+          for tpl_name in mit_jcf.tail.${MIT_RM} mit_jcf.body.head mit_jcf.body.${mit_job_type} mit_jcf.body.tail ; do
+            tpl_file="$MIT_TPLDIR/jcf/${tpl_name}.template"
+            echo "### adding tpl $tpl_file"
+            if [[ ! -f "$tpl_file" ]] ; then
+              echo "ERR: missing file '$tpl_file'" 1>&2
+              exit 1
+            fi
+            cat "$tpl_file" | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+            errors=$(( $errors + 1 ))
+            }
+          done
+
+#           cat $MIT_TPLDIR/jcf/mit_jcf.step.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf.$mit_step || {
+#             errors=$(( $errors + 1 ))
+#           }
+          prev_step="$mit_step"
+        done
+        ;;
+    esac
+    ;;
+esac
+
+
+### S t e p - s c r i p t s :
+for mit_step in $mit_steps ; do
+  mit_step_script="${mit_step_script_base}.$mit_step"
+  cat $MIT_TPLDIR/jcf/mit_jcf.step.template | sed_tpl >> $MIT_RUNLOGDIR/$mit_step_script || {
+    errors=$(( $errors + 1 ))
+  }
+  mit_prex "chmod 744 $MIT_RUNLOGDIR/$mit_step_script"
+done
+
+### B o d y :
+mit_step_script_filename="${mit_step_script_base}.\${MIT_STEP}"
+for tpl_name in mit_jcf.tail.${MIT_RM} mit_jcf.body.head mit_jcf.body.${mit_job_type} mit_jcf.body.tail ; do
+  tpl_file="$MIT_TPLDIR/jcf/${tpl_name}.template"
+  echo "### adding tpl $tpl_file"
+  if [[ ! -f "$tpl_file" ]] ; then
+    echo "ERR: missing file '$tpl_file'" 1>&2
+    exit 1
+  fi
+  cat "$tpl_file" | sed_tpl >> $MIT_RUNLOGDIR/$mit_jcf || {
+    errors=$(( $errors + 1 ))
+  }
+done
+
+# Check if some @@(...) macro is left unexpanded in JCF
+if [[ $( $MIT_BINDIR/grep -c '@@' $MIT_RUNLOGDIR/$mit_jcf ) -ne 0 ]] ; then
+  mit_log_to_file 0 "ERROR: unexpanded macros in JCF [${mit_jcf}]" 
+  mit_exit 1
+fi
+
+# Log JCF creation exit status
+for mit_jcf in $mit_jcf_list ; do
+  if [[ -f $MIT_RUNLOGDIR/$mit_jcf && -s $MIT_RUNLOGDIR/$mit_jcf ]] ; then
+    mit_log 0 "JCF [${mit_jcf}] has been created"
+  else
+    mit_log_to_file 0 "ERROR: JCF [${mit_jcf}] has NOT been created"
+  fi
+done
+
+esternal_dependency=""
+case $mit_job_type in
+  $JOB_TYPE__MULTIPLE)
+    case "$MIT_RM" in
+       pbs)
+         esternal_dependency="-W depend=afterok:"
+         mit_jcf_list=""
+         for mit_step in $mit_steps ; do
+           mit_jcf_list="$mit_jcf_list $mit_jcf.$mit_step"
+         done
+         ;;
+       slurm)
+         esternal_dependency="--dependency=afterok:"
+         mit_jcf_list=""
+         for mit_step in $mit_steps ; do
+           mit_jcf_list="$mit_jcf_list $mit_jcf.$mit_step"
+         done
+         ;;
+    esac
+    ;;
+esac
+
+# job command file submission
+if $mit_submit ; then
+  typeset -i submit_errors=0
+  #echo "mit_jcf_list=<${mit_jcf_list}>"
+  pbsjob="xx"
+  MIT_RM_SUBMIT_JOBID=0
+  for mit_jcf in $mit_jcf_list ; do
+    mit_log_to_file 1 "Submitting JCF [${mit_jcf}]..."
+    if [[ $pbsjob == "xx" ]];then
+      dep=" "
+    else
+     case "$MIT_RM" in
+	pbs)
+         dep="$esternal_dependency$pbsjob "
+         ;;
+       slurm)
+         dep="$esternal_dependency$MIT_RM_SUBMIT_JOBID "
+         ;;
+     esac
+    fi
+    pbsjob=$(mit_rm_submit "$dep $MIT_RUNLOGDIR/$mit_jcf") ; ec=$?
+    errors=$(( $errors + $ec ))
+    MIT_RM_SUBMIT_JOBID=$( echo -n "$pbsjob" | cut -d ' ' -f4 )
+    mit_log_to_file 0 "JCF [${mit_jcf}] has been submitted [$(mit_exitcode $ec)]"
+    if [[ $ec -eq 0 ]] ; then
+      #mit_log 1 "   QUEUE: $MIT_RM_SUBMIT_QUEUE"
+      mit_log_to_file 1 "   JOBID: $MIT_RM_SUBMIT_JOBID"
+      #echo "${mit_jcf}:$MIT_RM_SUBMIT_JOBID" >> "${mit_jobids_file}"
+      mit_add_jobid "$mit_jcf" "$MIT_RM_SUBMIT_JOBID" "$mit_runid"
+    else
+      submit_errors=$(( $submit_errors + 1 ))
+    fi
+  done
+  if [[ $submit_errors -eq 0 ]] ; then
+    mit_log_to_file 0 "Chain has been submitted [$(mit_exitcode $submit_errors)]"
+  else
+    mit_log_to_file 0 "Chain has *NOT* been submitted [$(mit_exitcode $submit_errors)]"
+  fi
+  errors=$(( $errors + $submit_errors ))
+fi
+
+mit_exit "$errors"
+
+
+

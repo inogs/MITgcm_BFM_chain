@@ -1,0 +1,45 @@
+if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
+  __MIT_PROFILE_galileo_IS_DEFINED__='__defined__'
+
+# Load environment for pbs, modules:
+.  /usr/share/Modules/init/ksh
+    MIT_RM=slurm
+    MIT_MPI=intelmpi
+
+MIT_HOST_PRIMARY_LOGIN_NODE='login04-ext.galileo.cineca.it'
+MIT_HOST_SECONDARY_LOGIN_NODE='login05-ext.galileo.cineca.it'
+
+MIT_HOST_PRIMARY_HOSTNAME='login04'
+MIT_HOST_SECONDARY_HOSTNAME='login05'
+
+
+NODENAME=$(hostname)                    # nome del nodo
+NODE=$( echo "$NODENAME"| cut -d: -f1 ) # prima parte del nome del nodo
+
+MIT_HOST_LOGIN_NODES="$MIT_HOST_PRIMARY_LOGIN_NODE $MIT_HOST_SECONDARY_LOGIN_NODE"
+
+MIT_CORES_PER_NODE=48
+
+MIT_DEFAULT_WALL_CLOCK_LIMIT=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_SER=04:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_PAR=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_TASKS=96					# Default tasks' number WARNING: 1 node is not enough
+MIT_DEFAULT_QUEUE="g100_meteo_prod"                                      # Default queue
+MIT_DEFAULT_QUEUE_PAR="g100_meteo_prod"                                  # Default queue par
+#MIT_DEFAULT_QUEUE_SER="serial"                                 # Default queue ser
+MIT_DEFAULT_QUEUE_SER="g100_meteo_ser"                                  # Default queue ser
+MIT_DEFAULT_QOS="qos_meteo"
+MIT_DEFAULT_MEM="350gb"
+mit_batch_prex "module load openmpi-x86_64"
+
+mit_batch_prex "ulimit -s unlimited"
+
+
+function mit_is_login_node {
+#   ksh /cineca/scripts/ha_login.select ; return $?
+    return 0
+}
+
+
+# end of include guard:
+fi

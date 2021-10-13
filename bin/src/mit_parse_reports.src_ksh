@@ -1,0 +1,57 @@
+#!/bin/ksh
+# This script parses monthly reports and dumps statistical informations
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options]
+[options]
+$(opa_set_default_run__print_options)
+	--help|-h		show this help
+EofCat
+}
+
+
+opa_set_default_run_options=''
+opa_parse_reports_options=' '
+  
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+      opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --from|-f|--to|-t)
+      opa_parse_reports_options="${opa_parse_reports_options}$arg '$1' "
+      shift 1
+      ;;
+    *)
+      echo "ERROR: wrong command line option <$arg>" 1>&2
+      exit 2
+      ;;
+  esac
+done
+
+opa_prex "opa_set_default_run $opa_set_default_run_options"
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+files=' '
+for report_file in $(ls -1 $OPA_LOGDIR/report/monthly*.auto) ; do
+  report_file_manual=${report_file##.auto}
+  if [[ -d ${report_file_manual} ]] ; then
+    report_file=${report_file_manual}
+  fi
+  files="$files$report_file "
+done
+
+opa_prex "$OPA_SCRDIR/opa_parse_reports.py $opa_parse_reports_options $files"
+
+

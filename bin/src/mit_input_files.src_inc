@@ -1,0 +1,546 @@
+if [[ $__MIT_INPUT_FILES_IS_DEFINED__ == '' ]] ; then
+  __MIT_INPUT_FILES_IS_DEFINED__='__defined__'
+
+# !!!WARNING!!! The following 4 variables are set only for test purposes, their value is NOT correct
+
+MIT_MITOPER_A_DAY_OFFSET_START=''	# offset for MITOPER_A files - first day is $MIT_RUNDATE + $MIT_MITOPER_A_DAY_OFFSET_START
+MIT_MITOPER_A_DAY_OFFSET_END=''		# offset for MITOPER_A files - last  day is $MIT_RUNDATE + $MIT_MITOPER_A_DAY_OFFSET_END
+MIT_MITOPER_S_DAY_OFFSET_START=''	# offset for MITOPER_A files - first day is $MIT_RUNDATE + $MIT_MITOPER_A_DAY_OFFSET_START
+MIT_MITOPER_S_DAY_OFFSET_END=''		# offset for MITOPER_A files - last  day is $MIT_RUNDATE + $MIT_MITOPER_A_DAY_OFFSET_END
+MIT_MITOPER_F_DAY_OFFSET_START=''	# offset for MITOPER_F files - first day is $MIT_RUNDATE + $MIT_MITOPER_F_DAY_OFFSET_START
+MIT_MITOPER_F_DAY_OFFSET_END=''		# offset for MITOPER_F files - last day is $MIT_RUNDATE + $MIT_MITOPER_F_DAY_OFFSET_END
+
+MIT_MITOPER_A_PREFIX=''			# prefix for analyses input files
+MIT_MITOPER_S_PREFIX=''			# prefix for simulations input files
+MIT_MITOPER_F_PREFIX=''			# prefix for forecasts input files
+MIT_MITOPER_A_DATE_FORMAT=''		# format for analyses date
+MIT_MITOPER_S_DATE_FORMAT=''		# format for simulations date
+MIT_MITOPER_F_DATE_FORMAT=''		# format for forecasts date
+
+
+set -A MIT_INPUT_FILE__ACTUAL --	# Array of actual input file names
+set -A MIT_INPUT_TYPE__ACTUAL --	# Array of actual input file types ('a' or 'f')
+set -A MIT_INPUT_VAR__ACTUAL --		# Array of actual input file vars (one of $MIT_VARIABLES)
+MIT_INPUT_FILE_INDICES__ACTUAL=' '	# indices for the previous arrays
+
+set -A MIT_VAR_INPUT_FILE_INDICES__ACTUAL --	# Array containing input file indices (i.e. indices
+						# for arrays MIT_INPUT_FILE__ACTUAL, MIT_INPUT_TYPE__ACTUAL,
+						# MIT_INPUT_TYPE__ACTUAL") organized per var index
+
+# The following variables are all set by 'mit_set_input_files__mitoper_a':
+set -A MIT_MITOPER_A_INPUT_VARS --		# variable
+set -A MIT_MITOPER_A_INPUT_LFILES --		# names of all the MITOPER_A files as downloaded
+set -A MIT_MITOPER_A_INPUT_RFILES --		# remote names of all the MITOPER_A files as downloaded
+set -A MIT_MITOPER_A_INPUT_COMPRESS_MODES --	# compress mode for the MITOPER_A files as downloaded
+set -A MIT_MITOPER_A_INPUT_DOWNLOAD_MODES --	# download mode for the MITOPER_A files as downloaded (protocol:config)
+set -A MIT_MITOPER_A_INPUT_DOWNLOAD_MODES_EMERG --	# emergency download mode for the MITOPER_A files as downloaded (protocol:config)
+set -A MIT_MITOPER_A_INPUT_RDIRS --		# remote directories of all the MITOPER_A files as downloaded
+MIT_MITOPER_A_INPUT_FILES_INDICES=' '		# indices of the MITOPER_A files
+typeset -i MIT_MITOPER_A_INPUT_FILES_NUM=0	# num of the MITOPER_A files
+
+# The following variable is set by 'mit_set_input_files__mitoper':
+set -A MIT_MITOPER_F_INPUT_VARS --		# variable
+set -A MIT_MITOPER_F_INPUT_LFILES --		# names of all the MITOPER_F input files
+set -A MIT_MITOPER_F_INPUT_RFILES --		# remote names of all the MITOPER_F files as downloaded
+set -A MIT_MITOPER_F_INPUT_COMPRESS_MODES --	# compress mode for the MITOPER_F files as downloaded
+set -A MIT_MITOPER_F_INPUT_DOWNLOAD_MODES --	# compress mode for the MITOPER_F files as downloaded (protocol:config)
+set -A MIT_MITOPER_F_INPUT_DOWNLOAD_MODES_EMERG --	# emergency download mode for the MITOPER_F files as downloaded (protocol:config)
+set -A MIT_MITOPER_F_INPUT_RDIRS --		# remote directories of all the MITOPER_F files as downloaded
+MIT_MITOPER_F_INPUT_FILES_INDICES=' '		# indices of the MITOPER_F files
+typeset -i MIT_MITOPER_F_INPUT_FILES_NUM=0	# num of the MITOPER_F files
+
+MIT_MITOPER_F_LAST_FILES=""			# list of file to be replicated
+
+MIT_MITOPER_A_RDIR=''				# remote directory for analyses
+MIT_MITOPER_S_RDIR=''				# remote directory for simulations
+MIT_MITOPER_F_RDIR=''				# remote directory for forecasts
+MIT_DATEDIR=''					# remote main directory 
+# DA parameters
+set -A MIT_DA_SAT_INPUT_VARS --
+set -A MIT_DA_SAT_INPUT_LFILES --
+set -A MIT_DA_SAT_INPUT_RFILES --
+set -A MIT_DA_SAT_INPUT_COMPRESS_MODES --
+set -A MIT_DA_SAT_INPUT_DOWNLOAD_MODES --
+set -A MIT_DA_SAT_INPUT_RDIRS --
+MIT_DA_SAT_INPUT_FILES_INDICES=' '
+typeset -i MIT_DA_SAT_INPUT_FILES_NUM=0
+MIT_DA_SAT_RDIR=''				# remote directory for SAT file
+
+
+_FTPCONFIG_INGV="$I_MIT_HOME/etc/http-config/.ingv.ftpconfig"
+_HTTPCONFIG_INGV="$I_MIT_HOME/etc/http-config/.ingv.httpconfig"
+_HTTPCONFIG_INGV_EMERG="$I_MIT_HOME/etc/http-config/.ingv.httpconfig.emerg"
+_NCCONFIG_SAT="$I_MIT_HOME/etc/nc-config/.sat.ncconfig"
+
+  
+function mit_input_files__setup  {
+  typeset _mit_version_number="$I_MIT_VERSION_NUMBER"
+  case "$_mit_version_number" in
+    0)
+      MIT_MITOPER_A_PREFIX=''
+      MIT_MITOPER_S_PREFIX=''
+      MIT_MITOPER_F_PREFIX=''
+      MIT_MITOPER_A_DATE_FORMAT='%y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%y%m%d'
+      MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+      MIT_MITOPER_A_DAY_OFFSET_END=-1
+      MIT_MITOPER_S_DAY_OFFSET_START=0
+      MIT_MITOPER_S_DAY_OFFSET_END=-1
+      MIT_MITOPER_F_DAY_OFFSET_START=0
+      MIT_MITOPER_F_DAY_OFFSET_END=0
+      MIT_MITOPER_A_RDIR="analyses"
+      MIT_MITOPER_S_RDIR="undefined"
+      MIT_MITOPER_F_RDIR="forecast"
+      ;;
+    1|2)
+      MIT_MITOPER_A_PREFIX='AN_'
+      MIT_MITOPER_S_PREFIX='SM_'
+      MIT_MITOPER_F_PREFIX='FC_'
+      MIT_MITOPER_A_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DAY_OFFSET_START=0
+#     MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS - 1 ))
+#     Changes with V3C
+      MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS ))
+      MIT_MITOPER_A_RDIR="mfs_sys4b2/output"
+      MIT_MITOPER_S_RDIR="mfs_sys4b2/output"
+      MIT_MITOPER_F_RDIR="mfs_sys4b2/output"
+      if [[ "$_mit_version_number" == "2" ]] ; then
+         MIT_DA_SAT_RDIR='.'
+      fi
+      ;;
+    3|3.1|4)
+      MIT_MITOPER_F_PREFIX="mfs_sys4e"
+      MIT_MITOPER_A_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%Y%m%d'
+      case "$MIT_WEEKDAY" in
+        2)
+          # TUESDAY (wednesday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-1
+          MIT_MITOPER_S_DAY_OFFSET_START=0
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          MIT_MITOPER_A_RDIR="mfs_sys4e_output"
+          MIT_MITOPER_A_PREFIX="mfs_sys4e"
+          MIT_MITOPER_S_PREFIX="mfs_sys4e"
+          MIT_DATEDIR="${MIT_RUNDATE}"
+          ;;
+        5)
+          # FRIDAY (saturday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-4 #monday
+          MIT_MITOPER_S_DAY_OFFSET_START=-3 #tuesday
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          set_spec_data -date ${MIT_RUNDATE} -days "${MIT_MITOPER_S_DAY_OFFSET_START}"
+          MIT_MITOPER_A_RDIR="mfs_sys4e_output"
+          MIT_MITOPER_A_PREFIX="mfs_sys4e"
+          MIT_MITOPER_S_PREFIX="mfs_sys4e"
+          MIT_DATEDIR="${LAST_RUNDATE}"
+          ;;
+        *)
+          mit_die 10 "Unsupported weekday '${MIT_WEEKDAY}'" 
+          ;;
+      esac
+      MIT_MITOPER_F_DAY_OFFSET_START=1
+      MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS - 1 ))
+      MIT_MITOPER_S_RDIR="mfs_sys4e_output"
+      MIT_MITOPER_F_RDIR="mfs_sys4e_output"
+      MIT_DA_SAT_RDIR="Intermediate/OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_060/dataset-oc-med-chl-modis_a-l4-chl_7km_daily-rt-v02"
+      ;;
+    2C)
+      MIT_MITOPER_F_PREFIX="mfs_efs1"
+      MIT_MITOPER_A_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%Y%m%d'
+      case "$MIT_WEEKDAY" in
+        2)
+          # TUESDAY (wednesday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-1
+          MIT_MITOPER_S_DAY_OFFSET_START=0
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          MIT_MITOPER_A_RDIR="mfs_eas1_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas1"
+          MIT_MITOPER_S_PREFIX="mfs_efs1"
+          MIT_DATEDIR="${MIT_RUNDATE}"
+          ;;
+        5)
+          # FRIDAY (saturday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-4 #monday
+          MIT_MITOPER_S_DAY_OFFSET_START=-3 #tuesday
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          set_spec_data -date ${MIT_RUNDATE} -days "${MIT_MITOPER_S_DAY_OFFSET_START}"
+          MIT_MITOPER_A_RDIR="mfs_eas1_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas1"
+          MIT_MITOPER_S_PREFIX="mfs_efs1"
+          MIT_DATEDIR="${LAST_RUNDATE}"
+          ;;
+        *)
+          mit_die 10 "Unsupported weekday '${MIT_WEEKDAY}'"
+      esac
+      MIT_MITOPER_F_DAY_OFFSET_START=1
+      MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS - 1 ))
+      MIT_MITOPER_S_RDIR="mfs_eas1_output"
+      MIT_MITOPER_F_RDIR="mfs_eas1_output"
+      MIT_DA_SAT_RDIR="Intermediate/OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_060/dataset-oc-med-chl-modis_a-l4-chl_7km_daily-rt-v02"
+      ;; 
+    3C)
+      MIT_MITOPER_F_PREFIX="mfs_efs2"
+      MIT_MITOPER_A_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%Y%m%d'
+      case "$MIT_WEEKDAY" in
+        2)
+          # TUESDAY (wednesday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-1
+          MIT_MITOPER_S_DAY_OFFSET_START=0
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          MIT_MITOPER_A_RDIR="mfs_eas2_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas2"
+          MIT_MITOPER_S_PREFIX="mfs_efs2"
+          MIT_DATEDIR="${MIT_RUNDATE}"
+          ;;
+        5)
+          # FRIDAY (saturday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-4 #monday
+          MIT_MITOPER_S_DAY_OFFSET_START=-3 #tuesday
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          set_spec_data -date ${MIT_RUNDATE} -days "${MIT_MITOPER_S_DAY_OFFSET_START}"
+          MIT_MITOPER_A_RDIR="mfs_eas2_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas2"
+          MIT_MITOPER_S_PREFIX="mfs_efs2"
+          MIT_DATEDIR="${LAST_RUNDATE}"
+          ;;
+      esac
+      MIT_MITOPER_F_DAY_OFFSET_START=1
+      MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS ))
+      MIT_MITOPER_S_RDIR="mfs_eas3_output"
+      MIT_MITOPER_F_RDIR="mfs_eas3_output"
+      MIT_DA_SAT_RDIR="Intermediate/OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_060/dataset-oc-med-chl-modis_a-l4-chl_7km_daily-rt-v02"
+      ;;
+    4C)
+      MIT_MITOPER_F_PREFIX="mfs_eas3"
+      MIT_MITOPER_A_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_S_DATE_FORMAT='%Y%m%d'
+      MIT_MITOPER_F_DATE_FORMAT='%Y%m%d'
+      case "$MIT_WEEKDAY" in
+        2)
+          # TUESDAY (wednesday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-1
+          MIT_MITOPER_S_DAY_OFFSET_START=0
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          MIT_MITOPER_A_RDIR="mfs_eas3_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas3"
+          MIT_MITOPER_S_PREFIX="mfs_eas3"
+          MIT_DATEDIR="${MIT_RUNDATE}"
+          ;;
+        5)
+          # FRIDAY (saturday's run)
+          MIT_MITOPER_A_DAY_OFFSET_START=$(( 0 - $MIT_ANALYSES_DAYS ))
+          MIT_MITOPER_A_DAY_OFFSET_END=-4 #monday
+          MIT_MITOPER_S_DAY_OFFSET_START=-3 #tuesday
+          MIT_MITOPER_S_DAY_OFFSET_END=0
+          set_spec_data -date ${MIT_RUNDATE} -days "${MIT_MITOPER_S_DAY_OFFSET_START}"
+          MIT_MITOPER_A_RDIR="mfs_eas3_output"
+          MIT_MITOPER_A_PREFIX="mfs_eas3"
+          MIT_MITOPER_S_PREFIX="mfs_eas3"
+          MIT_DATEDIR="${LAST_RUNDATE}"
+          ;;
+        *)
+          mit_die 10 "Unsupported weekday '${MIT_WEEKDAY}'" 
+          ;;
+      esac
+      MIT_MITOPER_F_DAY_OFFSET_START=1
+      MIT_MITOPER_F_DAY_OFFSET_END=$(( $MIT_FORECAST_DAYS ))
+      MIT_MITOPER_S_RDIR="mfs_eas3_output"
+      MIT_MITOPER_F_RDIR="mfs_eas3_output"
+      MIT_DA_SAT_RDIR="Intermediate/OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_060/dataset-oc-med-chl-modis_a-l4-chl_7km_daily-rt-v02"
+      ;;
+    *)
+      mit_die 10 "Unsupported version number '$_mit_version_number'"
+      ;;
+  esac
+  
+
+  # Actual values (==read from input) for previous variables
+  #echo "MIT_MITOPER_A_DAY_OFFSET_START='$MIT_MITOPER_A_DAY_OFFSET_START'"
+  MIT_MITOPER_A_DAY_OFFSET_START__ACTUAL="$MIT_MITOPER_A_DAY_OFFSET_START"
+  MIT_MITOPER_A_DAY_OFFSET_END__ACTUAL="$MIT_MITOPER_A_DAY_OFFSET_END"
+  MIT_MITOPER_S_DAY_OFFSET_START__ACTUAL="$MIT_MITOPER_S_DAY_OFFSET_START"
+  MIT_MITOPER_S_DAY_OFFSET_END__ACTUAL="$MIT_MITOPER_S_DAY_OFFSET_END"
+  MIT_MITOPER_F_DAY_OFFSET_START__ACTUAL="$MIT_MITOPER_F_DAY_OFFSET_START"
+  MIT_MITOPER_F_DAY_OFFSET_END__ACTUAL="$MIT_MITOPER_F_DAY_OFFSET_END"
+
+
+  if false ; then
+    cat <<EOFCAT
+#### I_MIT_VERSION_NUMBER           = [${I_MIT_VERSION_NUMBER}]
+#### MIT_VERSION                    = [${MIT_VERSION}]
+
+#### MIT_MITOPER_A_DAY_OFFSET_START = [${MIT_MITOPER_A_DAY_OFFSET_START}]
+#### MIT_MITOPER_A_DAY_OFFSET_END   = [${MIT_MITOPER_A_DAY_OFFSET_END}]
+#### MIT_MITOPER_A_DATE_FORMAT      = [${MIT_MITOPER_A_DATE_FORMAT}]
+
+#### MIT_MITOPER_S_DAY_OFFSET_START = [${MIT_MITOPER_S_DAY_OFFSET_START}]
+#### MIT_MITOPER_S_DAY_OFFSET_END   = [${MIT_MITOPER_S_DAY_OFFSET_END}]
+#### MIT_MITOPER_S_DATE_FORMAT      = [${MIT_MITOPER_S_DATE_FORMAT}]
+
+#### MIT_MITOPER_F_DAY_OFFSET_START = [${MIT_MITOPER_F_DAY_OFFSET_START}]
+#### MIT_MITOPER_F_DAY_OFFSET_END   = [${MIT_MITOPER_F_DAY_OFFSET_END}]
+#### MIT_MITOPER_F_DATE_FORMAT      = [${MIT_MITOPER_F_DATE_FORMAT}]
+
+#### MIT_DA_START_DATE              = [${MIT_DA_START_DATE}]
+#### MIT_DA_SAT_START_DATE          = [${MIT_DA_SAT_START_DATE}]
+#### MIT_DA_SAT_END_DATE            = [${MIT_DA_SAT_END_DATE}]
+EOFCAT
+    read aaa
+  fi
+}
+
+
+
+function mit_set_input_files__mitoper_a {
+  MIT_MITOPER_A_INPUT_FILES_INDICES=' '
+  _Imit_set_input_files__mitoper_a_s_f 'a'
+  _Imit_set_input_files__mitoper_a_s_f 's'
+}
+
+function mit_set_input_files__mitoper_f {
+  MIT_MITOPER_F_INPUT_FILES_INDICES=' '
+  _Imit_set_input_files__mitoper_a_s_f 'f'
+}
+
+function _Imit_set_input_files__mitoper_a_s_f {
+  # This is an internal function that evaluates the names for
+  # analyses, simulations and forecast; the first parameter can be
+  # * 'a' for analyses
+  # * 's' for simulations
+  # * 'f' for forecasts
+  typeset _a_s_f="$1"
+  shift 1
+
+  typeset _start
+  typeset _end
+  typeset _var
+  typeset _prefix_remote
+  typeset _date_format_remote
+  typeset _prefix_local=''
+  typeset _rdir
+  case  "$_a_s_f" in
+    a)
+      _start="$MIT_MITOPER_A_DAY_OFFSET_START"
+      _end="$MIT_MITOPER_A_DAY_OFFSET_END"
+      _prefix_remote="${MIT_MITOPER_A_PREFIX}-"
+      _date_format_remote="$MIT_MITOPER_A_DATE_FORMAT"
+      _rdir="$MIT_MITOPER_A_RDIR"
+      _afs="-a"
+      ;;
+    s)
+      _start="$MIT_MITOPER_S_DAY_OFFSET_START"
+      _end="$MIT_MITOPER_S_DAY_OFFSET_END"
+      _prefix_remote="${MIT_MITOPER_S_PREFIX}-"
+      _date_format_remote="$MIT_MITOPER_S_DATE_FORMAT"
+      _rdir="$MIT_MITOPER_S_RDIR"
+       _afs="-s"
+      ;;
+    f)
+      _start="$MIT_MITOPER_F_DAY_OFFSET_START"
+      _end="$MIT_MITOPER_F_DAY_OFFSET_END"
+      _prefix_remote="${MIT_MITOPER_F_PREFIX}-"
+      _date_format_remote="$MIT_MITOPER_F_DATE_FORMAT"
+      _rdir="$MIT_MITOPER_F_RDIR"
+      _afs="-f"
+      ;;
+  esac
+  #echo "@@@ [${0}] _a_s_f=[${_a_s_f}]"
+  #echo "@@@ [${0}] _start=[${_start}]"
+  #echo "@@@ [${0}] _end=[${_end}]"
+  #echo "@@@ [${0}] _prefix_remote=[${_prefix_remote}]"
+  #echo "$_a_s_f $MIT_RUNDATE $_start $_end"
+      
+  # Set the name of the MITOPER_F input files
+  typeset _mitoper_file_remote=''
+  typeset _mitoper_file=''
+  typeset _days_offset
+  typeset _date_local
+  typeset _date_remote
+  typeset -i _i
+  typeset _v
+  typeset -i _i_next
+  typeset    _day_offset_next
+  typeset    _date_local_next
+  typeset    _mitoper_file_local_next
+  typeset    _ln_next
+  echo "###> $_a_s_f :: $_start $_end"
+  for _i in $(mit_range $_start $_end ) ; do
+    # $_i is an offset (in number of days, with sign) to be added to the $MIT_RUNDATE
+    # in order to have the expected date of the input files.
+    if [[ $_i -lt 0 ]] ; then
+      _days_offset="$(( - $_i )) days ago"
+    else
+      _days_offset="$_i days"
+    fi
+    if [[ "$_a_s_f" == 'f' ]] ; then
+      _i_next=$(( $_i + 1 ))
+      if [[ $_i_next -lt 0 ]] ; then
+        _days_offset_next="$(( - $_i_next )) days ago"
+      else
+        _days_offset_next="$_i_next days"
+      fi
+      _date_local_next=$( $MIT_BINDIR/date --date "$MIT_RUNDATE $_days_offset_next" +'%y%m%d' )
+      _ln_next=""
+    fi
+    # Apply the offset and get the expected file rundate
+    _date_local=$( $MIT_BINDIR/date --date "$MIT_RUNDATE $_days_offset" +'%y%m%d' )
+    _date_remote=$( $MIT_BINDIR/date --date "$MIT_RUNDATE $_days_offset" +"$_date_format_remote" )
+    echo "@@@ [${_date_local}] [${_date_format_remote}] [${_date_remote}]" 1>&2
+    # For each input date, three files are downloaded (for T, U and V variables)
+    for _v in $MIT_VARIABLES ; do
+      case  "$_a_s_f" in
+        a)
+         _prod_cycle=${MIT_DATEDIR}
+         ;;
+        s)
+         _prod_cycle=${_date_remote}
+         ;;
+        f)
+         _prod_cycle=${MIT_RUNDATE}
+         ;;
+      esac
+      #_mitoper_file_remote="${_prefix_remote}${_prod_cycle}_${_date_remote}${_afs}_${_v}.nc.gz"
+      #V3C change: keep it unzipped
+      _mitoper_file_remote="${_prefix_remote}${_prod_cycle}-${_date_remote}${_afs}-${_v}.nc"
+      _mitoper_file_local="${_prefix_local}${_date_local}_$_v.nc"
+      typeset _rdir
+      case  "$_a_s_f" in
+        a|s)
+          case "$_a_s_f" in
+            a)
+              _rdir="$MIT_MITOPER_A_RDIR/${MIT_DATEDIR}"
+              ;;
+            s)
+              _rdir="$MIT_MITOPER_S_RDIR/${_date_remote}"
+              ;;
+          esac
+          MIT_MITOPER_A_INPUT_RDIRS[MIT_MITOPER_A_INPUT_FILES_NUM]="$_rdir"
+          MIT_MITOPER_A_INPUT_RFILES[MIT_MITOPER_A_INPUT_FILES_NUM]="$_mitoper_file_remote"
+          MIT_MITOPER_A_INPUT_LFILES[MIT_MITOPER_A_INPUT_FILES_NUM]="$_mitoper_file_local"
+          MIT_MITOPER_A_INPUT_COMPRESS_MODES[MIT_MITOPER_A_INPUT_FILES_NUM]="gzip"
+          #MIT_MITOPER_A_INPUT_DOWNLOAD_MODES[MIT_MITOPER_A_INPUT_FILES_NUM]="http:$_HTTPCONFIG_INGV"
+          #V3C change: use the new ftp server from INGV
+          MIT_MITOPER_A_INPUT_DOWNLOAD_MODES[MIT_MITOPER_A_INPUT_FILES_NUM]="http:$_FTPCONFIG_INGV"
+          MIT_MITOPER_A_INPUT_DOWNLOAD_MODES_EMERG[MIT_MITOPER_A_INPUT_FILES_NUM]="http:$_HTTPCONFIG_INGV_EMERG"
+          MIT_MITOPER_A_INPUT_VARS[MIT_MITOPER_A_INPUT_FILES_NUM]="$_v"
+          MIT_MITOPER_A_INPUT_FILES_INDICES="${MIT_MITOPER_A_INPUT_FILES_INDICES}${MIT_MITOPER_A_INPUT_FILES_NUM} "
+          MIT_MITOPER_A_INPUT_FILES_NUM=$(( $MIT_MITOPER_A_INPUT_FILES_NUM + 1 ))
+          echo "@@@ [${0}] ::: [${_a_s_f}] $_mitoper_file_local"
+          #echo "@@@ [${0}] ::: MIT_MITOPER_A_INPUT_FILES_INDICES=[${MIT_MITOPER_A_INPUT_FILES_INDICES}]"
+          #echo "@@@ [${0}] ::: MIT_MITOPER_A_INPUT_FILES_NUM=[${MIT_MITOPER_A_INPUT_FILES_NUM}]"
+          ;;
+        f)
+          MIT_MITOPER_F_INPUT_RDIRS[MIT_MITOPER_F_INPUT_FILES_NUM]="$MIT_MITOPER_F_RDIR/$MIT_RUNDATE"
+          MIT_MITOPER_F_INPUT_RFILES[MIT_MITOPER_F_INPUT_FILES_NUM]="$_mitoper_file_remote"
+          MIT_MITOPER_F_INPUT_LFILES[MIT_MITOPER_F_INPUT_FILES_NUM]="$_mitoper_file_local"
+          MIT_MITOPER_F_INPUT_COMPRESS_MODES[MIT_MITOPER_F_INPUT_FILES_NUM]="gzip"
+          #MIT_MITOPER_F_INPUT_DOWNLOAD_MODES[MIT_MITOPER_F_INPUT_FILES_NUM]="http:$_HTTPCONFIG_INGV"
+          #V3C change: use the new ftp server from INGV
+          MIT_MITOPER_F_INPUT_DOWNLOAD_MODES[MIT_MITOPER_F_INPUT_FILES_NUM]="http:$_FTPCONFIG_INGV"
+          MIT_MITOPER_F_INPUT_DOWNLOAD_MODES_EMERG[MIT_MITOPER_F_INPUT_FILES_NUM]="http:$_HTTPCONFIG_INGV_EMERG"
+          MIT_MITOPER_F_INPUT_VARS[MIT_MITOPER_F_INPUT_FILES_NUM]="$_v"
+          MIT_MITOPER_F_INPUT_FILES_INDICES="${MIT_MITOPER_F_INPUT_FILES_INDICES}${MIT_MITOPER_F_INPUT_FILES_NUM} "
+          MIT_MITOPER_F_INPUT_FILES_NUM=$(( $MIT_MITOPER_F_INPUT_FILES_NUM + 1 ))
+          _mitoper_file_local_next="${_prefix_local}${_date_local_next}_$_v.nc"
+          _ln_next="${_ln_next}${_mitoper_file_local}|${_mitoper_file_local_next} "
+          echo "@@@ [${0}] ::: [${_a_s_f}] $_mitoper_file_local"
+          #echo "@@@ [${0}] ::: MIT_MITOPER_F_INPUT_FILES_INDICES=[${MIT_MITOPER_F_INPUT_FILES_INDICES}]"
+          #echo "@@@ [${0}] ::: MIT_MITOPER_F_INPUT_FILES_NUM=[${MIT_MITOPER_F_INPUT_FILES_NUM}]"
+          ;;
+      esac
+    done
+    if [[ "$_a_s_f" == 'f' ]] ; then
+      MIT_MITOPER_F_LAST_FILES="$_ln_next"
+    fi
+  done
+}
+
+function mit_print_input_files__mitoper_a {
+  _Imit_print_input_files__mitoper_a_f 'a'
+}
+
+function mit_print_input_files__mitoper_f {
+  _Imit_print_input_files__mitoper_a_f 'f'
+}
+
+function _Imit_print_input_files__mitoper_a_f {
+  # This is an internal function that prints the names for
+  # analyses, simulations and forecast; the first parameter can be
+  # * 'a' for analyses
+  # * 's' for simulations
+  # * 'f' for forecasts
+  typeset _a_f="$1"
+  shift 1
+  typeset _name
+  typeset _list
+  case "$_a_f" in
+    a)
+      _name="MITOPER analyses"
+      _list="${MIT_MITOPER_A_INPUT_LFILES[*]}"
+      ;;
+    f)
+      _name="MITOPER forecast"
+      _list="${MIT_MITOPER_F_INPUT_LFILES[*]}"
+      ;;
+  esac
+  echo "$_name"
+  typeset _file
+  typeset -i _c=0
+  for _file in $_list ; do
+    printf "%4d) %s\n" "$_c" "$_file"
+    _c=$(( $_c + 1 ))
+  done
+}
+
+function mit_set_input_files__da_sat {
+  typeset _da_sat_file_local
+  typeset _da_sat_file_remote
+  set_spec_data -date ${MIT_RUNDATE} -days "-7" -hours 12
+  RUNDATE_m7=$($MIT_BINDIR/date -d "${MIT_RUNDATE} -7 days" +%Y%m%d )
+  for j in $(mit_range -3 +3 ) ; do
+    YYYYMMDD=$($MIT_BINDIR/date -d "$RUNDATE_m7 +$j days" +%Y%m%d )
+    YYYY=$($MIT_BINDIR/date -d "$RUNDATE_m7 +$j days" +%Y )
+    JULIAN=$($MIT_BINDIR/date -d "$RUNDATE_m7 +$j days" +%j )
+
+    _da_sat_file_local="${YYYYMMDD}_d-OC_CNR-L4-CHL-MedOC3_A_7KM-MED-DT-v02.nc"
+#     _da_sat_file_local_nrt="${YYYYMMDD}_d-OC_CNR-L4-CHL-MedOC3_A_7KM-MED-NRT-v02.nc"
+    _da_sat_file_remote="${_da_sat_file_local}"
+    MIT_DA_SAT_INPUT_RDIRS[MIT_DA_SAT_INPUT_FILES_NUM]="$MIT_DA_SAT_RDIR/${YYYY}"
+    MIT_DA_SAT_INPUT_RFILES[MIT_DA_SAT_INPUT_FILES_NUM]="$_da_sat_file_remote"
+    MIT_DA_SAT_INPUT_LFILES[MIT_DA_SAT_INPUT_FILES_NUM]="$_da_sat_file_local"
+  #echo "$MIT_DA_SAT_START_DATE - $MIT_DA_SAT_END_DATE"
+  echo "===> $_da_sat_file_local $MIT_DA_SAT_INPUT_FILES_INDICES $MIT_DA_SAT_INPUT_FILES_NUM"
+  #read b
+    MIT_DA_SAT_INPUT_COMPRESS_MODES[MIT_DA_SAT_INPUT_FILES_NUM]="none"
+    MIT_DA_SAT_INPUT_DOWNLOAD_MODES[MIT_DA_SAT_INPUT_FILES_NUM]="ncftp:$_NCCONFIG_SAT"
+    MIT_DA_SAT_INPUT_VARS[MIT_DA_SAT_INPUT_FILES_NUM]=""
+    MIT_DA_SAT_INPUT_FILES_INDICES="${MIT_DA_SAT_INPUT_FILES_INDICES}${MIT_DA_SAT_INPUT_FILES_NUM} "
+    MIT_DA_SAT_INPUT_FILES_NUM=$(( $MIT_DA_SAT_INPUT_FILES_NUM + 1 ))
+    echo "@@@ [${0}] ::: [d] $_da_sat_file_local"
+  done
+}
+
+function mit_print_input_files__da_sat {
+  typeset -i _i
+  for _i in $MIT_DA_SAT_INPUT_FILES_INDICES ; do
+    printf "%4d) %s\n" "$_i" "${MIT_DA_SAT_INPUT_LFILES[_i]}"
+  done
+}
+
+# end of include guard:
+fi

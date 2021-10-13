@@ -1,0 +1,1243 @@
+if [[ $__MIT_PROFILE_IS_DEFINED__ == '' ]] ; then
+  __MIT_PROFILE_IS_DEFINED__='__defined__'
+
+MIT_UNDEFINED='__undefined__'					# Undefined value (used in scripts)
+
+I_MIT_HOME="@@(I:MIT_HOME)"
+if [[ ! -d "$I_MIT_HOME" ]] ; then
+  echo "ERROR: I_MIT_HOME [${I_MIT_HOME}] does not exist" 1>&2
+  exit 2
+fi
+
+I_MIT_HOSTNAME="@@(I:MIT_HOSTNAME)"				# Symbolic name of the execution host
+
+I_MIT_MODULE="@@(I:MIT_MODULE)"					# Opa module name
+
+I_MIT_STAGE="@@(I:MIT_STAGE)"					# Stage (currently: prod|devel)
+
+I_MIT_BACKUP="@@(I:MIT_BACKUP)"					# Is backup? (true|false)
+I_MIT_EXTENSION="@@(I:MIT_EXTENSION)"				# suffix for directories
+I_MIT_VERSION_NUMBER="@@(I:MIT_VERSION_NUMBER)"			# Version number (currently: 0|1|2|3)
+MIT_VERSION="V$I_MIT_VERSION_NUMBER$I_MIT_EXTENSION"		# Vesion         (currently: V0|V1|V2)
+
+MIT_FTPSERVER_SUBDIR=''						# subdir on the ftp server for pro data
+MIT_TRUE_VERSION_NUMBER=''					# this is the true version of the chain,
+								# used for publishing
+case "$MIT_VERSION" in 
+  V3noDA|V3.1noDA)
+    MIT_TRUE_VERSION_NUMBER='1'
+    ;;
+  *)
+    MIT_TRUE_VERSION_NUMBER="$I_MIT_VERSION_NUMBER"
+    ;;
+esac
+
+
+MIT_DAYS=11
+
+function mit_days {
+
+for (( days=0; days<$MIT_DAYS ; days++ )) ; do
+   date -d "$DATESTART + $days days" +%Y%m%d
+done
+}
+
+function mit_climatologies_linker {
+
+sourcefile=$1
+typeset AVE_DAILY_DIR=$2
+var=${sourcefile:${#sourcefile}-6:3}
+
+
+if ! [ -f $sourcefile ] ; then
+ echo "$sourcefile not found"
+ return 1
+fi
+
+for D in `mit_days` ; do
+   ln -fs ${sourcefile} $AVE_DAILY_DIR/ave.${D}-12:00:00.${var}.nc
+done
+
+}
+
+MIT_PROD_VERSION_NUMBER=4C					# Production version
+
+MIT_FTPSERVER_SUBDIR="v${MIT_TRUE_VERSION_NUMBER}-med-ogs-forecast"    #MEDSEA_FORECAST_BIO_006_002/myov0${MIT_TRUE_VERSION_NUMBER}-med-ogs-bio-fc
+MIT_PRO_FILE_FMT="%8s_dm-OGS---mittm_bfm4-MED-b%8s_fc-fv0${MIT_TRUE_VERSION_NUMBER}.00.nc"	# format specification for the pro file
+MIT_ANA_FILE_FMT="%8s_dm-OGS---mittm_bfm4-MED-b%8s_an-fv0${MIT_TRUE_VERSION_NUMBER}.00.nc"	# format specification for the ana file
+MIT_SIM_FILE_FMT="%8s_dm-OGS---mittm_bfm4-MED-b%8s_sm-fv0${MIT_TRUE_VERSION_NUMBER}.00.nc"	# format specification for the sim file
+MIT_V2C_FILE_FMT="%8s_d-OGS--%4s-ogstm_bfm4-MED-b%8s_%2s-fv06.00.nc"		#format specification for the V2C file
+MIT_V3C_FILE_FMT="%8s_d-OGS--%4s-MedBFM2-MED-b%8s_%2s-sv03.00.nc"		#format specification for the V3C file
+  
+MIT_TRANSFER_PRO="${RT_MIT_TRANSFER_PRO:-true}"			# enable transfer of pro data
+MIT_UPDATE_TDS_CATALOG="${RT_MIT_UPDATE_TDS_CATALOG:-true}"	# enable update of the thredds catalog
+MIT_TRANSFER_IMAGES="${RT_MIT_TRANSFER_IMAGES:-true}"		# enable transfer of images
+
+MIT_RM="$MIT_UNDEFINED"						# Resource Manager
+I_MIT_ARCH="@@(I:MIT_ARCH)"					# Architecture
+I_MIT_OS="@@(I:MIT_OS)"						# Operating System
+I_MIT_COMPILER="@@(I:MIT_COMPILER)"				# Compiler
+MIT_MPI="$MIT_UNDEFINED"					# type of the MPI library
+
+
+MIT_START_HOUR_UTC="04:00:00"					# UTC time for chain submission
+MIT_GET_ADVANCE_MIN="90"					# minutes for advance execution of mit_get
+MIT_GET_TARGET_TIME="07:30:00"
+MIT_TEST=false
+MIT_DOWNLOAD_HOUR_UTC="03:00:00"
+
+
+
+MIT_HOSTDIR=$I_MIT_HOME/HOST/$I_MIT_HOSTNAME
+MIT_BINDIR=$MIT_HOSTDIR/bin					# Directory for binaries
+MIT_LIBDIR=$MIT_HOSTDIR/lib					# Directory for libraries
+MIT_SCRDIR=$I_MIT_HOME/bin					# Directory for scripts
+MIT_ETCDIR=$I_MIT_HOME/etc					# Directory for configuration files and static data
+MIT_TPLDIR=$I_MIT_HOME/tpl					# Directory for templates
+MIT_VARDIR=$I_MIT_HOME/var					# Directory for MIT_VARDIR/out : standard output of cron commands
+MIT_BASE_WRKDIR="@@(I:MIT_WORKDIR)"                             # Directory for Workdir, depends on the module
+MIT_BASE_ARCDIR="@@(I:MIT_WORKDIR)"				# Directory for Arcdir, depends on the module
+MIT_VENV_1=$MIT_HOSTDIR/venvs/venv1				# Directory for maps virtualenv
+MIT_BITSEA=$MIT_HOSTDIR/bitsea					# Directory for bit.sea
+MIT_POSTPROCDIR=$MIT_HOSTDIR/postproc
+MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/MITgcm_BC_IC		# Directory for BC,IC from COPERNICUS chain
+MIT_TMPDIR=$MIT_VARDIR/tmp					# Directory for:
+MIT_NAME='mit_chain'						# This is the name of the last dir in $I_MIT_HOME
+
+MIT_LOGDIR=$I_MIT_HOME/log					# Directory for logs
+
+MIT_DEFAULT_WALL_CLOCK_LIMIT="$MIT_UNDEFINED"			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_TASKS="$MIT_UNDEFINED"				# Default tasks' number
+MIT_DEFAULT_QUEUE="$MIT_UNDEFINED"				# Default queue
+
+if $I_MIT_BACKUP ; then
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS=" $MIT_ETCDIR/nc-config/.cmcc.ncconfig.backup "               # NCconfigs for nominal remote servers (backup version)
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS_B=" $MIT_ETCDIR/nc-config/.cmcc.b.ncconfig.backup "           # NCconfigs for backup remote servers (backup version)
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS_PHASE_2=" $MIT_ETCDIR/nc-config/.cmems.ncconfig"              # NCconfigs for cmems remote servers
+else
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS=" $MIT_ETCDIR/nc-config/.cmcc.ncconfig "                   # NCconfigs for nominal remote servers
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS_B=" $MIT_ETCDIR/nc-config/.cmcc.b.ncconfig "               # NCconfigs for backup remote servers
+  MIT_PRO_REMOTE_SERVER_NCCONFIGS_PHASE_2=" $MIT_ETCDIR/nc-config/.cmems.ncconfig"           # NCconfigs for cmems remote servers
+fi
+
+if [[ "$I_MIT_STAGE" == "prod" ]]; then
+  MIT_SIMULATE_TRANSFER=${RT_MIT_SIMULATE_TRANSFER:-false}
+else
+  MIT_SIMULATE_TRANSFER=${RT_MIT_SIMULATE_TRANSFER:-true}
+fi
+
+function mit_date {
+  # print the date in the forma used by mit_log
+  date +'%Y%m%d-%H:%M:%S'
+}
+
+# function mit_prex {
+#   # PRint a command and EXecutes it;
+#   # after the command has been executed, mit_prex prints its exit_code and returns the same value
+#   typeset -i _ec
+#   printf "PrEx $(mit_date)    > %s\n" "$*"
+#   eval "$1" ; _ec=$?
+#   typeset _status
+#   if [[ $_ec -eq 0 ]] ; then
+#     _status="ok"
+#   else
+#     _status="KO"
+#   fi
+#   printf "PrEx $(mit_date) %3d< %s [%s]\n" "$_ec" "$*" "$_status"
+#   return $_ec
+# }
+function mit_reportdate {
+  # print the date in the forma used by mit_log
+  date +'%Y/%m/%d:%H:%M:%S'
+}
+
+
+# function mit_prex_check_sim {
+function mit_prex {
+  # PRint a command and EXecutes it;
+  # after the command has been executed, mit_prex prints its exit_code and returns the same value
+  typeset -i _ec
+  printf "PrEx $(mit_date)    > %s\n" "$*"
+  _logical_sim="${2:-false}"
+
+  if $_logical_sim ; then
+    echo "[WRN: CMD SIMULATED]:: $1" ; _ec=$?
+  else
+    eval "$1" ; _ec=$?
+  fi
+  typeset _status	
+  if [[ $_ec -eq 0 ]] ; then
+    _status="ok"
+  else
+    _status="KO"
+  fi
+  printf "PrEx $(mit_date) %3d< %s [%s]\n" "$_ec" "$*" "$_status"
+  return $_ec
+}
+
+function mit_prex_or_die {
+  # Like mit_prex, but in case of failure runs mit_die
+  typeset _command="$1"
+  shift 1
+  mit_prex "$_command" || {
+    typeset -i _ec=${1:-1}
+    typeset    _message="${2:-Command '$_command' failed}"
+    mit_die "$_ec" "$_message"
+  }
+}
+
+function mit_prex_with_output {
+  # PRint a command and EXecutes it;
+  # after the command has been executed, mit_prex prints its exit_code and returns the same value
+  typeset -i _ec
+  printf "PrEx $(mit_date)    > %s\n" "$*"
+  _logical_sim="${2:-false}"
+  if $_logical_sim ; then
+    echo "[WRN: CMD SIMULATED]:: $1" ; _ec=$?
+  else
+    my_var=`eval "$1"` ; _ec=$?
+    echo $my_var
+  fi
+  typeset _status
+  if [[ $_ec -eq 0 ]] ; then
+    _status="ok"
+  else
+    _status="KO"
+  fi
+  printf "PrEx $(mit_date) %3d< %s [%s]\n" "$_ec" "$*" "$_status"
+  return $_ec
+}
+
+MIT_BATCH="${RT_MIT_BATCH:-false}"				# batch job
+
+function mit_batch_prex {
+  # Like mit for batch jobs, silent for interactive
+  if $MIT_BATCH ; then
+    mit_prex "$@" ; return $?
+  else
+    eval "$@" ; return $?
+  fi
+}
+
+. @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
+MIT_WRKDIR_ROOT="$MIT_BASE_WRKDIR/$MIT_VERSION/$I_MIT_STAGE/wrkdir"
+MIT_WRKDIR_ROOT_LINK="$I_MIT_HOME/wrkdir"
+MIT_WRKDIR=''								# set by mit_set_run to $MIT_WRKDIR_ROOT/$MIT_WEEKDAY
+
+MIT_ARCDIR_ROOT=$MIT_BASE_ARCDIR/$MIT_VERSION/$I_MIT_STAGE/archive	# Directory for archive
+MIT_ARCDIR_ROOT_LINK=$I_MIT_HOME/archive					# link to the arcdir, not used by the chain
+MIT_ARCDIR=''								# set by mit_set_run to $MIT_WRKDIR_ROOT/$MIT_RUNDATE
+
+MIT_INPDIR_ROOT=$MIT_BASE_WRKDIR/$MIT_VERSION/$I_MIT_STAGE/inpdir		# Directory for input download
+MIT_INPDIR_ROOT_LINK=$I_MIT_HOME/inpdir					# link to the inpdir, not used by the chain
+MIT_INPDIR=''								# set by mit_set_run to $MIT_INPDIR_ROOT/$MIT_RUNDATE
+
+
+MIT_RUNDATE=''					# Run date YYYYMMDD (set by mit_set_run)
+typeset -i MIT_NEXT_RUNDATE_OFFSET=0		# Number of days to be added to $MIT_RUNDATE to get the next run
+typeset -i MIT_PREV_RUNDATE_OFFSET=0		# Number of days to be subtracted to $MIT_RUNDATE to get the prev run
+MIT_PRODDATE=''					# Production date YYYYMMDD (set by mit_set_run)
+MIT_RESTART_RUNDATE=''				# Restart from rundate
+MIT_RESTART_ARCHIVE_OFFSETS=' 0 '		# Offset in days with respect to the $MIT_RUNDATE for
+						# the files to be archived as input for next chain(s)
+MIT_RUNLOGDIR=''				# Directory for the run log (set by mit_set_run)
+MIT_LOGFILE=''					# Run logfile (set by mit_set_run)
+MIT_REPORTFILE=''				# Run reportfile
+MIT_PROGNAME=$(basename $0)			# Name of the called script
+MIT_LOGMAX=3					# Maximum level of logs stored on $MIT_LOGFILE
+MIT_DISABLE_LOG_ON_LOGFILE=-1			# Disable log on log file $MIT_LOGFILE
+MIT_DISABLE_LOG=-2				# Disable log on log file $MIT_LOGFILE and on stdout
+
+MIT_INPUT_TIMEOUT__UTC="09:00:00"		# Timeout for input in UTC (HH:MM:SS)
+MIT_INPUT_TIMEOUT_COUNT_MAX=5			# Max number of failing download before applying $MIT_INPUT_TIMEOUT__UTC
+MIT_INPUT_TIMEOUT_ENABLED=${RT_MIT_INPUT_TIMEOUT_ENABLED:-true}	# Input timeout is enabled
+MIT_INPUT_ABORT_ON_ERRORS=${RT_MIT_INPUT_ABORT_ON_ERRORS:-true}	# Input abort on errors is enabled
+
+MIT_MAIL_ADDRESS="service.med.ogs@ogs.trieste.it"		# OGS Address used for notification
+
+MIT_REPORT_NOTIFY_ADDRESSES="service.med.ogs@ogs.trieste.it"
+MIT_NOTIFY_ADDRESSES="myocean-support@list.cineca.it"
+MIT_REPORT_ADDRESSES="myocean-support@list.cineca.it, service.med.ogs@ogs.trieste.it"
+MIT_MONITORING_ADDRESSES="service.med@bo.ingv.it, myocean-support@LIST.CINECA.IT, service.med.ogs@ogs.trieste.it"
+MIT_DEBUG_ADDRESSES="myocean-support@LIST.CINECA.IT"
+						# Addresses used for notification
+
+MIT_REPORT_DAY="16"
+MIT_CRON_REPORT_DAY="1"
+MIT_CRON_PART_REPORT_DAY="26"
+
+MIT_TODAY=$($MIT_BINDIR/date +'%Y%m%d')		# Today's date (in the same format as $MIT_RUNDATE)
+
+MIT_RUNID="${RT_MIT_RUNID:----}"		# RUNID (an incremental number to distinguish files
+						# For interactive scripts it is '---'
+MIT_KEEP_INPUT="${RT_MIT_KEEP_INPUT:-true}"	# if true, input data are not deleted during run setup
+						# in $MIT_RUNLOGDIR; it is set during submission and
+						# exported to the batch environment.
+
+MIT_LAST_RUNDATE=${MIT_TODAY}
+
+MIT_DEFAULT_RUNDATE="${RT_MIT_RUNDATE:-$MIT_TODAY}"	# Default rundate
+#MIT_DEFAULT_RUNDATE="${MIT_TODAY}"	# Default rundate
+	# The default rundate is $RT_MIT_RUNDATE if defined, $MIT_TODAY otherways
+
+MIT_DEBUG_MODE=${RT_MIT_DEBUG_MODE:-false}	# Activates model debugging
+
+
+
+MIT_DEBUG_EXTENSION=''				# Extension for debug mode
+if $MIT_DEBUG_MODE ; then
+  MIT_DEBUG_EXTENSION='.dbg'
+fi
+
+MIT_RECOVERY_MODE="${RT_MIT_RECOVERY_MODE:-false}"			# Recovery mode (do not try remote download)
+
+MIT_TASKS=${RT_MIT_TASKS:-$MIT_DEFAULT_TASKS}
+
+MIT_FORECAST_DAYS=10				# days of forecast
+MIT_ANALYSES_DAYS=7				# days of analyses
+
+MIT_FORECAST_DAYS_MIN=2				# minimum number of forecast days
+MIT_ANALYSES_DAYS_MIN=2				# minimum number of analysis days
+
+MIT_ANALYSES_DAYS__ACTUAL="$MIT_ANALYSES_DAYS"	# actual number of analyses days (from input)
+MIT_FORECAST_DAYS__ACTUAL="$MIT_FORECAST_DAYS"	# actual number of forecast days (from input)
+
+MIT_ACTUAL_INPUT_DESCRIPTION_FILE=''		# set by mit_set_run to "$MIT_WRKDIR/mit_actual_input_description.inc"
+
+MIT_PRO_DESCRIPTION_FILE=''			# pro output file names, for myocean
+
+
+#. @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc
+MIT_PRIMARY_LOGIN_NODE="$MIT_HOST_PRIMARY_LOGIN_NODE"
+MIT_SECONDARY_LOGIN_NODE="$MIT_HOST_SECONDARY_LOGIN_NODE"
+MIT_LOGIN_NODES="$MIT_HOST_LOGIN_NODES"
+MIT_PRO_UHD_LIST="$MIT_HOST_PRO_UHD_LIST"
+MIT_PRO_FTP_LIST="$MIT_HOST_PRO_FTP_LIST"
+
+set -A MIT_VARIABLE -- 'T' 'U' 'V' 'W'
+MIT_VARIABLE_INDICES=' 0 1 2 3 '
+MIT_VARIABLES=' '
+for i in $MIT_VARIABLE_INDICES ; do
+  MIT_VARIABLES="${MIT_VARIABLES}${MIT_VARIABLE[i]} "
+done
+
+MIT_OUTPUT_VARIABLES='O2o N1p N3n N4n O4n N5s N6r B1c B1n B1p P1c P1n P1p P1l P1s P2c P2n P2p P2l P3c P3n P3p P3l P4c P4n P4p P4l Z3c Z3n Z3p Z4c Z4n Z4p Z5c Z5n Z5p Z6c Z6n Z6p R1c R1n R1p R2c R3c R6c R6n R6p R6s O3c O3h O5c'
+
+OPA_HIGH_FREQ_VARIABLES='O2o N1p N3n N4n N5s B1c P1c P1l P2c P2l P3c P3l P4c P4l R6c Z3c Z4c     Z5c     Z6c O3c O3h'
+OPA_LOW__FREQ_VARIABLES='O4n N6r B1n B1p     P1s P1n P1p P2n P2p P3n P3p P4n P4p Z3n Z3p Z4n Z4p Z5n Z5p Z6n Z6p R1c R1n R1p R2c R3c R6n R6p R6s O5c'
+
+
+MIT_SUBMIT_DAY_OFFSET=0					# number of days after rundate for submission
+MIT_CHECK_HOURS_OFFSET=3				# number of hours for mit_check_run after run submission
+
+export LD_LIBRARY_PATH="${MIT_LIBDIR}:${LD_LIBRARY_PATH}"
+
+MIT_ENABLE_PRE_PHASES="${RT_MIT_ENABLE_PRE_PHASES:- SETUP GET A1 A2 }"	# List of phases in step pre
+MIT_DISABLE_PRE_PHASES="${RT_MIT_DISABLE_PRE_PHASES}"			# List of phases in step pre
+
+MIT_ENABLE_MODEL_PHASES="${RT_MIT_ENABLE_MODEL_PHASES:- B1 B2 C1}"	# List of phases in step model
+MIT_DISABLE_MODEL_PHASES="${RT_MIT_DISABLE_MODEL_PHASES}"		# List of phases in step model
+
+MIT_ENABLE_POST_PHASES="${RT_MIT_ENABLE_POST_PHASES:- PUT_INGV PUT_CMCC C1 C3 C4 PUT_SALON}"	# List of phases in step post
+MIT_DISABLE_POST_PHASES="${RT_MIT_DISABLE_POST_PHASES}"			# List of phases in step post
+
+
+MIT_FORCE_DOWNLOAD="${RT_MIT_FORCE_DOWNLOAD:-true}"	# Download input data even if already downloaded
+
+function mit_exitcode {
+  # Format an exit code as:
+  # == 0 -> Ok
+  # != 0 -> ERR:<exit code>
+  typeset _ec=${1:-0}
+  if [[ $_ec -eq 0 ]] ; then
+    echo "Ok"
+  else
+    echo "ERR:$_ec"
+  fi
+}
+
+# . @@(I:MIT_HOME)/bin/mit_input_files.inc
+
+function mit_last_rundate {
+  typeset    _mit_today="${1:-$MIT_TODAY}"
+  typeset    _mit_submit_day_offset="${2:-$MIT_SUBMIT_DAY_OFFSET}"
+  typeset    _mit_today_submit=$($MIT_BINDIR/date --utc --date="$_mit_today $_mit_submit_day_offset days ago" +"%Y%m%d")
+  #echo "_mit_today='$_mit_today', _mit_today_submit='$_mit_today_submit', _mit_submit_day_offset='$_mit_submit_day_offset'" 1>&2
+  typeset    _mit_rundate="$_mit_today_submit"
+  typeset -i _weekday=$($MIT_BINDIR/date --utc --date="$_mit_rundate" +"%w")
+  typeset -i _mit_weekday
+  if [[ $_weekday -lt 2 ]] ; then
+    _mit_rundate=$($MIT_BINDIR/date --utc --date="$_mit_rundate $(( 7 + $_weekday - 5 )) days ago" +"%Y%m%d")
+  elif [[ $_weekday -eq 2 ]] ; then
+     _mit_rundate="$_mit_rundate"
+  elif [[ $_weekday -lt 5 ]] ; then
+    _mit_rundate=$($MIT_BINDIR/date --utc --date="$_mit_rundate $(( $_weekday - 2 )) days ago" +"%Y%m%d")
+  elif [[ $_weekday -eq 5 ]] ; then
+     _mit_rundate="$_mit_rundate"
+  else
+    _mit_rundate=$($MIT_BINDIR/date --utc --date="$_mit_rundate $(( $_weekday - 5 )) days ago" +"%Y%m%d")
+  fi
+  typeset _mit_weekday=$($MIT_BINDIR/date --utc --date="$_mit_rundate" +"%w")
+  echo "$_mit_rundate"
+}
+
+
+function mit_mkdir {
+#mkdir che da'status KO se la directory non viene creata
+  mkdir -p $1
+  typeset -i _er
+  typeset _status
+  if [[ ! -d $1 ]]; then
+    _status="KO"
+    _er=1
+  else
+    _status="Ok"
+    _er=0
+  fi
+  printf "PrEx $(mit_date) < mkdir %s [%s]\n" "$*" "$_status"
+  return $_er
+}
+
+function mit_scp {
+#scp che da'status KO se la copia non viene eseguita
+  typeset _arguments
+  _arguments=$@
+  scp -r $_arguments
+  typeset _targ
+  typeset _dest
+  _dest=`echo $_arguments | awk '{print $NF}'`
+  _targ=`echo $_arguments | awk '{print $(NF-1)}'`
+  typeset -i _er
+  typeset _status
+  _status="KO"
+  _er=1
+  if [[ -f $_dest ]]; then
+    _status="Ok"
+    _er=0
+  fi
+  if [[ -d $_targ ]] && [[ -d $_dest ]]; then
+    _status="Ok"
+    _er=0
+  fi
+  if [[ -f $_targ ]] && [[ -d $_dest ]]; then
+    typeset _name
+    typeset _check
+    _name=`echo $_targ | sed 's_^.*/__'`
+    _check="$_dest/$_name"
+    if [[ -f $_check ]]; then
+      _status="Ok"
+      _er=0
+    fi
+  fi
+  printf "PrEx $(mit_date) < scp %s [%s]\n" "$*" "$_status"
+  return $_er
+}
+
+function mit_cp {
+#cp che da'status KO se la copia non viene eseguita
+  typeset _arguments
+  _arguments=$@
+  cp $_arguments
+  typeset _targ
+  typeset _dest
+  _dest=`echo $_arguments | awk '{print $NF}'`
+  _targ=`echo $_arguments | awk '{print $(NF-1)}'`
+  typeset -i _er
+  typeset _status
+  _status="KO"
+  _er=1
+  if [[ -f $_dest ]]; then
+    _status="Ok"
+    _er=0
+  fi
+  if [[ -d $_targ ]] && [[ -d $_dest ]]; then
+    _status="Ok"
+    _er=0
+  fi
+  if [[ -f $_targ ]] && [[ -d $_dest ]]; then
+    typeset _name
+    typeset _check
+    _name=`echo $_targ | sed 's_^.*/__'`
+    _check="$_dest/$_name"
+    if [[ -f $_check ]]; then
+      _status="Ok"
+      _er=0
+    fi
+  fi
+  printf "PrEx $(mit_date) < cp %s [%s]\n" "$*" "$_status"
+  return $_er
+}
+    
+function mit_set_run {
+  # Set $MIT_RUNDATE and the variables whose value depends on $MIT_RUNDATE
+  # Without arguments, MIT_RUNDATE is $MIT_DEFAULT_RUNDATE
+  # With 1 argument, this is the value for MIT_RUNDATE
+  if [[ "$1" != '' ]] ; then
+    MIT_RUNDATE="$1"
+  else
+    MIT_RUNDATE="$MIT_DEFAULT_RUNDATE"
+  fi
+  MIT_WEEKDAY=$($MIT_BINDIR/date --utc --date="$MIT_RUNDATE" +"%w")
+  MIT_RUNLOGDIR="$MIT_LOGDIR/$MIT_RUNDATE"
+  [[ -d "$MIT_RUNLOGDIR" ]] || mit_mkdir $MIT_RUNLOGDIR
+
+  MIT_LOGFILE="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.log"
+  [[ -f "$MIT_LOGFILE" ]] || mit_prex "touch $MIT_LOGFILE"
+
+  [[ -d "$MIT_LOGDIR/report" ]] || mit_mkdir $MIT_LOGDIR/report
+
+  MIT_REPORTFILE="$MIT_LOGDIR/report/mit.${MIT_RUNDATE}.log"
+  [[ -f "$MIT_REPORTFILE" ]] || mit_prex "touch $MIT_REPORTFILE"
+
+  typeset _mit_restart_weekday
+  MIT_RESTART_ARCHIVE_OFFSETS=" 0 "	# restart for +7d chain
+  
+  # mit_input_files__setup
+  MIT_RESTART_WEEKDAY="${RT_MIT_RESTART_WEEKDAY:-$_mit_restart_weekday}"
+  _mit_get_default_run --weekday "$MIT_RESTART_WEEKDAY" --today "$MIT_RUNDATE" --submit-day-offset 1
+  MIT_WRKDIR="$MIT_WRKDIR_ROOT"
+  MIT_INPDIR="$MIT_INPDIR_ROOT/$MIT_RUNDATE"
+  MIT_ARCDIR="$MIT_ARCDIR_ROOT/$MIT_RUNDATE"
+  MIT_PRO_DESCRIPTION_FILE="$MIT_WRKDIR/POSTPROC/${MIT_RUNDATE}.${I_MIT_STAGE}.pro"
+  MIT_ACTUAL_INPUT_DESCRIPTION_FILE="$MIT_WRKDIR/mit_actual_input_description.inc"
+  MIT_RESTART_RUNDATE="$_MIT_RUNDATE"
+  MIT_PRODDATE=$(mit_get_proddate)
+  if $MIT_BATCH ; then
+    mit_dump_run
+  fi
+}
+
+function mit_dump_run {
+  cat <<EOFCAT
+### MIT_RUNDATE ...................... '${MIT_RUNDATE}'
+### MIT_WEEKDAY ...................... '${MIT_WEEKDAY}'
+###  MIT_TODAY ....................... '${MIT_TODAY}
+###  MIT_DEFAULT_RUNDATE ............. '${MIT_DEFAULT_RUNDATE}'
+###  MIT_PRODDATE .................... '${MIT_PRODDATE}
+### MIT_RESTART_RUNDATE .............. '${MIT_RESTART_RUNDATE}'
+### MIT_RESTART_WEEKDAY .............. '${MIT_RESTART_WEEKDAY}'
+EOFCAT
+}
+
+function mit_is_prod {
+  if [[ $MIT_TRUE_VERSION_NUMBER == $MIT_PROD_VERSION_NUMBER ]] ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+
+function mit_linker {
+while [[ ${#@} -ne 0 ]] ; do
+   for I in `ls $1 `; do
+      ln -fs $I
+   done
+   shift 1
+done
+}
+
+function mit_get_proddate {
+  typeset _mit_rundate="${1:-$MIT_RUNDATE}"
+  echo "$_mit_rundate"
+  #$MIT_BINDIR/date --utc --date="$_mit_rundate 1 day" +'%Y%m%d'
+}
+
+function mit_range {
+  # Returns a list of integer values between FIRST and LAST,
+  # with increment INC.
+  # For instance, 'mit_range 0 10 3' returns the string "0 3 6 9"
+  # mit_range F	L I	-> mit_range F L I
+  # mit_range F L	-> mit_range F L 1
+  # mit_range L		-> mit_range 0 L 1
+  typeset -i _first=0
+  typeset -i _inc=1
+  typeset -i _last=1
+  if [[ ${#@} -eq 1 ]] ; then
+    _last=$1
+  elif [[ ${#@} -eq 2 ]] ; then
+    _first=$1
+    _last=$2
+  elif [[ ${#@} -gt 2 ]] ; then
+    _first=$1
+    _last=$2
+    _inc=$3
+  fi
+  typeset -i _i=$_first
+  typeset _indices=' '
+  while [[ $_i -le $_last ]] ; do
+    _indices="${_indices}$_i "
+    _i=$(( $_i + $_inc ))
+  done
+  printf "%s\n" "$_indices"
+}
+
+function mit_wait {
+  # Waits $1 seconds
+  typeset -i _secs=${1:-10}
+  #mit_log 3 "...wait $_secs"
+  echo "... wait $_secs"
+  mit_prex "sleep $_secs"
+}
+
+function mit_die {
+  # log an error message and die
+  typeset -i _ec="$1"
+  shift 1
+  mit_log 0 "$@"
+  mit_exit $_ec
+}
+
+function mit_set_log_verbose_level {
+  # Set the maximum verbose level for log file; if a log has a level
+  # greater that $MIT_LOGMAX, it is not logged onto $MIT_LOGFILE.
+  # Notice that, if $MIT_LOGMAX is negative, nothing is logged onto
+  # $MIT_LOGFILE
+  MIT_LOGMAX="$1"
+}
+
+function mit_log {
+  # Write a log messages ($2...) on standard output; 
+  # is $1 is lower than $MIT_LOGMAX, the messages is written also onto $MIT_LOGFILE
+  if [[ $MIT_LOGMAX -eq $MIT_DISABLE_LOG ]] ; then
+    return 0
+  fi
+  typeset -i _nlog="$1"
+  shift 1
+  for _message in "$@" ; do
+    if ( $MIT_BATCH ) && [[ $MIT_LOGMAX -ne $MIT_DISABLE_LOG_ON_LOGFILE && $_nlog -le $MIT_LOGMAX ]] ; then
+      printf '%s %02d (%s) : %s\n' "$(mit_date)" "$_nlog" "$MIT_RUNID" "$_message" | tee -a $MIT_LOGFILE
+    else
+      printf '%s %02d (%s) : %s\n' "$(mit_date)" "$_nlog" "$MIT_RUNID" "$_message" 
+    fi
+  done
+}
+
+function mit_report {
+# da utilizzare nel seguente modo: TimeStamp , event_time_record ($1), ProdCycle ($MIT_RUNDATE) , EventID (bio_transfer-... o bio_chain-...)
+  typeset type_reg="event_time_record"
+  typeset eventid=$1
+  typeset -i reporterrors=${2:-0}
+  typeset disabletimeout=${3:-false}
+
+  typeset _targettime=$(mit_date_day_offset "${MIT_RUNDATE} $MIT_GET_TARGET_TIME" $MIT_SUBMIT_DAY_OFFSET "%Y%m%d%H%M")
+  typeset _timeout=$(mit_date_day_offset "${MIT_RUNDATE} $MIT_GET_TARGET_TIME" $MIT_SUBMIT_DAY_OFFSET "%Y%m%d %H:%M:%S")
+  typeset _timeout_s=$( $MIT_BINDIR/date --utc --date="$_timeout" +%s)
+  typeset _now=$( $MIT_BINDIR/date --utc +'%Y%m%d %H:%M:%S' )
+  typeset _now_s=$( $MIT_BINDIR/date --utc --date="$_now" +'%s' )
+  typeset _timeout_exceeded=false
+
+  if [[ "$_now_s" -gt "$_timeout_s" ]] ; then
+    _timeout_exceeded=true
+  fi
+  if $disabletimeout; then
+    _timeout_exceeded=false
+  fi
+
+  _rdate=$(mit_reportdate)
+
+  # se non ci sono errori
+  if [[ $reporterrors == 0 ]]; then
+
+    # se ho superato il timelimit ma i dati sono stati scaricati
+    if $_timeout_exceeded; then
+
+      type_reg="target_time_recover"
+      _string=$(echo "${_rdate}" "${type_reg}" "$MIT_RUNDATE" "$eventid")
+
+      mit_prex "rm $MIT_REPORTFILE.tmp"
+      printf 'EventID:%s , TimeStamp:%s , ProdCycle:%s , TypeRegistration:%s-fail\n' ${_string} | tee -a $MIT_REPORTFILE.tmp
+
+      # solo se in precedenza ho fallito mando un email che i dati sono stati recuperati
+      if [[ -f $MIT_RUNDATE.$eventid.fail ]]; then
+        mit_mail $eventid
+      else
+        mit_prex "rm $MIT_REPORTFILE.tmp"
+      fi
+
+    else
+
+      type_reg="event_time_record"
+      _string=$(echo "${_rdate}" "${type_reg}" "$MIT_RUNDATE" "$eventid")
+
+    fi
+###
+      printf '%s , %s , %s , %s\n'  ${_string} | tee -a $MIT_REPORTFILE
+
+  #se ci sono errori significa che NON sono riuscito a scaricare i dati nel tempo previsto, pertanto mando un email
+  else
+
+    type_reg="target_time_fail"
+    _string=$(echo "${_rdate}" "${type_reg}" "$MIT_RUNDATE" "$eventid" "${_targettime}")
+###
+#     printf '%s , %s , %s , %s-fail, %s\n' ${_string} | tee -a $MIT_REPORTFILE
+    mit_prex "rm $MIT_REPORTFILE.tmp"
+    printf 'EventID:%s , TimeStamp:%s , ProdCycle:%s , TypeRegistration:%s-fail, TargetTime:%s\n' ${_string} | tee -a $MIT_REPORTFILE.tmp
+
+    mit_mail $eventid-fail
+    mit_prex "touch $MIT_RUNDATE.$eventid.fail"
+
+  fi
+}
+
+function mit_mail {
+
+  _eventid=$1
+  fileout=$MIT_RUNDATE.${_eventid}.html
+
+  $MIT_SCRDIR/mit_HTML.py --filein $MIT_REPORTFILE.tmp --fileout ${fileout}
+
+# |TimeStamp	|TypeRegistration	|ProdCycle	|EventID	|TargetTime|
+
+  if [[ $I_MIT_STAGE == "prod" ]];then
+    addresses=$MIT_MONITORING_ADDRESSES
+  else
+    addresses=$MIT_DEBUG_ADDRESSES
+  fi
+  cat ${fileout}|mail -s "$(echo -e "Catena_BIO: MyOcean Med-MFC realtime monitoring\nContent-Type: text/html")" $addresses
+# $MIT_MONITORING_ADDRESSES
+
+  rm $MIT_REPORTFILE.tmp
+}
+
+
+function mit_log_to_file {
+  typeset _mit_batch="$MIT_BATCH"
+  MIT_BATCH="true"
+  mit_log "$@"
+  MIT_BATCH="$_mit_batch"
+}
+
+
+_MIT_START_DONE=false
+function mit_start {
+  # Log message for script start
+  mit_log 0 "* START(${MIT_PROGNAME})"
+  _MIT_START_DONE=true
+}
+
+_MIT_EXIT_DONE=false
+_MIT_EXIT_CODE=''
+function mit_exit {
+  # Log message for script exit
+  typeset -i _default_ec=${_MIT_EXIT_CODE:-$?}
+  typeset -i _ec=${1:-$_default_ec}
+  #echo "mit_exit(${1}->${_default_ec}->${_ec})"
+  typeset    _message=""
+  if [[ "$1" == "" ]] ; then
+    _message=" (from last executed command)"
+  fi
+  if $_MIT_START_DONE && ! $_MIT_EXIT_DONE ; then
+    mit_log 0 "* EXIT(${MIT_PROGNAME}) [$(mit_exitcode ${_ec})]$_message"
+    _MIT_EXIT_DONE=true
+    _MIT_EXIT_CODE=${_ec}
+  fi
+  exit $_ec
+}
+
+function mit_signal_handler {
+  typeset    _signal="$1"
+  typeset -i _isignal
+  typeset    _ssignal
+  if [[ $(echo "$_signal" | grep -c '[^0-9]') -eq 0 ]] ; then
+    # Numeric signal
+    _isignal="$_signal"
+    _ssignal=$(kill -l "$_isignal")
+  else
+    # Symbolic signal
+    _ssignal="$_signal"
+    _isignal=$(kill -l "$_ssignal")
+  fi
+  typeset _ec=$(( $_isignal + 100 ))
+  typeset _tmp_mit_logmax=0
+  if [[ $MIT_LOGMAX -eq $MIT_DISABLE_LOG ]] ; then
+    # if log is disabled at all, force log on stdout
+    _tmp_mit_logmax=$MIT_DISABLE_LOG_ON_LOGFILE
+  fi
+  typeset _old_mit_logmax="$MIT_LOGMAX"
+  MIT_LOGMAX="$_tmp_mit_logmax"
+  mit_log 0 "* SIGNAL(${_ssignal}[${_isignal}]) - exiting [${_ec}]"
+  MIT_LOGMAX="$_old_mit_logmax"
+  mit_exit $_ec
+}
+
+function mit_stage_in {
+  # Stage-in of files; copy only if necessary!
+  typeset _target_dir="$1"
+  [[ -d $_target_dir ]] || mit_mkdir -p $_target_dir
+  if [[ ! -d $_target_dir ]] ; then
+    mit_log 0 "ERR: cannot create target dir $_target_dir"
+    return 1
+  fi
+  shift 1
+  typeset _line
+  typeset _source_file
+  typeset _target_base
+  typeset _target_file
+  typeset _do_copy
+  typeset -i _errors=0
+  for _line in "$@" ; do
+    if [[ $( echo "$_line" | grep -c '|' ) -eq 0 ]] ; then
+      _source_file="$_line"
+      _target_base=$(basename "$_source_file")
+    else
+      _source_file=$(echo "$_line" | cut -d\| -f1)
+      _target_base=$(echo "$_line" | cut -d\| -f2-)
+    fi
+    if [[ ! -f $_source_file ]] ; then
+      mit_log 0 "ERR: [${0}] : missing source file $_source_file"
+      _errors=$(( $_errors + 1 ))
+      continue
+    fi
+    _do_copy=false
+    _target_file="$_target_dir/$_target_base"
+    if [[ ! -f $_target_file ]] ; then
+      _do_copy=true
+    elif ! cmp $_source_file $_target_file; then
+      echo "[${0}]: target and source file differ!"
+      _do_copy=true
+    fi
+    if $_do_copy ; then
+      [[ -f $_target_file ]] && mit_prex "rm -f $_target_file"
+      mit_cp $_source_file $_target_file
+    else
+      echo "[${0}] : COMMENT : stage-in of ${_source_file} is not necessary"
+    fi
+  done
+  return $_errors
+}
+
+function mit_analyses_dates {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset -i _day_offset=$MIT_ANALYSES_DAYS
+  typeset    _date
+  while [[ _day_offset -gt 0 ]] ; do
+    _date=$($MIT_BINDIR/date --utc --date="$_mit_rundate $_day_offset days ago" +"%Y%m%d")
+    echo "$_date"
+    #printf "${file_out_fmt}\n" "$_date" "$_mit_rundate"
+    _day_offset=$(( $_day_offset - 1 ))
+  done
+}
+
+function mit_simulates_dates {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset -i _day_offset=$MIT_ANALYSES_DAYS-1
+  typeset    _date
+  while [[ _day_offset -gt 0 ]] ; do
+    _date=$($MIT_BINDIR/date --utc --date="$_mit_rundate $_day_offset days ago" +"%Y%m%d")
+    echo "$_date"
+    #printf "${file_out_fmt}\n" "$_date" "$_mit_rundate"
+    _day_offset=$(( $_day_offset - 1 ))
+  done
+}
+
+function mit_forecast_dates {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset -i _day_offset=0
+  typeset    _date
+  while [[ _day_offset -lt $MIT_FORECAST_DAYS ]] ; do
+    _date=$($MIT_BINDIR/date --utc --date="$_mit_rundate $_day_offset days" +"%Y%m%d")
+    echo "$_date"
+    #printf "${file_out_fmt}\n" "$_date" "$_mit_rundate"
+    _day_offset=$(( $_day_offset + 1 ))
+  done
+}
+
+function mit_dates {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  mit_analyses_dates "$_mit_rundate"
+  mit_forecast_dates "$_mit_rundate"
+}
+
+function mit_pro_files {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset    _mit_proddate=$(mit_get_proddate "$_mit_rundate")
+  typeset    _file_out_fmt="$MIT_PRO_FILE_FMT"
+  typeset    _date
+  for _date in $(mit_forecast_dates $_mit_rundate) ; do
+    printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate"
+  done
+}
+
+function mit_ana_files {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset    _workdir="$MIT_WRKDIR/POSTPROC"
+  typeset    _mit_proddate=$(mit_get_proddate "$_mit_rundate")
+  typeset    _file_out_fmt="$MIT_ANA_FILE_FMT"
+  typeset    _date
+
+  _date=$($MIT_BINDIR/date --utc --date="$_mit_rundate $MIT_ANALYSES_DAYS days ago" +"%Y%m%d")
+  _file=$(printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate")
+  printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate"
+}
+
+function mit_sim_files {
+  typeset    _mit_rundate="${1:-$MIT_RUNDATE}"
+  typeset    _workdir="$MIT_WRKDIR/POSTPROC"
+  typeset    _mit_proddate=$(mit_get_proddate "$_mit_rundate")
+  typeset    _file_out_fmt="$MIT_SIM_FILE_FMT"
+  typeset    _date
+
+  _hot_start=${2:false}
+
+  if ! $_hot_start ; then 
+    for _date in $(mit_analyses_dates $_mit_rundate) ; do
+      _file=$(printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate")
+      printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate"
+    done
+  else
+    for _date in $(mit_simulates_dates $_mit_rundate) ; do
+      _file=$(printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate")
+      printf "${_file_out_fmt}\n" "$_date" "$_mit_proddate"
+    done
+  fi
+}
+
+
+
+_MIT_TODAY=''
+_MIT_SUBMIT_DAY_OFFSET=''
+_MIT_RUNDATE=''
+function _mit_get_default_run {
+  typeset _mit_submit_day_offset="$MIT_SUBMIT_DAY_OFFSET"
+  typeset _mit_today="$MIT_TODAY"
+  typeset _mit_rundate=""
+  typeset _arg
+  while [[ ${#@} -ne 0 ]] ; do
+    _arg="$1"
+    shift 1
+    case "$_arg" in
+      --rundate|-r)
+        _mit_rundate="$1"
+        shift 1
+        ;;
+      --today|-t)
+        _mit_today=$($MIT_BINDIR/date --utc --date="$1 12:00:00" +"%Y%m%d")
+        shift 1
+        ;;
+      --submit-day-offset|-s)
+        _mit_submit_day_offset="$1"
+        shift 1
+        ;;
+    esac
+  done
+
+  if [[ "$_mit_rundate" == '' ]] ; then
+    if [[ "$_mit_weekday" == '' ]] ; then
+      _mit_rundate=$(mit_last_rundate "$_mit_today" "$_mit_submit_day_offset")
+    else
+      typeset _mit_submit_weekday=$(( $_mit_weekday + $_mit_submit_day_offset ))
+
+      typeset _mit_today_weekday=$($MIT_BINDIR/date +%w --utc --date="$_mit_today")
+      typeset _mit_day_offset
+      # the mit_rundate is the previous Tuesday;
+      # * $_mit_today_weekday - $_mit_submit_weekday is the number of days since the last $submit_weekday
+      # * $_mit_today_weekday - $_mit_submit_weekday + $_mit_submit_day_offset is the number of days since the last $mit_weekday
+      # * ( $_mit_today_weekday - $_mit_submit_weekday + 7 + $_mit_submit_day_offset ) % 7 ) is normalized between 0 and 6
+      # * 1 offset day is added because mit_rundate is Tuesday, not Wednesday
+      _mit_day_offset=$(( ( ( $_mit_today_weekday - $_mit_submit_weekday + 7 ) % 7 ) + $_mit_submit_day_offset ))
+      _mit_rundate=$( $MIT_BINDIR/date --utc --date="$_mit_today 00:00:00 $_mit_day_offset days ago" +%Y%m%d)
+      #echo "DEBUG: _mit_submit_weekday='$_mit_submit_weekday', _mit_today_weekday='$_mit_today_weekday', _mit_day_offset='$_mit_day_offset', _mit_rundate='$_mit_rundate'"
+    fi
+  fi
+  _MIT_TODAY="$_mit_today"
+  _MIT_SUBMIT_DAY_OFFSET="$_mit_submit_day_offset"
+  if [[ "$_mit_rundate" == '' ]] ; then
+    _mit_rundate="${MIT_RUNDATE:-$MIT_DEFAULT_RUNDATE}"
+  fi
+  _MIT_RUNDATE="$_mit_rundate"
+  #echo "DEBUG: _MIT_RUNDATE='$_MIT_RUNDATE'"
+}
+
+function mit_set_default_run {
+  _mit_get_default_run --rundate "$RT_MIT_RUNDATE" "$@"
+# MIT_DEFAULT_RUNDATE="$_MIT_TODAY"
+  MIT_DEFAULT_RUNDATE="$_MIT_RUNDATE"
+  MIT_TODAY="$_MIT_TODAY"
+  MIT_SUBMIT_DAY_OFFSET="$_MIT_SUBMIT_DAY_OFFSET"
+}
+
+MIT_DEFAULT_RUN_PATTERN="--rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s" # does not work on AIX's ksh!
+function mit_set_default_run__print_options {
+  cat <<EOFCAT
+        --rundate|-r YYYYMMDD                   set the run date
+                                                [DEFAULT: "${MIT_RUNDATE:-$MIT_DEFAULT_RUNDATE}"]
+        --weekday|-w WW                         set the mit weekday
+                                                [DEFAULT: "$MIT_WEEKDAY"]
+        --today|-t YYYYMMDD                     set the "today" date
+                                                [DEFAULT: "$MIT_TODAY"]
+        --submit-day-offset|-s O                set the "mit_submit_day_offset"
+                                                [DEFAULT: "$MIT_SUBMIT_DAY_OFFSET"]
+EOFCAT
+}
+
+function mit_step_has_phase {
+  typeset _step="$1"
+  typeset _phase="$2"
+  shift 2
+  typeset _enable_phases
+  typeset _disable_phases
+  case "$_step" in
+    pre)
+      _enable_phases="$MIT_ENABLE_PRE_PHASES"
+      _disable_phases="$MIT_DISABLE_PRE_PHASES"
+      ;;
+    model)
+      _enable_phases="$MIT_ENABLE_MODEL_PHASES"
+      _disable_phases="$MIT_DISABLE_MODEL_PHASES"
+      ;;
+    post)
+      _enable_phases="$MIT_ENABLE_POST_PHASES"
+      _disable_phases="$MIT_DISABLE_POST_PHASES"
+      ;;
+    *)
+      echo "[${0}]: ERR: invalid step ${_step}" 1>&2
+      return 1
+      ;;
+  esac
+  if [[ $( echo " $_enable_phases " | grep -c " $_phase " ) -eq 0 ]] ; then
+    echo "WARNING: step [${step}]: phase [${_phase}] is not enabled"
+    return 1
+  elif [[ $( echo " $_disable_phases " | grep -c " $_phase " ) -ne 0 ]] ; then
+    echo "WARNING: step [${step}]: phase [${_phase}] is disabled"
+    return 1
+  else
+    return 0
+  fi
+}
+
+
+function mit_exec_and_log {
+  # Exec the mit script $1  with arguments $2...,
+  #  and redirect standard output and standard error on a log file
+  # The mit script $1 must be given without path and trailing .ksh!!!
+  typeset _command="$1"
+  shift 1
+  typeset _arg
+  typeset _args=""
+  for _arg in "$@" ; do
+    _args="${_args}'$_arg' "
+  done
+  typeset _logfile="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.${MIT_RUNID}.${_command}.out"
+  mit_prex "$MIT_SCRDIR/${_command}.ksh $_args 1>$_logfile 2>&1" ; return $_ec
+}
+
+function mit_date_day_offset {
+  typeset    _date="$1"
+  typeset -i _day_offset="$2"
+  typeset    _out_date_format="${3:-%Y%m%d}"
+  if [[ $_day_offset -lt 0 ]] ; then
+    $MIT_BINDIR/date --utc --date="$_date $(( 0 - $_day_offset)) days ago" +"$_out_date_format"
+  elif [[ $_day_offset -eq 0 ]] ; then
+    $MIT_BINDIR/date --utc --date="$_date" +"$_out_date_format"
+  else
+    $MIT_BINDIR/date --utc --date="$_date $_day_offset days" +"$_out_date_format"
+  fi
+}
+
+function mit_unformatted_runid {
+  typeset -i _last_jcf_id
+  typeset    _last_jcf_id_s
+  _last_jcf_id_s=$( cd $MIT_RUNLOGDIR ; ls -1 mit.*.*.jcf_* 2>/dev/null | cut -d. -f3 | sort | tail -1 )
+  if [[ "$_last_jcf_id_s" == "" ]] ; then
+    _last_jcf_id=0
+  else
+    _last_jcf_id=$(echo "$_last_jcf_id_s" | sed -e 's/^0*//')
+  fi
+  printf '%s' "$_last_jcf_id"
+}
+
+function mit_runid {
+  typeset _i _mit_runid_i=$(mit_unformatted_runid)
+  typeset -ZR3 _mit_runid=$_mit_runid_i
+  printf '%s' "$_mit_runid"
+}
+
+function mit_new_unformatted_runid {
+  typeset -i _mit_runid_i=$(mit_unformatted_runid)
+  typeset -i _mit_new_runid_i=$(( $_mit_runid_i + 1 ))
+  printf '%s' "$_mit_new_runid_i"
+}
+
+function mit_new_runid {
+  typeset _i _mit_new_runid_i=$(mit_new_unformatted_runid)
+  typeset -ZR3 _mit_new_runid=$_mit_new_runid_i
+  printf '%s' "$_mit_new_runid"
+}
+
+function mit_runjobid_file {
+  typeset _mit_runid="$1"
+  if [[ "$_mit_runid" == '' ]] ; then
+    _mit_runid=$(mit_runid)
+  fi
+  typeset _mit_runjobid_file="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.${_mit_runid}.${MIT_RM}.jobids"
+  #echo ">>> $_mit_runid -> $_mit_runjobid_file" 1>&2
+  printf '%s' "$_mit_runjobid_file"
+}
+function mit_add_jobid {
+  typeset _mit_jcf="$1"
+  typeset _mit_jobid="$2"
+  typeset _mit_runid="$3"
+  echo "${_mit_jcf}:${_mit_jobid}" >> "$(mit_runjobid_file $_mit_runid)"
+}
+
+function mit_get_jobids {
+  typeset    _mit_runid="$1"
+  typeset    _mit_runjobid_file=$(mit_runjobid_file $_mit_runid)
+  #echo "::: _mit_runid=<$_mit_runid> -> _mit_runjobid_file=<$_mit_runjobid_file>" 1>&2
+  if [[ -f "$_mit_runjobid_file" ]] ; then
+    cut -d: -f2- "$_mit_runjobid_file" | tr '\n' ' '
+  fi
+}
+
+function mit_setup_template {
+  typeset _source="$1"
+  typeset _target="$2"
+  sed	-e "s%@@(T:MIT_HOME)%${I_MIT_HOME}%g"			\
+	-e "s%@@(T:MIT_LIBDIR)%${MIT_LIBDIR}%g"			\
+	-e "s%@@(T:MIT_BINDIR)%${MIT_BINDIR}%g"			\
+	-e "s%@@(T:MIT_ETCDIR)%${MIT_ETCDIR}%g"			\
+	-e "s%@@(T:MIT_SCRDIR)%${MIT_SCRDIR}%g"			\
+	-e "s%@@(T:MIT_HOSTNAME)%${I_MIT_HOSTNAME}%g"		\
+	-e "s%@@(T:MIT_GRADS_HOME)%${MIT_GRADS_HOME}%g"		\
+	"$_source" > "$_target"
+  typeset _check_pattern='@@(T:[a-zA-Z_0-9]*)'
+  if [[ $($MIT_BINDIR/grep -c "$_check_pattern" "$_target") -ne 0 ]] ; then
+    mit_log 0 "ERR: unexpanded macros in '$_source':"
+    mit_prex "$MIT_BINDIR/grep '$_check_pattern' '$_target'"
+    return 1
+  fi
+  return 0
+}
+
+
+function set_spec_data {
+  # definisce le variabili globali dipendenti da rundate
+#   per esempio: dato RUNDATE E TOT DI giorni DA ANDARE/AVANTI/RITORNARE INDIETRO + le ora partendo dalle 00:00:00
+#   ritorna una variabile globale del tipo %Y%m%d-%H:%M:S
+# ESEMPIO DI SOTTOMISSIONE:
+# set_spec_run -date 20120216 -days 5 -hours 12
+#  genera 20120221-12:00:00
+# set_spec_run -date 20120216 -days -5 -hours 12
+#  genera 20120221-12:00:00
+  typeset -i _date
+  typeset -i _hours=0
+  typeset -i _days=0
+  typeset    _arg
+
+  while [[ ${#@} -ne 0  ]] ; do
+    _arg="$1"
+    shift 1
+    case "$_arg" in
+      ?(-)-date)
+        _date=$1
+        shift 1
+        ;;
+      ?(-)-hours)
+        _hours=$1
+        shift 1
+        ;;
+      ?(-)-days)
+        _days=$1
+        shift 1
+        ;;
+      *)
+	echo "OPTION $arg sconosciuta"
+	exit -- -1
+	;;
+    esac
+  done
+
+  if [[ ${_days} -gt 0 ]]; then
+    _ago="s"
+  else
+    _days=$(( -1*${_days} ))
+    _ago=" ago"
+  fi
+#   echo   "typeset RUNDATE_m_tmp= --date=${_date} ${_hours}:00:00  ${_days} day${_ago}"
+  eval "RUNDATE_tmp=$( date --utc +"%Y%m%d-%H:%M:%S" --date="${_date} 00:00:00  ${_days} day${_ago} ${_hours} hour" )"
+  eval "LAST_RUNDATE=$( date --utc +"%Y%m%d" --date="${_date} ${_days} day${_ago} " )"
+}
+
+
+
+# trap only for batch
+for signal in HUP INT QUIT TERM ; do
+  trap "mit_signal_handler $signal" "$signal"
+done
+trap "mit_exit" EXIT
+
+# end of include guard:
+fi
+
+
+function mit_defdomain {
+  typeset _mit_tasks=$1
+  case "${_mit_tasks}" in
+    48)
+      _domain_suff="${_mit_tasks}x1"
+      ;;
+    96)
+      _domain_suff="48x2"
+      ;;
+   128)
+      _domain_suff="64x2"
+      ;;
+     *)
+      _domain_suff="${_mit_tasks}x1"
+      ;;
+  esac
+#    "${_domain_suff}"
+  printf '%s\n' "${_domain_suff}"
+
+}
+
+secs2hhmmss() {
+  # converte $1 secondi in una stringa "hh:mm:ss"
+  # $1 : secondi
+  typeset -i secs
+  secs=$1
+  typeset -i h m s
+  typeset -ZR2 sm ss 
+  typeset -R3 sh
+  h=$(( $secs / 3600 ))
+  m=$(( ( $secs - ( $h * 3600 ) ) / 60 ))
+  s=$(( $secs - ( $h * 3600 )  - ( $m * 60 ) ))
+  ###echo "$h:$m:$s" | sed -e "s% %0%g"
+  sh=$h
+  sm=$m
+  ss=$s
+  echo "$sh:$sm:$ss"
+}
+
+
+time_sum() {
+  # calcola la differenza in secondi fra
+  #   "hh:mm:ss[B]" e "hh:mm:ss[A]"
+  #   e stampa questo valore come stringa "hh:mm:ss"
+  #   Se B e' minore di A, viene aumentato di un giorno
+  #   (in tal modo, la differenza e' modulo 24)
+  # $1 : "hh:mm:ss[A]"
+  # $2 : "hh:mm:ss[B]"
+  # $3 : s|f (s indica output in secondi, f in formato hh:mm:ss)
+  typeset -i sA sB sS
+
+
+  typeset -i Ah=$( echo "$1" | cut -d':' -f1 )
+  typeset -i Am=$( echo "$1" | cut -d':' -f2 )
+  typeset -i As=$( echo "$1" | cut -d':' -f3 )
+  sA=$(( $As + ( $Am * 60 ) + ( $Ah * 3600 ) ))
+
+  typeset -i Bh=$( echo "$2" | cut -d':' -f1 )
+  typeset -i Bm=$( echo "$2" | cut -d':' -f2 )
+  typeset -i Bs=$( echo "$2" | cut -d':' -f3 )
+  sB=$(( $Bs + ( $Bm * 60 ) + ( $Bh * 3600 ) ))
+
+  sS=$(( $sB + $sA ))
+
+  if [[ $3 = f ]] ; then
+    secs2hhmmss $sS
+  else
+    echo $sS
+  fi
+}

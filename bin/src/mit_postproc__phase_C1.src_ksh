@@ -1,0 +1,90 @@
+#!/bin/ksh
+# This script executes the postprocess
+# phase C1: packing output data 
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Load MPI profile:
+. $MIT_SCRDIR/mit_mpi.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+mit_prex "source $MIT_VENV_1/bin/activate"
+
+PYTHONPATH=${PYTHONPATH}:$MIT_BITSEA
+typeset -i errors=0
+
+
+MIT_POSTPROC=$MIT_WRKDIR/POSTPROC
+
+mit_mkdir "$MIT_POSTPROC"
+mit_mkdir "$MIT_POSTPROC/IMG"
+
+RUNDIR=$MIT_WRKDIR/MODEL/run
+TMPDIR=$MIT_WRKDIR/POSTPROC/TMP
+NETCDF_DIR=$MIT_WRKDIR/POSTPROC/AVE
+PRODUCTS=$MIT_WRKDIR/POSTPROC/PRODUCTS
+TARDIR=$MIT_WRKDIR/POSTPROC/tars
+
+mit_mkdir $TMPDIR
+mit_mkdir $NETCDF_DIR
+mit_mkdir $PRODUCTS
+
+OUTPUTDIR=$MIT_POSTPROC/IMG
+
+
+MEDEAF_DIR=$MIT_HOSTDIR/medeaf/cadeau/
+MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
+mit_prex_or_die "mpirun -np 1 python $MEDEAF_DIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE"
+
+VARLIST=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist
+VARDESCRIPTOR=$MIT_ETCDIR/static-data/POSTPROC/VarDescriptor.xml
+mit_prex_or_die "mpirun python $MEDEAF_DIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -d $MIT_RUNDATE -m $MASKFILE -v $VARLIST"
+mit_prex_or_die "mpirun -np 36 python $MIT_POSTPROCDIR/var_aggregator.py -l ave*N1p.nc -i $NETCDF_DIR -t $TMPDIR -m $MASKFILE -d $VARDESCRIPTOR"
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/archive/netcdf4_compress.py -i $TMPDIR -o $NETCDF_DIR -l *nc "
+
+SM_DAYS="$MIT_WRKDIR/POSTPROC/sm_days.txt"
+FC_DAYS="$MIT_WRKDIR/POSTPROC/fc_days.txt"
+mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | head -7 > $SM_DAYS "
+mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | tail -5 | head -3  > $FC_DAYS "
+
+mit_prex_or_die "mpirun python $MEDEAF_DIR/prodotti_bio.py -i $NETCDF_DIR -o $PRODUCTS -d sm -b $MIT_RUNDATE -m $MASKFILE -t $SM_DAYS"
+mit_prex_or_die "mpirun python $MEDEAF_DIR/prodotti_bio.py -i $NETCDF_DIR -o $PRODUCTS -d fc -b $MIT_RUNDATE -m $MASKFILE -t $FC_DAYS"
+
+
+mit_prex_or_die "mpirun python $MEDEAF_DIR/prodotti_phys.py -i $NETCDF_DIR -o $PRODUCTS -d sm -b $MIT_RUNDATE -m $MASKFILE -t $SM_DAYS"
+mit_prex_or_die "mpirun python $MEDEAF_DIR/prodotti_phys.py -i $NETCDF_DIR -o $PRODUCTS -d fc -b $MIT_RUNDATE -m $MASKFILE -t $FC_DAYS"
+
+mit_date > $PRODUCTS/timestamp
+
+mit_prex_or_die "mv $MIT_ARCDIR_ROOT/current/products $MIT_ARCDIR_ROOT/current/products_old/"
+mit_prex_or_die "mv $PRODUCTS $MIT_ARCDIR_ROOT/current/products "
+mit_prex_or_die "rm -rf $MIT_ARCDIR_ROOT/current/products_old/"
+
+MONTH=$( date --date="$MIT_RUNDATE" +%m )
+case $MONTH in
+  05|06|07|08|09|10 ) PLOTLISTFILE=$MEDEAF_DIR/Plotlist_summer.xml ;;
+  * ) PLOTLISTFILE=$MEDEAF_DIR/Plotlist.xml ;;
+esac
+
+
+mit_prex_or_die "mpirun python $MEDEAF_DIR/build_layer_map.py -i $NETCDF_DIR -o $OUTPUTDIR -d $MIT_RUNDATE -m $MASKFILE -p $PLOTLISTFILE "
+
+mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
+
+
+cd $MIT_POSTPROC
+mit_prex_or_die "tar -cf $MIT_ARCDIR_ROOT/current/maps.tar IMG/"
+
+mit_prex_or_die "md5sum $MIT_ARCDIR_ROOT/current/maps.tar > $MIT_ARCDIR_ROOT/current/maps.tar.md5"
+
+
+
+mit_exit "$errors"
+
+
+

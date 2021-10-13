@@ -1,0 +1,160 @@
+#!/bin/ksh
+# This script creates a monthly report of the MIT runs
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $MIT_PROGNAME [options]
+[options]
+$(mit_set_default_run__print_options)
+	--refresh|-R		refresh cache
+	--notify|-n		notify
+	--help|-h		show this help
+EofCat
+}
+
+
+mit_set_default_run_options=''
+NOTIFY=false
+  
+mit_log_inspect_options=" "
+NOTIFY=false
+REFRESH=false
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+      mit_set_default_run_options="${mit_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --notify|-n)
+      NOTIFY=true
+      ;;
+    --refresh|-R)
+      REFRESH=true
+      ;;
+    --)
+      while [[ ${#@} -ne 0 ]] ; do
+        mit_log_inspect_options="${mit_log_inspect_options}'$1' "
+        shift 1
+      done
+      ;;
+    *)
+      if [[ $DATE == '' ]] ; then
+        DATE="$arg"
+      else
+        echo "ERROR: wrong command line option <$arg>" 1>&2
+        exit 2
+      fi
+      ;;
+  esac
+done
+
+mit_prex "mit_set_default_run $mit_set_default_run_options"
+mit_prex "mit_set_run $MIT_DEFAULT_RUNDATE"
+
+tmpfile="$MIT_VARDIR/tmp/mit_check_run.${MIT_RUNDATE}.${RANDOM}"
+while [[ -f ${tmpfile:=$MIT_VARDIR/tmp/mit_check_run.$MIT_RUNDATE.$RANDOM} ]] ; do
+  unset tmpfile
+done
+echo "tmpfile=$tmpfile"
+
+trap "rm -f $tmpfile" 0
+trap "rm -f $tmpfile" 1
+trap "rm -f $tmpfile" 2
+trap "rm -f $tmpfile" 3
+trap "rm -f $tmpfile" 15
+
+export MIT_HOME="$I_MIT_HOME"
+export MIT_HOSTNAME="$I_MIT_HOSTNAME"
+
+typeset -i errors=0
+
+#echo "REFRESH=$REFRESH"
+#echo "NOTIFY=$NOTIFY"
+
+if $REFRESH ; then
+  mit_log_inspect_options="${mit_log_inspect_options}--refresh "
+fi
+mit_prex "$MIT_SCRDIR/mit_log_inspect.py -G --from $MIT_RUNDATE --to $MIT_RUNDATE $mit_log_inspect_options 1>$tmpfile" || errors=$(( $errors + 1 ))
+
+mit_prex "cat $tmpfile"
+
+completed=false
+if [[ ( $errors -ne 0 ) ]] ; then
+  completed=false
+else
+  completed=false
+  while read line ; do
+    date=$(echo "$line" | awk '{print $1}')
+    if [[ $date == $MIT_RUNDATE ]] ; then
+      rid=$(echo "$line" | awk '{print $2}')
+      status=$(echo "$line" | awk '{print $3}')
+      submit=$(echo "$line" | awk '{print $4}')
+      pre_start=$(echo "$line" | awk '{print $5}')
+      pre_end=$(echo "$line" | awk '{print $6}')
+      mod_start=$(echo "$line" | awk '{print $7}')
+      mod_end=$(echo "$line" | awk '{print $8}')
+      post_start=$(echo "$line" | awk '{print $9}')
+      post_end=$(echo "$line" | awk '{print $10}')
+      triggers=$(echo "$line" | awk '{print $11}')
+      printf "parsing line <$line> :"
+      completed=false
+      if [[ $submit == 'None' ]] ; then
+        echo "NOT submitted"
+      elif [[ $pre_end == 'None' ]] ; then
+        echo "'pre' NOT completed"
+      elif [[ $mod_end == 'None' ]] ; then
+        echo "'mode' NOT completed"
+      elif [[ $post_end == 'None' ]] ; then
+        echo "'post' NOT completed"
+      elif [[ $(echo "$triggers" | grep -c JobEndFailure) -ne 0 ]] ; then
+        echo "job NOT correctly ended"
+      else
+        echo "job correctly ended"
+        completed=true
+      fi
+    fi
+  done < "$tmpfile"
+fi
+
+exit_code=2
+message=""
+status=""
+if $completed ; then
+  message="completed"
+  status="ok"
+  exit_code=0
+else
+  message="NOT completed"
+  status="KO!"
+  exit_code=1
+fi
+
+echo "$MIT_RUNDATE: $message"
+if $NOTIFY ; then
+  mail -s "MIT-${MIT_VERSION}@${I_MIT_HOSTNAME}: Report for run $MIT_RUNDATE - ${status}" $MIT_NOTIFY_ADDRESSES <<EOFCAT
+# I_MIT_HOSTNAME=$I_MIT_HOSTNAME
+# MIT_VERSION=$MIT_VERSION
+# MIT_TRUE_VERSION_NUMBER=$MIT_TRUE_VERSION_NUMBER
+# MIT_PROD_VERSION_NUMBER=$MIT_PROD_VERSION_NUMBER
+
+Report for run $MIT_RUNDATE: $message
+
+---
+$(cat $tmpfile)
+---
+
+EOFCAT
+  
+fi
+exit $exit_code
+
+

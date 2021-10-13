@@ -1,0 +1,22 @@
+if [[ $__MIT_MPI_OPENMPI_IS_DEFINED__ == '' ]] ; then
+  __MIT_MPI_OPENMPI_IS_DEFINED__='__defined__'
+
+function mit_mpi_run {
+  # Run a command requiring $MIT_TASKS MPI tasks
+  typeset _args=$( _mit_mpi_args_to_string "$@" )
+  case "$I_MIT_HOSTNAME" in
+  pico)
+     mit_prex "time mpiexec.hydra -genv I_MPI_FABRICS=shm:ofa -genv I_MPI_DYNAMIC_CONNECTION  0 $_args"
+     ;;
+  marconi|galileo|g100)
+     MPI_RANKS=95
+     mit_prex "time mpirun -np $MPI_RANKS $_args"
+     ;;
+  *)
+     mit_prex "time mpiexec.hydra -genv I_MPI_DYNAMIC_CONNECTION  0 $_args"
+     ;;
+  esac
+}
+
+# end of include guard:
+fi

@@ -1,0 +1,57 @@
+if [[ $__MIT_RM_IS_DEFINED__ == '' ]] ; then
+  __MIT_RM_IS_DEFINED__='__defined__'
+
+
+# This script is a wrapper to include the specific script for $MIT_RM;
+# the rm-specific script must define these functions:
+# 1) mit_rm_wall_clock_limit "[[hh:]mm:]ss"
+#    converts the wall clock limit in hh:mm:ss format to the RM format
+# 2) mit_rm_submit <jcf>
+#    submits the <jcf> job command file, and (possibly) sets 
+#    MIT_RM_SUBMIT_JOBID	# the jobid of the submitted job
+#    MIT_RM_SUBMIT_QUEUE	# the queue of the submitted job (optional,
+#				# supported only by LSF
+	
+
+MIT_RM_SUBMIT_JOBID=$MIT_UNDEFINED      # jobid of the last submitted job
+MIT_RM_SUBMIT_QUEUE=$MIT_UNDEFINED      # jobid of the last submitted job
+MIT_RM_EO_FILENAME_PART=$MIT_UNDEFINED	# specific part of the eo filename
+
+MIT_RM_STATUS_RUNNING="Running"
+MIT_RM_STATUS_SUSPENDED="Suspended"
+MIT_RM_STATUS_FINISHED="Finished"
+MIT_RM_STATUS_HELD="Held"
+MIT_RM_STATUS_QUEUED="Queued"
+MIT_RM_STATUS_EXITING="Exiting"
+MIT_RM_STATUS_UNKNOWN="Unknown"
+
+_MIT_RM_JOB_STAT_FORMAT="%-40s %s\n"
+function mit_rm_job_stat_header {
+  printf "$_MIT_RM_JOB_STAT_FORMAT" "JOBID" "STATUS"
+}
+function mit_rm_job_stat_formatter {
+  typeset _jobid="$1"
+  typeset _status="$2"
+  printf "$_MIT_RM_JOB_STAT_FORMAT" "$_jobid" "$_status"
+}
+
+rm_inc_file="$MIT_SCRDIR/mit_rm__${MIT_RM}.inc"
+if [[ ! -f $rm_inc_file ]] ; then
+  echo "ERROR: there is no inc file for resource manager [${MIT_RM}]!" 1>&2
+  exit 1
+fi
+
+function _mit_rm_wrap_command {
+  typeset    _command="$1"
+  typeset -i _ec=0
+  #echo "=== $_command"
+  echo "=== Begin ======================================================================"
+  mit_prex "$_command" ; _ec=$?
+  echo "=== End ========================================================================"
+  return $_ec
+}
+# Load the rm-specific include file
+. "$rm_inc_file"
+
+# end of include guard:
+fi

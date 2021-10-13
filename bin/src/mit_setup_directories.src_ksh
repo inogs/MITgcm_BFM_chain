@@ -1,0 +1,44 @@
+#!/bin/ksh
+# This command creates some directories
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+
+function setup_link {
+  typeset _dir="$1"
+  typeset _lnk="$2"
+  echo "### Create directory '$_dir' & link '$_lnk'"
+  if [[ ! -d "$_dir" ]] ; then
+    mit_mkdir "$_dir"
+  fi
+  if [[ -e "$_lnk" ]] ; then
+    mit_prex "rm -f '$_lnk'"
+  fi
+  mit_prex "ln -fs '$_dir' '$_lnk'"
+}
+
+for directory in $MIT_VARDIR/log $MIT_VARDIR/tmp $MIT_ARCDIR $I_MIT_HOME/HOST/$I_MIT_HOSTNAME ; do
+  echo "### Create directory '$directory'"
+  mit_mkdir $directory
+done
+
+ETC_DIRS="
+MODEL
+"
+
+for directory in $ETC_DIRS; do
+    cd $MIT_ETCDIR/static-data/$directory
+    echo "Decompressing $MIT_ETCDIR/static-data/$directory  "
+    for I in `ls *gz `; do
+        gzip -dc $I > ${I%.gz} ;
+    done
+done
+
+
+setup_link "$MIT_ARCDIR_ROOT"	"$MIT_ARCDIR_ROOT_LINK"
+setup_link "$MIT_WRKDIR_ROOT"	"$MIT_WRKDIR_ROOT_LINK"
+setup_link "$MIT_INPDIR_ROOT"	"$MIT_INPDIR_ROOT_LINK"
+
+mkdir -p $MIT_ARCDIR_ROOT/current/products
+

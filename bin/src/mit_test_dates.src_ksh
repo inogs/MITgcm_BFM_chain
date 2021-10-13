@@ -1,0 +1,26 @@
+#!/bin/ksh
+# This script tests the opa_lists library
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. @@(I:OPA_HOME)/bin/opa_dates.inc
+
+
+dt=20120227
+#for ds in 20120225 ; do
+for ds in 20121212 20120301 20120229 20120228 20120227 20120226 20120225 20120123 20111111 ; do
+  di_o=$(dates_diff $ds $dt)
+  di_s=$(dates_diff_safe $ds $dt)
+  echo "$dt - $ds = $di_o [${di_s}]"
+  if [[ $di_o -ne $di_s ]] ; then
+    echo "ERR!"
+    exit 1
+  fi
+done
+
+echo 
+for ds in 20121212 20120220 20120229 20120228 20120227 20120226 20120225 20120123 20111111 20060606 20000101 ; do
+  di_o=$(dates_diff $ds $dt)
+  echo "$dt - $ds = $di_o"
+done

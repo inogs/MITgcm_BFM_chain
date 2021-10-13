@@ -1,0 +1,164 @@
+#!/bin/ksh
+# This command outputs the opa.log file for a specific rundate.
+# It is possible to specify the viewer command and its arguments
+# The default viewer command is 'tail'
+
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options] [viewer option]
+[options]
+$(opa_set_default_run__print_options)
+	--help|-h		show this help
+	--runid|-R RID		set runid to show
+				(only log messages belonging to
+				run with runid RID are shown)
+				[DEFAULT: 'show last runid']
+	--last			show last output filename
+	--follow|-f		output appended data as the file grows
+				(same as in 'tail' command)
+				[DEFAULT: '$opa_follow']
+	--lines|-n L		output last L lines
+				[DEFAULT: '$opa_lines']
+	--input|-i F		set the input filename pattern
+				__default__: default filename (opa.${I_OPA_HOSTNAME}.log)
+				__last__: last out filename (opa.${I_OPA_HOSTNAME}.log)
+				[DEFAULT: '$opa_filename']
+EofCat
+}
+
+
+# parsing of command line arguments
+opa_follow=false
+opa_tail="$OPA_BINDIR/tail"
+opa_viewer=cat
+opa_viewer_options=' '
+opa_tail_options=' '
+opa_grep_options='--line-buffered'
+_OPA_ALL='__all__'
+_OPA_LAST='__last__'
+opa_runid="$_OPA_ALL"
+opa_lines=10000000
+opa_filename="__default__"
+
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+      opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+      shift 1
+      ;;
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --tail|-T)
+      opa_viewer="$opa_tail"
+      ;;
+    --last|-l)
+      opa_filename="$_OPA_LAST"
+      ;;
+    --all|-a)
+      opa_runid="$_OPA_ALL"
+      ;;
+    --runid|-R)
+      opa_runid="$1"
+      shift 1
+      ;;
+    --follow|-f)
+      opa_viewer="$opa_tail"
+      opa_tail_options="$opa_tail_options--follow "
+      ;;
+    --lines|-n)
+      opa_viewer="$opa_tail"
+      opa_lines="$1"
+      shift 1
+      ;;
+    --input|-i)
+      opa_filename="$1"
+      shift 1
+      ;;
+    *)
+      echo "ERR: invalid argument '$arg'" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+eval opa_set_default_run $opa_set_default_run_options
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+opa_runid_sh_pattern=''
+opa_runid_grep_pattern=''
+opa_use_grep=true
+case "$opa_runid" in
+  $_OPA_LAST)
+    opa_runid="$(opa_runid)"
+    ;;
+esac
+case "$opa_runid" in
+  $_OPA_ALL)
+    opa_runid_sh_pattern='*'
+    opa_runid_grep_pattern='(...)'
+    opa_use_grep=false
+    ;;
+  *)
+    opa_runid_sh_pattern="$opa_runid"
+    opa_runid_grep_pattern="(${opa_runid})"
+    ;;
+    
+esac
+
+opa_filename_pattern=''
+case "$opa_filename" in
+  __default__)
+    opa_filename_pattern="$OPA_LOGFILE"
+    ;;
+  __last__)
+    opa_filename_pattern="$OPA_RUNLOGDIR/opa.${I_OPA_HOSTNAME}.${opa_runid_sh_pattern}.*.out"
+    opa_use_grep=false
+    ;;
+  *)
+    opa_filename_pattern="$OPA_RUNLOGDIR/opa.${I_OPA_HOSTNAME}.${opa_runid_sh_pattern}.${opa_filename}.out"
+    opa_use_grep=false
+    ;;
+esac
+opa_filename="$($OPA_BINDIR/ls -1tr $opa_filename_pattern 2>/dev/null | $OPA_BINDIR/tail -n 1)"
+if [[ "$opa_filename" == "" ]] ; then
+  echo "ERR: Pattern '${opa_filename_pattern}' not found" 1>&2
+  exit 1
+fi
+echo "## Filename pattern='$opa_filename_pattern'"
+echo "## Filename='$opa_filename'"
+
+opa_tail_options="$opa_tail_options--lines $opa_lines "
+if [[ "$opa_viewer" == "$opa_tail" ]] ; then
+  opa_viewer_options="$opa_tail_options"
+fi
+
+opa_viewer_command="$opa_viewer $opa_viewer_options '$opa_filename'"
+if $opa_use_grep ; then
+  opa_pipe_command=""
+  # The last cat command in the pipe is needed because grep exits with 1 if no 
+  # matching lines are found, and this is not correct; since the pipe's exit code
+  # is the exit code of the last command in the pipe, the final cat solves the
+  # problem
+  opa_pipe_command=" | $OPA_BINDIR/grep $opa_grep_options -e '$opa_runid_grep_pattern' | $OPA_BINDIR/cat"
+fi
+
+opa_command="$opa_viewer_command$opa_pipe_command"
+_trap_EXIT=$(trap -p EXIT)
+trap "echo \">>> $opa_command\"" 0
+opa_prex "$opa_command"
+trap -- "$_trap_EXIT" EXIT
+
+
+
+
+
+
+

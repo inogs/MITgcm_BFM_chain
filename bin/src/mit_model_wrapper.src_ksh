@@ -1,0 +1,50 @@
+#!/bin/ksh
+# This script executes all the model steps of the operational MIT_offline chain:
+# mit_model		model execution
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+# header
+#mit_log 0 "	******************** ***"
+mit_log 0 "!!! STEP 'model' STARTED $MIT_RUNID"
+#mit_log 0 "	******************** ***"
+
+function mit_exec_and_log {
+  # Exec the mit script $1  with arguments $2...,
+  #  and redirect standard output and standard error on a log file
+  # The mit script $1 must be given without path and trailing .ksh!!!
+  typeset _command="$1"
+  shift 1
+  typeset _arg
+  typeset _args=""
+  for _arg in "$@" ; do
+    _args="${_args}'$_arg' "
+  done
+  typeset _logfile="$MIT_RUNLOGDIR/mit.${I_MIT_HOSTNAME}.${MIT_RUNID}.${_command}.out"
+  mit_prex "$MIT_SCRDIR/${_command}.ksh $_args 1>$_logfile 2>&1" ; return $_ec
+}
+
+ec=0
+# model
+mit_log 0 "### running the MIT-offline model..."
+mit_exec_and_log mit_model ; ec=$?
+mit_log 0 "### running the MIT-offline model... done [$(mit_exitcode $ec)]"
+if [[ $ec -ne 0 ]] ; then
+  mit_log 0 "ERROR: 'mit_model.ksh' failed! (aborting chain)"
+  mit_exit 1    
+fi
+
+mit_exit "$errors"
+
+
+
+

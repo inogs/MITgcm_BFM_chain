@@ -1,0 +1,67 @@
+#!/bin/ksh
+# This script creates some working directory (if missing),
+# and clean their content (if they already exist).
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+
+# start
+mit_start
+
+typeset -i errors=0
+
+
+METEODIRS="METEO METEO/DOWNLOAD"
+
+BC_IC_DIRS='BC_IC
+            BC_IC/BIO/ZIPPED/AVE/DAILY
+            BC_IC/BIO/UNZIPPED/AVE/DAILY
+            BC_IC/BIO/UNZIPPED/AVE/WEEKLY
+            BC_IC/PHYS/UNZIPPED
+            BC_IC/PHYS/IC
+            BC_IC/PHYS/IC/CUT_3D
+            BC_IC/IC/PHYS
+            BC_IC/IC/BIO
+            BC_IC/BIO/IC
+            BC_IC/BIO/IC/CUT_3D
+            BC_IC/PHYS/CUTTED_SLICES
+            BC_IC/PHYS/CUTTED_SLICES/SOUTH
+            BC_IC/BIO/CUTTED_SLICES
+            BC_IC/BIO/CUTTED_SLICES/SOUTH' 
+            
+MODEL_DIRS='MODEL
+            MODEL/input/
+            MODEL/input/binaries
+            MODEL/input/binaries/ICs
+            MODEL/input/binaries/ICs/PHYS
+            MODEL/input/binaries/ICs/BIO            
+            MODEL/input/binaries/meteo
+            MODEL/input/binaries/OBCs
+            MODEL/input/binaries/OBCs/PHYS
+            MODEL/input/binaries/OBCs/BIO
+            MODEL/input/binaries/OBCs/ptracers_CG
+            MODEL/input/binaries/RBCs
+            MODEL/run
+            MODEL/results_merged'
+
+
+wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS MARINE_COPERNICUS"
+
+# reset input directories
+for subdir in $wrk_subdirs ; do
+  dir="$MIT_WRKDIR/$subdir"
+  ec=0
+  mit_log 1 "cleaning directory [${subdir}] ..."
+  mit_prex "rm -rf '$dir'" ; ec=$?
+  errors=$(( $errors + $ec ))
+  mit_log 0 "cleaning directory [${subdir}] [$(mit_exitcode $ec)]"
+
+  mit_mkdir "$dir"
+  mit_log 0 "making directory [${subdir}] [$(mit_exitcode $ec)]"
+done
+
+mit_exit $errors

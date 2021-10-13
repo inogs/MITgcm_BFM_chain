@@ -1,0 +1,37 @@
+#!/bin/ksh
+# This script links input analyses files in $OPA_WRKDIR/OPAOPER
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# Rundate definition
+opa_set_run
+
+# start
+opa_start
+
+# Get the name of OPAOPER_A wind input files
+opa_set_input_files__opaoper_a
+opa_print_input_files__opaoper_a
+
+typeset -i errors=0
+
+output_dir=$OPA_WRKDIR/OPAOPER
+
+input_date=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00" +%y%m%d )
+
+# link analyses in $output_dir
+opaoper_a_input_dir=$OPA_WRKDIR/OPAOPER_A
+for file_index in $OPA_OPAOPER_A_INPUT_FILES_INDICES ; do
+  file="${OPA_OPAOPER_A_INPUT_LFILES[file_index]}"
+  if [[ ! -f $opaoper_a_input_dir/$file ]] ; then
+    opa_log 0 "ERR: missing analysis [${opaoper_a_input_dir}/${file}]"
+    errors=$(( $errors + 1 ))
+  fi
+  opa_prex "ln -fs $opaoper_a_input_dir/$file $output_dir"
+done
+
+opa_exit "$errors"
+
+
+

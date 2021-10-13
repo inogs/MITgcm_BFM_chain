@@ -1,0 +1,41 @@
+#!/bin/ksh
+# This script is simply a wrapper for the three preproc scripts
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+typeset -i warnings=0
+
+### PHASE SETUP
+mit_step_has_phase pre SETUP && {
+  mit_exec_and_log mit_run_setup		|| errors=$(( $errors + 1 ))
+}
+
+### PHASE get
+mit_step_has_phase pre GET && {
+  mit_exec_and_log mit_get			|| errors=$(( $errors + 1 ))
+}
+
+
+### PHASE A1
+mit_step_has_phase pre A1 && {
+  mit_exec_and_log mit_preproc__phase_A1        || errors=$(( $errors + 1 ))
+}
+
+### PHASE A2
+mit_step_has_phase pre A2 && {
+  mit_exec_and_log mit_preproc__phase_A2        || errors=$(( $errors + 1 ))
+}
+
+
+
+mit_exit "$errors"
+
+

@@ -1,0 +1,76 @@
+#!/bin/ksh
+# This command creates some directories
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+function print_help {
+  cat <<EofCat
+Usage: $OPA_PROGNAME [options] <pattern0> [<pattern1 [...] ]
+[patterns]
+A shell-like pattern, for instance 'BFM.120207*.nc'
+
+[options]
+	--help|-h		show this help
+	--max-count|-m M	set the max number of admitted NaNs
+				[DEFAULT: ${max_count}]
+	--pattern|-p P		add the pattern P
+EofCat
+}
+
+set -A	   patterns --
+typeset    patterns_indices=' '
+typeset -i patterns_num=0
+
+function add_pattern {
+  typeset _pattern="$1"
+  patterns[patterns_num]="$arg"
+  patterns_indices="$patterns_indices$patterns_num "
+  patterns_num=$(( $patterns_num + 1 ))
+}
+
+max_count=10
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --)
+      while [[ ${#@} -ne 0 ]] ; do
+        add_pattern "$1"
+        shift 1
+      done
+      ;;
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --max-count|-m)
+      max_count="$1"
+      ;;
+    --pattern|-p)
+      add_pattern "$1"
+      shift 1
+      ;;
+    *)
+      add_pattern "$arg"
+      ;;
+  esac
+done
+    
+for pattern_index in $patterns_indices ; do
+  pattern=${patterns[pattern_index]}
+  printf "Pattern: '$pattern'"
+  files=$(ls -1 $pattern 2>/dev/null)
+  num_files="$(echo "$files" | wc -w)"
+  echo " - $num_files matching files"
+  for file in $files ; do
+    printf "  Searching NaNs in $file ... "
+    num_nan_lines=$($OPA_BINDIR/ncdump $file | $OPA_BINDIR/grep --count --max-count "$max_count" NaN)
+    if [[ $num_nan_lines -eq 0 ]] ; then
+      printf " is NaN free!"
+    else
+      printf " contains at least $num_nan_lines NaNs!"
+    fi
+    printf "\n"
+  done
+done

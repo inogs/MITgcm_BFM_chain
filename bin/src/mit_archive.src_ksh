@@ -1,0 +1,395 @@
+#!/bin/ksh
+# This script archive input and/or output data
+# options:
+#  --input:	archive input data
+#  --output:	archive output data
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. @@(I:OPA_HOME)/bin/opa_lists.inc
+
+function print_help {
+  cat <<EofHlp
+Usage: $OPA_PROGNAME [action] [options]
+[options]
+$(opa_set_default_run__print_options)
+	--all|-a		archive all datasets
+				[${ALL_DATASETS}]
+	--input|-i		archive input datasets
+				[${INPUT_DATASETS}]
+	--output|-o		archive output datasets
+				[${OUTPUT_DATASETS}]
+	--dataset|-d D		add dataset D 
+				[available: ${ALL_DATASETS}]
+        --maps|-m               archive maps
+                                [${MAPS}]
+EofHlp
+}
+
+# Parse command line arguments
+
+INPUT_DATASETS=" OPAOPER_A OPAOPER_F "
+OUTPUT_DATASETS=" DA_SAT MODEL POSTPROC MAPS"
+MAPS=" MAPS "
+ALL_DATASETS=" $INPUT_DATASETS $OUTPUT_DATASETS $MAPS"
+MISSING_DATASETS=" "
+
+SELECTED_DATASETS=' '
+function add_datasets {
+  typeset _dataset
+  for _dataset in "$@" ; do
+    if ! list_has_item "$ALL_DATASETS" "$_dataset" ; then
+      echo "ERR: invalid dataset '$_dataset'" 1>&2
+      return 1
+    fi
+    SELECTED_DATASETS="$SELECTED_DATASETS$_dataset "
+  done
+  return 0
+}
+
+USER_DATASETS=' '
+function add_user_datasets {
+  typeset _dataset
+  for _dataset in "$@" ; do
+    add_datasets "$_dataset" || continue
+    USER_DATASETS="$USER_DATASETS$_dataset "
+  done
+}
+
+function warn_invalid_user_datasets {
+  typeset _dataset
+  if ! $OPA_DA_ENABLE ; then
+    for _dataset in $USER_DATASETS ; do
+      case "$_dataset" in
+        DA_RESTARTS)
+          echo "WRN: dataset '$_dataset' is not available since OPA_DA_ENABLE='$OPA_DA_ENABLE'" 1>&2
+          ;;
+      esac
+    done
+  fi
+}
+
+function has_dataset {
+  typeset _dataset="$1"
+  if list_has_item "$SELECTED_DATASETS" "$_dataset" && ! list_has_item "$MISSING_DATASETS" "$_dataset" ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function exitcode2bool {
+  typeset -i _exit_code="$1"
+  if [[ $_exit_code -eq 0 ]] ; then
+    printf '%s' true
+  else
+    printf '%s' false
+  fi
+}
+
+function bool2exitcode {
+  typeset _bool="$1"
+  if $_bool ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+        opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+        shift 1
+        ;;
+    --all|-a)
+      add_datasets $ALL_DATASETS
+      ;;
+    --input|-i)
+      add_datasets $INPUT_DATASETS
+      ;;
+    --output|-o)
+      add_datasets $OUTPUT_DATASETS || {
+        exit 1
+      }
+      ;;
+    --maps|-m)
+      add_datasets $MAPS
+      ;;
+    --dataset|-d)
+      add_user_datasets "$1"
+      shift 1
+      ;;
+    *)
+      add_user_datasets "$arg" || {
+        exit 1
+      }
+      ;;
+  esac  
+done
+
+# Rundate definition
+opa_prex "opa_set_default_run $opa_set_default_run_options"
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+if ! $OPA_DA_ENABLE ; then
+  MISSING_DATASETS="${MISSING_DATASETS}DA_SAT DA_RESTARTS "
+fi
+
+# start
+opa_start
+
+warn_invalid_user_datasets
+
+_SIMULATE_ARCHIVE=false		# if true, it does not really copy files, but only write the command
+
+function stage_out {
+  # !!!WARNING!!! probably this function must be modified in the future,
+  # to be able to archive more structured directories.
+  #
+  # This is a sample function, used to simulate archiving
+  # If $_SIMULATE_ARCHIVE is true, it does not really copy files
+  # copy all the files from $OPE_WRKDIR to $OPA_ARCDIR
+  # [options]: -gzip
+  # $1...: subdirs          (the subdirs in $OPA_WRKDIR/$1)
+  typeset    _gzip=false
+  typeset    _option
+  typeset    _output_subdir_user=""
+  typeset    _base_input_dir="$OPA_WRKDIR"
+  typeset    _base_output_dir="$OPA_ARCDIR"
+  while true ; do
+    _option="$1"
+    case "$_option" in
+      --base-input-dir|-I)
+        shift 1
+	_base_input_dir="$1"
+        shift 1
+        ;;
+      --base-output-dir|-O)
+        shift 1
+	_base_output_dir="$1"
+        shift 1
+        ;;
+      --output-subdir|-o)
+        shift 1
+	_output_subdir_user="$1"
+        shift 1
+        ;;
+      --gzip)
+        shift 1
+        _gzip=true
+        ;;
+      --)
+        shift 1
+        break
+        ;;
+      *)
+        break
+    esac
+  done
+  typeset -i _ec	# command exit code
+  typeset    _input_subdir
+  typeset    _input_pattern
+  typeset    _output_subdir
+  typeset    _input_dir
+  typeset    _output_dir
+  typeset    _input_file
+  typeset    _output_file
+  typeset    _file
+  typeset -i _par_errors=0
+  typeset -i _tot_errors=0
+  for _input_pattern in "$@" ; do
+    echo "### Input pattern: '$_input_pattern'"
+    for _input_file in $( cd "$_base_input_dir" && ls -1 -- $_input_pattern ) ; do
+      _input_subdir=$(dirname "$_input_file")
+      _file=$(basename "$_input_file")
+      if [[ "$_output_subdir_user" != '' ]] ; then
+        _output_subdir="$_output_subdir_user"
+      else
+        _output_subdir="$_input_subdir"
+      fi
+      _input_dir="$_base_input_dir/$_input_subdir"
+      _output_dir="$_base_output_dir/$_output_subdir"
+      opa_mkdir $_output_dir || {
+        opa_log 0 "ERR: cannot create output dir '$_output_dir'"
+        _par_errors=$(( $_par_errors + 1 ))
+        continue
+      }
+      _input_file="$_input_dir/$_file"
+      _output_file="$_output_dir/$_file"
+      if [[ -f "$_input_file" ]] ; then
+        if $_SIMULATE_ARCHIVE ; then
+          echo "[SIMULATE_ARCHIVE] !!!WARNING!!! currently does not archive anything!" 1>&2
+          echo "[SIMULATE_ARCHIVE] '$_input_file' -> '$_output_file'" 1>&2
+        else
+          if $_gzip ; then
+            opa_prex "gzip -c '$_input_file' > '${_output_file}.gz'" || _par_errors=$(( $_par_errors + 1 ))
+          else
+            opa_cp "$_input_file $_output_file" || _par_errors=$(( $_par_errors + 1 ))
+          fi
+        fi
+      fi
+    done
+    opa_log 3 "[${_input_pattern}] archived [$(opa_exitcode $_par_errors)]"
+    _tot_errors=$(( $_tot_errors + $_par_errors ))
+  done
+  return $_tot_errors
+}
+
+typeset tot_errors=0
+typeset par_errors=0
+
+echo "================================================================================"
+printf "%-20s %s\n" "DATASET" "SELECTED:"
+for dataset in $ALL_DATASETS ; do
+  if has_dataset "$dataset" ; then
+    exitcode=0
+  else
+    exitcode=1
+  fi
+  printf "%-20s %s\n" "$dataset" "$(exitcode2bool $exitcode)"
+done
+echo "================================================================================"
+
+
+
+if has_dataset OPAOPER_A ; then
+  opa_log 1 "Archiving OPAOPER_A in [${OPA_ARCDIR}]..."
+  stage_out 'OPAOPER_A/mfs*'								|| par_errors=$(( $par_errors + 1 ))
+  opa_log 0 "Archiving OPAOPER_A in [${OPA_ARCDIR}]... done [$(opa_exitcode $par_errors)]"
+fi
+
+if has_dataset OPAOPER_F ; then
+  opa_log 1 "Archiving OPAOPER_F in [${OPA_ARCDIR}]..."
+  stage_out 'OPAOPER_F/mfs*'								|| par_errors=$(( $par_errors + 1 ))
+  opa_log 0 "Archiving OPAOPER_F in [${OPA_ARCDIR}]... done [$(opa_exitcode $par_errors)]"
+fi
+
+if has_dataset DA_SAT ; then
+  opa_log 1 "Archiving DA_SAT in [${OPA_ARCDIR}]..."
+  typeset -i opa_restart_archive_offset
+  opa_restart_archive_offset=-7
+  #output_restart_date=$($OPA_BINDIR/date --utc --date="$OPA_RUNDATE $(( 0 - $opa_restart_archive_offset )) days ago" +%Y%m%d)
+  #output_restart_date_yyyy=$( $OPA_BINDIR/date --utc +'%Y%m%d-%H:%M:%S' --date="$output_restart_date 12:00:00" )
+
+
+#  stage_out --output-subdir "DA" --gzip  "MODEL/DA__FREQ_1/${output_restart_date}_eiv.nc"   || par_errors=$(( $par_errors + 1 ))
+#  stage_out --output-subdir "DA" --gzip  "MODEL/DA__FREQ_1/${output_restart_date}_corr.nc"  || par_errors=$(( $par_errors + 1 ))
+  stage_out --output-subdir "DA" --gzip  'MODEL/DA__FREQ_1/*chl*.nc'                        || par_errors=$(( $par_errors + 1 ))
+
+  stage_out --output-subdir "DA" --gzip  'MODEL/DA__FREQ_1/limcorr*.nc'                     || par_errors=$(( $par_errors + 1 )) 
+  stage_out --output-subdir "DA" --gzip  'MODEL/DA__FREQ_1/flagsat*.nc'                     || par_errors=$(( $par_errors + 1 ))
+  opa_mkdir "$OPA_ARCDIR/DA/RST_AFTER"
+  opa_mkdir "$OPA_ARCDIR/DA/RST_BEFORE"
+  stage_out --output-subdir "DA/RST_AFTER"  "POSTPROC/COMPRESSED_FOR_ARCHIVE/RST/AFTER/*gz"  || par_errors=$(( $par_errors + 1 ))
+  stage_out --output-subdir "DA/RST_BEFORE" "POSTPROC/COMPRESSED_FOR_ARCHIVE/RST/BEFORE/*gz" || par_errors=$(( $par_errors + 1 ))
+#  for var in $OPA_DA_VARIABLES; do
+#     stage_out --output-subdir "DA/RST_AFTER"  "POSTPROC/COMPRESSED_FOR_ARCHIVE/RST/AFTER/RST.${output_restart_date_yyyy}.${var}.nc"   || par_errors=$(( $par_errors + 1 ))
+#  done
+
+  opa_log 0 "Archiving DA_SAT in [${OPA_ARCDIR}]... done [$(opa_exitcode $par_errors)]"
+fi
+tot_errors=$(( $tot_errors + $par_errors ))
+
+
+if has_dataset MODEL ; then
+  opa_log 1 "Archiving MODEL in [${OPA_ARCDIR}]..."
+  typeset -i opa_restart_archive_offset
+    opa_mkdir "$OPA_ARCDIR/MODEL"
+    stage_out --output-subdir "MODEL"  "POSTPROC/COMPRESSED_FOR_ARCHIVE/RST/RST.*.gz"                     || par_errors=$(( $par_errors + 1 ))
+
+
+#  for opa_restart_archive_offset in $OPA_RESTART_ARCHIVE_OFFSETS ; do ## CICLO DIVENTATO INUTILE
+#    if [[ $opa_restart_archive_offset -eq 0 ]] ; then
+#      output_restart_date="$OPA_RUNDATE"
+#    elif [[ $opa_restart_archive_offset -lt 0 ]] ; then
+#      output_restart_date=$($OPA_BINDIR/date --utc --date="$OPA_RUNDATE $(( 0 - $opa_restart_archive_offset )) days ago" +%Y%m%d)
+#    else
+#      output_restart_date=$($OPA_BINDIR/date --utc --date="$OPA_RUNDATE $opa_restart_archive_offset days " +%Y%m%d)
+#    fi
+#    output_restart_date_yyyy=$( $OPA_BINDIR/date --utc +'%Y%m%d-%H:%M:%S' --date="$output_restart_date 12:00:00" )
+#    echo "###DBG: opa_restart_archive_offset==<${opa_restart_archive_offset}>, OPA_RUNDATE=<${OPA_RUNDATE}> --> restart_date=<${restart_date}>"
+# ESEGUITI FUORI DAL CICLO
+#    if $OPA_DA_ENABLE ; then
+#      stage_out --output-subdir "POSTPROC/AVE_FREQ_2" --gzip "MODEL/AVE_FREQ_2/*.nc"                      || par_errors=$(( $par_errors + 1 ))
+#    fi
+#    stage_out --output-subdir "MODEL" --gzip "MODEL/RESTARTS/RST.${output_restart_date_yyyy}*.nc"			|| par_errors=$(( $par_errors + 1 ))
+ #   stage_out --output-subdir "MODEL" --gzip "MODEL/AVE_FREQ_1/ave.${output_restart_date_yyyy}*.nc.bkp"			|| par_errors=$(( $par_errors + 1 ))
+#  done
+
+  stage_out --gzip "MODEL/ogstm.output"							|| par_errors=$(( $par_errors + 1 ))
+  opa_log 0 "Archiving MODEL in [${OPA_ARCDIR}]... done [$(opa_exitcode $par_errors)]"
+fi
+
+if has_dataset POSTPROC ; then
+  opa_log 1 "Archiving POSTPROC in [${OPA_ARCDIR}]..."
+
+  _ave_dir=$OPA_ARCDIR/POSTPROC/AVE_FREQ_1
+
+  opa_mkdir $_ave_dir || {
+        opa_log 0 "ERR: cannot create output dir '$_ave_dir'"
+        _par_errors=$(( $_par_errors + 1 ))
+        continue
+  }
+  
+  # archivio prodotti
+  opa_mkdir "$OPA_ARCDIR/POSTPROC/AVE_FREQ_1/PRODUCTS"
+  opa_mkdir "$OPA_ARCDIR/POSTPROC/AVE_FREQ_1/ARCHIVE"
+  opa_mkdir "$OPA_ARCDIR/POSTPROC/AVE_FREQ_2"
+
+  stage_out --output-subdir "POSTPROC/AVE_FREQ_1/PRODUCTS/" "POSTPROC/PRODUCTS/*nc"                                 || par_errors=$(( $par_errors + 1 ))
+  stage_out --output-subdir "POSTPROC/AVE_FREQ_1/PRODUCTS/" "POSTPROC/PRODUCTS/*xml"                                || par_errors=$(( $par_errors + 1 ))
+  stage_out --output-subdir "POSTPROC/AVE_FREQ_1/ARCHIVE/"  "POSTPROC/COMPRESSED_FOR_ARCHIVE/AVE_FREQ_1/*.gz"       || par_errors=$(( $par_errors + 1 ))
+  if $OPA_DA_ENABLE ; then
+     stage_out --output-subdir "POSTPROC/AVE_FREQ_2"        "POSTPROC/COMPRESSED_FOR_ARCHIVE/AVE_FREQ_2/*.gz"       || par_errors=$(( $par_errors + 1 ))
+  fi 
+ 
+   # POSTPROC/AVE_FREQ_1/validation exist only on wednesday
+   #if [ 1 == 1 ] ; then # FINCHE' NON FUNZIONA LA VALIDATION 
+   if $OPA_DA_ENABLE ; then 
+  opa_mkdir "$OPA_ARCDIR/POSTPROC/AVE_FREQ_1/validation/"
+  ARCHIVE_VALIDATION_FLOAT_DIR="POSTPROC/AVE_FREQ_1/validation/biofloats/"
+    ARCHIVE_VALIDATION_SAT_DIR="POSTPROC/AVE_FREQ_1/validation/Sat/"
+  opa_mkdir "$OPA_ARCDIR/$ARCHIVE_VALIDATION_FLOAT_DIR"
+  opa_mkdir "$OPA_ARCDIR/$ARCHIVE_VALIDATION_SAT_DIR"
+  stage_out --output-subdir "$ARCHIVE_VALIDATION_FLOAT_DIR"  "POSTPROC/AVE_FREQ_1/online_validation/matchup_outputs/*tar" || par_errors=$(( $par_errors + 1 ))
+  stage_out --output-subdir "$ARCHIVE_VALIDATION_FLOAT_DIR"  "POSTPROC/AVE_FREQ_1/online_validation/ANALYSIS_PROFILES_1week/*nc" || par_errors=$(( $par_errors + 1 ))
+
+  stage_out --output-subdir "$ARCHIVE_VALIDATION_SAT_DIR"    "POSTPROC/AVE_FREQ_1/online_validation/Validation*.nc"       || par_errors=$(( $par_errors + 1 ))  
+  stage_out --output-subdir "POSTPROC/AVE_FREQ_1/validation" "POSTPROC/AVE_FREQ_1/online_validation/medeaf_pub.tar "      || par_errors=$(( $par_errors + 1 ))
+  fi 
+#tolto per test  stage_out --gzip 'POSTPROC/AVE_FREQ_1/PROFILES/*'					|| par_errors=$(( $par_errors + 1 ))
+#tolto per test  stage_out --gzip 'POSTPROC/AVE_FREQ_1/STAT_PROFILES/*'				|| par_errors=$(( $par_errors + 1 ))
+#tolto per test  stage_out --gzip 'POSTPROC/AVE_FREQ_1/INTEGRALS/*'					|| par_errors=$(( $par_errors + 1 ))
+
+  opa_log 0 "Archiving POSTPROC in [${OPA_ARCDIR}]... done [$(opa_exitcode $par_errors)]"
+fi
+
+
+if has_dataset MAPS ; then
+   stage_out --output-subdir "POSTPROC/AVE_FREQ_1/" "POSTPROC/AVE_FREQ_1/maps.tar "                || par_errors=$(( $par_errors + 1 ))
+#  opa_log 1 "Archiving MAPS in [${OPA_ARCDIR}]..."
+
+#  _maps_dir=$OPA_ARCDIR/MAPS
+
+#  opa_mkdir $_maps_dir || {
+#        opa_log 0 "ERR: cannot create output dir '$_maps_dir'"
+#        _par_errors=$(( $_par_errors + 1 ))
+#        continue
+#  }
+  
+  
+#  cd $OPA_WRKDIR/POSTPROC/AVE_FREQ_1/MAP_GEN/MAP_COMPRESSED/
+#  mv *png $_maps_dir
+fi
+
+tot_errors=$(( $tot_errors + $par_errors ))
+
+
+opa_exit "$tot_errors"
+
+
+

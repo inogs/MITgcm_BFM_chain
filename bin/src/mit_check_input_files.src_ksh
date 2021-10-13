@@ -1,0 +1,226 @@
+#!/bin/ksh
+# This script splits the forecast input file, containing $OPA_FORECAST_DAYS days of forecast,
+# in $OPA_FORECAST_DAYS files, each of them contains a single day.
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+# rundate definition
+opa_set_run
+
+# start
+opa_start
+
+input_dir=$OPA_WRKDIR/OPAOPER
+
+typeset -i errors=0
+
+typeset -i day_offset
+
+set -A opa_var_input_file_indices --			# array containing indices of input files for each variable
+
+set -A opa_var_input_file_indices_sorted --			# array containing indices of input files for each variable, sorted
+
+for var_index in $OPA_VARIABLE_INDICES ; do
+  opa_var_input_file_indices[var_index]=' '
+done
+
+set -A i_date --			# array for input file date
+set -A i_file --			# array for input file names
+set -A i_type --			# array for input file types ('a' or 'f')
+set -A i_var --				# array for input file variables (one of $OPA_VARIABLES)
+i_file_indices=' '			# indices of i_file and i_type arrays
+typeset -i i_file_index=0
+
+# Check analyses and simulations:
+opa_opaoper_a_day_offset_start__actual=$OPA_OPAOPER_A_DAY_OFFSET_START
+opa_opaoper_a_day_offset_end__actual=$OPA_OPAOPER_S_DAY_OFFSET_END
+day_offset=$opa_opaoper_a_day_offset_end__actual
+opa_analyses_days__actual=$OPA_ANALYSES_DAYS
+typeset -i a_num_days=0
+a_file=''
+while [[ $day_offset -ge $OPA_OPAOPER_A_DAY_OFFSET_START ]] ; do
+  day_offset_abs=$(( 0 - $day_offset ))
+  a_date=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 $day_offset_abs days ago" +'%y%m%d' )
+  some_variable_missing=false
+  for var_index in $OPA_VARIABLE_INDICES ; do
+    var=${OPA_VARIABLE[var_index]}
+    a_file="$input_dir/${a_date}_${var}.nc"
+    i_file[i_file_index]="$a_file"
+    i_date[i_file_index]="$a_date"
+    i_type[i_file_index]='a'
+    i_var[i_file_index]="$var"
+    i_file_indices="${i_file_indices}$i_file_index "
+    opa_var_input_file_indices[var_index]="${opa_var_input_file_indices[var_index]}$i_file_index "
+    i_file_index=$(( $i_file_index + 1 ))
+    if [[ ! -a $i_file ]] ; then
+      opa_log 0 "ERR: missing var $var for analysis $a_date"
+      some_variable_missing=true
+      break
+    fi
+  done
+  if $some_variable_missing ; then
+    msg="KO!"
+  else
+    msg="ok."
+  fi
+  echo "@@@ analysis $a_date: $msg"
+  if $some_variable_missing ; then
+    break
+  fi
+  a_num_days=$(( $a_num_days + 1 ))
+  opa_opaoper_a_day_offset_start__actual=$day_offset
+  day_offset=$(( $day_offset - 1 ))
+done
+opa_analyses_days__actual=$a_num_days
+opa_opaoper_date_start__actual=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 $(( 0 - $opa_opaoper_a_day_offset_start__actual )) days ago" +'%y%m%d' )
+
+cat <<EofCat
+==> $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 $(( 0 - $opa_opaoper_a_day_offset_start__actual )) days ago" +'%y%m%d'
+==> OPA_RUNDATE					= $OPA_RUNDATE
+==> opa_opaoper_date_start__actual		= $opa_opaoper_date_start__actual
+==> opa_opaoper_a_day_offset_start__actual	= $opa_opaoper_a_day_offset_start__actual
+==> opa_opaoper_a_day_offset_end__actual	= $opa_opaoper_a_day_offset_end__actual
+==> opa_analyses_days__actual			= $opa_analyses_days__actual
+EofCat
+
+if [[ $opa_analyses_days__actual -lt $OPA_ANALYSES_DAYS_MIN ]] ; then
+  opa_log 0 "ERR: found analyses days $opa_analyses_days__actual < $OPA_ANALYSES_DAYS_MIN"
+  errors=$(( $errors + 1 ))
+fi
+
+# Check forecast:
+day_offset=$OPA_OPAOPER_F_DAY_OFFSET_START
+opa_opaoper_f_day_offset_start__actual=$OPA_OPAOPER_F_DAY_OFFSET_START
+opa_opaoper_f_day_offset_end__actual=$OPA_FORECAST_DAYS
+opa_forecast_days__actual=$OPA_FORECAST_DAYS
+typeset -i f_num_days=0
+f_file=''
+while [[ $day_offset -le $OPA_FORECAST_DAYS ]] ; do
+  f_date=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 $day_offset days" +'%y%m%d' )
+  some_variable_missing=false
+  for var_index in $OPA_VARIABLE_INDICES ; do
+    var=${OPA_VARIABLE[var_index]}
+    f_file="$input_dir/${f_date}_${var}.nc"
+    i_file[i_file_index]="$f_file"
+    i_date[i_file_index]="$f_date"
+    i_type[i_file_index]='f'
+    i_var[i_file_index]="$var"
+    i_file_indices="${i_file_indices}$i_file_index "
+    opa_var_input_file_indices[var_index]="${opa_var_input_file_indices[var_index]}$i_file_index "
+    i_file_index=$(( $i_file_index + 1 ))
+    echo "DBG:> <$f_file>"
+    if [[ ! -f $f_file ]] ; then
+      opa_log 0 "ERR: missing var $var for forecast $f_date"
+      some_variable_missing=true
+      break
+    fi
+  done
+  if $some_variable_missing ; then
+    msg="KO!"
+  else
+    msg="ok."
+  fi
+  echo "@@@ forecast $f_date: $msg"
+  if $some_variable_missing ; then
+    opa_opaoper_f_day_offset_end__actual=$(( day_offset - 1 ))
+    break
+  fi
+  f_num_days=$(( $f_num_days + 1 ))
+  opa_opaoper_f_day_offset_end__actual=$day_offset
+  day_offset=$(( $day_offset + 1 ))
+done
+opa_forecast_days__actual=$f_num_days
+opa_opaoper_date_end__actual=$( $OPA_BINDIR/date --utc --date="$OPA_RUNDATE 00:00:00 $opa_opaoper_f_day_offset_end__actual days" +'%y%m%d' )
+
+## DA:
+opa_set_da_start_date "$opa_opaoper_date_start__actual"
+
+cat <<EofCat
+==> opa_opaoper_date_end__actual		= $opa_opaoper_date_end__actual
+==> opa_opaoper_f_day_offset_start__actual	= $opa_opaoper_f_day_offset_start__actual
+==> opa_opaoper_f_day_offset_end__actual	= $opa_opaoper_f_day_offset_end__actual
+==> opa_forecast_days__actual			= $opa_forecast_days__actual
+EofCat
+
+if [[ $opa_forecast_days__actual -lt $OPA_FORECAST_DAYS_MIN ]] ; then
+  opa_log 0 "ERR: found forecast days $opa_forecast_days__actual < $OPA_FORECAST_DAYS_MIN"
+  errors=$(( $errors + 1 ))
+fi
+
+### print input files:
+printf '%3s %s %s %s\n' "IND" "T" "V" "INPUT_FILE_NAME"
+for i_file_index in $i_file_indices ; do
+  printf '%3s %s %s %s\n' "$i_file_index" "${i_type[i_file_index]}" "${i_var[i_file_index]}" "${i_file[i_file_index]}"
+done
+
+printf '%3s %s %s %s\n' "IND" "V" "INPUT_FILE_INDICES"
+for var_index in $OPA_VARIABLE_INDICES ; do
+  printf '%3s %s %s\n' "$var_index" "${OPA_VARIABLE[var_index]}" "${opa_var_input_file_indices[var_index]}"
+done
+
+list_to_sort=''
+for i_file_index in $i_file_indices ; do
+  list_to_sort="${list_to_sort}${i_date[i_file_index]}:$i_file_index\n"
+done
+i_file_indices_sorted=$( printf "$list_to_sort" | $OPA_BINDIR/sort -t: -k1 -n | cut -d: -f2 | tr '\n' ' ' )
+
+for var_index in $OPA_VARIABLE_INDICES ; do
+  list_to_sort=''
+  for i_file_index in ${opa_var_input_file_indices[var_index]} ; do
+    list_to_sort="${list_to_sort}${i_date[i_file_index]}:$i_file_index\n"
+  done
+  i_file_indices_sorted=$( printf "$list_to_sort" | $OPA_BINDIR/sort -t: -k1 -n | cut -d: -f2 | tr '\n' ' ' )
+  opa_var_input_file_indices_sorted[var_index]="$i_file_indices_sorted"
+done
+
+### Create input description file:
+if [[ $errors -eq 0 ]] ; then
+  cat >$OPA_ACTUAL_INPUT_DESCRIPTION_FILE <<EofCat
+OPA_RUNDATE__ACTUAL="$OPA_RUNDATE"		# This is used to check if opa_check_input_files.ksh and
+						# opa_preproc__phase_A2.ksh have been called with the same
+						# value of OPA_RUNDATE
+
+OPA_OPAOPER_DATE_START__ACTUAL="$opa_opaoper_date_start__actual"
+OPA_OPAOPER_DATE_END__ACTUAL="$opa_opaoper_date_end__actual"
+
+OPA_OPAOPER_F_DAY_OFFSET_START__ACTUAL="$opa_opaoper_f_day_offset_start__actual"
+OPA_OPAOPER_F_DAY_OFFSET_END__ACTUAL="$opa_opaoper_f_day_offset_end__actual"
+OPA_FORECAST_DAYS__ACTUAL="$opa_forecast_days__actual"
+
+OPA_OPAOPER_A_DAY_OFFSET_START__ACTUAL="$opa_opaoper_a_day_offset_start__actual"
+OPA_OPAOPER_A_DAY_OFFSET_END__ACTUAL="$opa_opaoper_a_day_offset_end__actual"
+OPA_ANALYSES_DAYS__ACTUAL="$opa_analyses_days__actual"
+
+
+set -A OPA_INPUT_FILE__ACTUAL --
+set -A OPA_INPUT_TYPE__ACTUAL --
+set -A OPA_INPUT_VAR__ACTUAL --
+set -A OPA_DATE__ACTUAL --
+OPA_INPUT_FILE_INDICES__ACTUAL='${i_file_indices}'
+OPA_INPUT_FILE_INDICES_SORTED__ACTUAL='${i_file_indices_sorted}'
+
+set -A OPA_VAR_INPUT_FILE_INDICES__ACTUAL --
+
+EofCat
+  for i_file_index in $i_file_indices ; do
+    cat <<EofSrc
+OPA_INPUT_DATE__ACTUAL[$i_file_index]='${i_date[i_file_index]}'
+OPA_INPUT_FILE__ACTUAL[$i_file_index]='${i_file[i_file_index]}'
+OPA_INPUT_TYPE__ACTUAL[$i_file_index]='${i_type[i_file_index]}'
+OPA_INPUT_VAR__ACTUAL[$i_file_index]='${i_var[i_file_index]}'
+EofSrc
+  done >>$OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+
+  for var_index in $OPA_VARIABLE_INDICES ; do
+    cat <<EofSrc
+OPA_VAR_INPUT_FILE_INDICES__ACTUAL[$var_index]='${opa_var_input_file_indices[var_index]}'
+OPA_VAR_INPUT_FILE_INDICES_SORTED__ACTUAL[$var_index]='${opa_var_input_file_indices_sorted[var_index]}'
+EofSrc
+  done >>$OPA_ACTUAL_INPUT_DESCRIPTION_FILE
+fi
+
+opa_exit "$errors"
+
+
+

@@ -1,0 +1,137 @@
+#!/bin/ksh
+# This command cleans input/archive/wrkdir for a specific rundate
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. $OPA_SCRDIR/opa_lists.inc
+
+
+function print_help {
+  cat <<EofHlp
+Usage: $OPA_PROGNAME [options] [<target0> [<target1> [...] ] ]
+Cleans targets.
+[options]
+$(opa_set_default_run__print_options)
+	--target T				delete target T
+						[DEFAULT:   '${targets}']
+						[AVAILABLE: '${TARGETS}']
+	--force|-f				force delete
+						[DEFAULT: ${force}]
+	--help|-h				show this help
+EofHlp
+}
+
+TARGET_inpdir='inpdir'
+TARGET_archive='archive'
+TARGET_wrkdir='wrkdir'
+TARGETS=" $TARGET_inpdir $TARGET_archive $TARGET_wrkdir "
+targets=' '
+force=false
+function add_target {
+  typeset _item="$1"
+  if list_has_item "$TARGETS" "$_item" ; then
+    targets=$(list_append_u "$targets" "$1")
+    return 0
+  else
+    return 1
+  fi
+}
+  
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --rundate|-r|--weekday|-w|--today|-t|--submit-day-offset|-s)
+	opa_set_default_run_options="${opa_set_default_run_options}$arg '$1' "
+	shift 1
+	;;
+    --target)
+	add_target "$1" || {
+	  echo "ERR: invalid target '$1'" 1>&2
+	  exit 1
+	}
+        shift 1
+	;;
+    --force|-f)
+	force=true
+	;;
+    --help|-h)
+	print_help
+	exit 0
+	;;
+    *)
+	add_target "$arg" || {
+	  echo "ERR: invalid target '$arg'" 1>&2
+	  exit 1
+	}
+	;;
+  esac
+done
+
+eval opa_set_default_run $opa_set_default_run_options
+opa_prex "opa_set_run $OPA_DEFAULT_RUNDATE"
+
+for target in $TARGETS ; do
+  if list_has_item "$targets" "$target" ; then
+    echo "### Deleting target '$target'..."
+
+    dirs="$EMPTY_LIST"
+    case "$target" in 
+      $TARGET_inpdir)
+        dirs=$(list_append_u "$dirs" "$OPA_INPDIR")
+        ;;
+      $TARGET_archive)
+        dirs=$(list_append_u "$dirs" "$OPA_ARCDIR")
+        ;;
+      $TARGET_wrkdir)
+        dirs=$(list_append_u "$dirs" "$OPA_WRKDIR")
+        ;;
+      *)
+        echo "INTERNAL ERROR: invalid target '$target'" 1>&2
+        exit 1
+        ;;
+    esac
+    echo "### directories='$dirs'"
+    for dir in $dirs ; do
+      if [[ ! -d "$dir" ]] ; then
+        echo "### Directory '$dir' does not exists"
+        continue
+      fi
+      command="$OPA_BINDIR/rm -rf '$dir'"
+      execute=$force
+      if ! $execute ; then
+        force=false
+        while true ; do
+          printf "WARNING: do you *really* want to remove directory '$dir'? (y/N/a) "
+          read answer
+          case "$answer" in
+            y|Y|yes|YES|Yes)
+              execute=true
+              break
+              ;;
+            a|A|all|ALL|All)
+              force=true
+              execute=true
+              break
+              ;;
+            n|N|no|NO|No|'')
+              execute=false
+              break
+              ;;
+            *)
+              continue
+              ;;
+          esac
+        done
+      fi
+      if $execute ; then
+        opa_prex "$command"
+      else
+        echo "Command '$command' not executed"
+      fi
+    done
+  fi
+done
+          
+

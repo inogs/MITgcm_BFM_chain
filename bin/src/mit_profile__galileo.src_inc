@@ -1,0 +1,70 @@
+if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
+  __MIT_PROFILE_galileo_IS_DEFINED__='__defined__'
+
+# Load environment for pbs, modules:
+#. /etc/profile.d/pbs.sh
+. /etc/profile.d/modules.sh
+
+MIT_GRADS_HOME="$MIT_HOSTDIR"
+MIT_GRADS_GADDIR="${MIT_GRADS_HOME}/etc/grads/data"
+
+MIT_HOST_PRIMARY_LOGIN_NODE='node165.galileo.cineca.it'
+MIT_HOST_SECONDARY_LOGIN_NODE='node166.galileo.cineca.it'
+
+MIT_HOST_PRIMARY_HOSTNAME='node165'
+MIT_HOST_SECONDARY_HOSTNAME='node166'
+
+#nominal coordinates (if backup)
+if $I_MIT_BACKUP ; then
+  MIT_NOMINAL_HOME='/marconi/home/usera07ogs/a07ogs00/MIT/V3C'
+  MIT_NOMINAL_LOGIN='login.marconi.cineca.it'
+fi
+
+#For crontab check
+MIT_HOST_CRON_CHECK="login01.meucci.cineca.it login02.meucci.cineca.it"
+
+NODENAME=$(hostname)                    # nome del nodo
+NODE=$( echo "$NODENAME"| cut -d: -f1 ) # prima parte del nome del nodo
+
+MIT_HOST_LOGIN_NODES="$MIT_HOST_PRIMARY_LOGIN_NODE $MIT_HOST_SECONDARY_LOGIN_NODE"
+_mit_pro_dir=/shared/project/data/userogs/ogstsf79/BFM-MED
+MIT_HOST_PRO_UHD_LIST="${USER}:${MIT_HOST_PRIMARY_LOGIN_NODE}:$_mit_pro_dir ${USER}:${MIT_HOST_SECONDARY_LOGIN_NODE}:$_mit_pro_dir ${USER}:devel.fec.cineca.it:$_mit_pro_dir"
+MIT_HOST_PRO_FTP_LIST="${I_MIT_HOME}/etc/nc-config/.meteo.ncconfig:/"
+
+MIT_CORES_PER_NODE=36
+
+MIT_DEFAULT_WALL_CLOCK_LIMIT=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_SER=04:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_PAR=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_TASKS=72					# Default tasks' number WARNING: 1 node is not enough
+MIT_DEFAULT_QUEUE="gll_meteo_prod"                                      # Default queue
+MIT_DEFAULT_QUEUE_PAR="gll_meteo_prod"                                  # Default queue par
+#MIT_DEFAULT_QUEUE_SER="serial"                                 # Default queue ser
+MIT_DEFAULT_QUEUE_SER="gll_meteo_prod"                                  # Default queue ser
+MIT_DEFAULT_QOS="gll_qos_meteoogs"
+MIT_DEFAULT_MEM="115gb"
+#mit_batch_prex ". /cineca/prod/environment/module/3.1.6/none/init/ksh"
+#mit_batch_prex "module list"
+mit_batch_prex "module purge"
+mit_batch_prex "module load profile/advanced"
+mit_batch_prex "module load autoload"
+mit_batch_prex "module load intelmpi/2018--binary"
+mit_batch_prex "module load mkl/2018--binary"
+mit_batch_prex "module load python/2.7.12"
+mit_batch_prex "module load netcdf/4.6.1--intel--pe-xe-2018--binary"
+mit_batch_prex "module load netcdff/4.4.4--intel--pe-xe-2018--binary"
+mit_batch_prex "module load gsl/2.5--intel--pe-xe-2018--binary"
+
+#mit_batch_prex "module list"
+mit_batch_prex "ulimit -s unlimited"
+
+export PYTHONPATH=@@(I:MIT_HOME)/HOST/galileo/lib/python2.7/site-packages:$PYTHONPATH
+
+function mit_is_login_node {
+#   ksh /cineca/scripts/ha_login.select ; return $?
+    return 0
+}
+
+
+# end of include guard:
+fi

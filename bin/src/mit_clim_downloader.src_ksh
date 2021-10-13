@@ -1,0 +1,113 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+
+# This script downloads a for specific domain all the bfm state variables from dsecho.inogs.it
+# it dumps in output dir 51 files like N1p.nc, N3n.nc ...
+
+# It needs the following software to be installed:
+# - curl
+# - jq
+
+typeset -r VERSION="1.1";
+
+
+
+typeset CONF_FILE;
+typeset -r JQ="jq";
+typeset OUTPUT_DIR;
+
+typeset -f usage;
+typeset -f getConfItem;
+
+
+
+
+function getConfItem {
+	RESULT=$(${JQ} --compact-output --raw-output --monochrome-output ".${1}" ${CONF_FILE});
+
+	if [ "${RESULT}" != "null" ]; then
+		echo "${RESULT}";
+	else
+		echo "";
+	fi
+}
+
+
+
+# list of arguments expected in the input
+optstring="c:o:hv"
+
+while getopts ${optstring} arg; do
+	case ${arg} in
+	h)
+		usage;
+		exit 0;
+		;;
+	c)
+		CONF_FILE="${OPTARG}";
+		;;
+
+	o)
+		OUTPUT_DIR="${OPTARG}";
+		;;
+	v)
+		echo "Version: ${VERSION}";
+		exit 0;
+		;;
+	?)
+		usage >&2;
+		exit 10;
+		;;
+	esac
+done
+
+# check if configuration file exists
+if [ -z "${CONF_FILE}" ]; then
+	# if not specified configuration file has the same name of the script
+	CONF_FILE="$(dirname $0)/$(basename --suffix=.sh $0).json";
+fi
+
+if [ ! -s "${CONF_FILE}" ]; then
+	echo "[ERROR] Missing configuration file \"${CONF_FILE}\"" >&2;
+	exit 3;
+fi
+
+
+
+
+# check output directory
+if [ -z "${OUTPUT_DIR}" ]; then
+	OUTPUT_DIR=$(getConfItem "output_dir");
+fi
+
+if [ ! -d "${OUTPUT_DIR}" ]; then
+	echo "[ERROR] Missing output directory \"${OUTPUT_DIR}\"" >&2;
+	exit 5;
+fi
+
+
+
+typeset -r DOMAIN_LAT_MIN=$(getConfItem "domain_lat_min");
+typeset -r DOMAIN_LAT_MAX=$(getConfItem "domain_lat_max");
+typeset -r DOMAIN_LON_MIN=$(getConfItem "domain_lon_min");
+typeset -r DOMAIN_LON_MAX=$(getConfItem "domain_lon_max");
+typeset DOMAIN_DEPTH_MIN=$(getConfItem "domain_depth_min");
+typeset DOMAIN_DEPTH_MAX=$(getConfItem "domain_depth_max");
+
+
+
+
+for var in ${MIT_OUTPUT_VARIABLES} ; do
+   filename=https://dsecho.inogs.it/thredds/ncss/grid/echo_models/reanalysis24_CMEMS/clim_annually/clim_annually_${var}.nc
+   box="north=${DOMAIN_LAT_MAX}&west=${DOMAIN_LON_MIN}&east=${DOMAIN_LON_MAX}&south=${DOMAIN_LAT_MIN}"   # &vertCoord=${DOMAIN_DEPTH_MAX}"
+   url="${filename}?${box}&var=${var}&horizStride=1&time_start=1970-01-01T00:00:00Z&time_end=1970-01-01T00:00:00Z&timeStride=1&vertCoord=&accept=netcdf3"
+
+   outfile=${OUTPUT_DIR}/${var}.nc
+   mit_prex "curl --insecure -o $outfile \"${url}\" "
+
+
+done
+mit_exit 0

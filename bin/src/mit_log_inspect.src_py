@@ -1,0 +1,986 @@
+#!/usr/bin/env python
+
+import optparse
+import time
+import datetime
+import sys
+import os
+import pickle
+
+DATEFMT = '%Y%m%d'
+TIMEFMT = '%H:%M:%S'
+DATETIMEFMT = DATEFMT + '-' + TIMEFMT
+
+VERSION = '0.6'
+
+class GMT1(datetime.tzinfo):
+    def utcoffset(self, dt):
+        return datetime.timedelta(hours=1) + self.dst(dt)
+    def dst(self, dt):
+        d = datetime.datetime(dt.year, 4, 1)
+        dston = d - datetime.timedelta(days=d.weekday() + 1)
+        d = datetime.datetime(dt.year, 11, 1)
+        dstoff = d - datetime.timedelta(days=d.weekday() + 1)
+        #print dt, type(dt)
+        if dston <=  dt.replace(tzinfo=None) < dstoff:
+            return datetime.timedelta(hours=1)
+        else:
+            return datetime.timedelta(0)
+    def tzname(self,dt):
+        return "GMT +1"
+
+def col_print(lines):
+  lens = []
+  for line in lines:
+    lens.extend( [0 for i in xrange(len(line)-len(lens))] )
+    #print type(line),line
+    for i,e in enumerate(line):
+      lens[i] = max(lens[i], len(str(e)))
+  fmt = " ".join(["%%%ds"%l for l in lens])
+  for line in lines:
+    print fmt % line
+     
+def dlog(k,d,log):
+  sys.stderr.write("%s[%s]: %s\n" %(k,d,log))
+
+def derr(d,log):
+  return dlog('ERR',d,log)
+def dwrn(d,log):
+  return dlog('WRN',d,log)
+def dcmt(d,log):
+  return dlog('CMT',d,log)
+
+class Step(object):
+  def __init__(self,job):
+    self.job = job
+    self.start_time = None
+    self.end_time = None
+
+  def __delta(self,dt):
+    if dt is None:
+      return None
+    else:
+      #print "<<< %s - %s == %s >>>" % (dt, self.job.run.expected_submit_time, dt-self.job.run.expected_submit_time)
+      return dt-self.job.run.expected_submit_time
+
+  def start_delta(self):
+    return self.__delta(self.start_time)
+
+  def end_delta(self):
+    return self.__delta(self.end_time)
+
+
+class Preprocess(Step):
+  def __init__(self,job):
+    super(Preprocess,self).__init__(job)
+
+class Model(Step):
+  def __init__(self,job):
+    super(Model,self).__init__(job)
+
+class Postprocess(Step):
+  def __init__(self,job):
+    super(Postprocess,self).__init__(job)
+
+class Job(object):
+  def __init__(self,date,run,runid):
+    self.date = date
+    self.run = run
+    self.runid = runid
+    self.submit_time = run.last_submit_time
+    self.Preprocess = Preprocess(self)
+    self.Model = Model(self)
+    self.Postprocess = Postprocess(self)
+    self.steps = [ self.Preprocess, self.Model, self.Postprocess ]
+
+  def is_ok__times(self):
+    if self.submit_time is None:
+      return False
+    else:
+      for step in self.steps:
+        if step.start_time is None or step.end_time is None:
+          return False
+    return True
+
+  def is_ok(self):
+    return self.is_ok__times()
+
+  def submit_delta(self):
+    if self.submit_time is None:
+      return None
+    else:
+      return self.submit_time-self.run.expected_submit_time
+
+  def start_delta(self):
+    return self.Preprocess.start_delta()
+
+  def end_delta(self):
+    return self.Postprocess.end_delta()
+
+  def __get_end_time(self):
+    step_end_times = [ step.end_time for step in self.steps if step.end_time is not None ]
+    if len(step_end_times) < len(self.steps):
+      return None
+    else:
+      return max( step_end_times )
+  end_time = property(__get_end_time)
+    
+class Run(object):
+  TZINFO = GMT1()
+  #EXPECTED_SUBMIT_TIME = datetime.time(12,0,0)
+  #EXPECTED_SUBMIT_INCR = datetime.timedelta(1)
+  def __init__(self, date, expected_submit_time_utc, submit_offset):
+    self.date = date
+    est = datetime.datetime.combine(self.date, expected_submit_time_utc) + submit_offset
+    est += self.__class__.TZINFO.utcoffset(est)
+    self.expected_submit_time = est
+    self.runids = []
+    self.jobs = {}
+    self.last_submit_time = None
+
+  def filter_runids(self, skip_runids=None, min_runid=None, max_runid=None):
+    self._all_runids = self.runids[:]
+    ffs = []
+    if skip_runids:
+      ffs.append(('in skip_runids:=%s' % skip_runids, lambda x: not x in skip_runids))
+    if min_runid is not None:
+      ffs.append(('lower than min_runid:=%s' % min_runid, lambda x: x >= min_runid))
+    if max_runid is not None:
+      ffs.append(('greater than max_runid:=%s' % max_runid, lambda x: x <= max_runid))
+    self.runids = []
+    for runid in self._all_runids:
+      i_runid = int(runid)
+      for reason, ff in ffs:
+        if not ff(i_runid):
+          sys.stderr.write("WRN: discarding runid %s, reason: %s\n" % (runid, reason))
+          break
+      else:
+        self.runids.append(runid)
+
+  def iteritems(self):
+    for runid in self.runids:
+      yield runid,self.jobs[runid]
+  def iterkeys(self):
+    for runid in self.runids:
+      yield runid
+  def itervalues(self):
+    for runid in self.runids:
+      yield self.jobs[runid]
+  def items(self):
+    return [ (runid,self.jobs[runid]) for runid in self.runids ]
+  def keys(self):
+    return [ runid for runid in self.runids ]
+  def values(self):
+    return [ self.jobs[runid] for runid in self.runids ]
+  def __delitem__(self,runid):
+    del self.jobs[runid]
+  def __getitem__(self,runid):
+    return self.jobs[runid]
+  def __setitem__(self,runid,job):
+    self.runids.append(runid)
+    self.jobs[runid] = job
+  def has_key(self,key):
+    return self.jobs.has_key(key)
+  def __len__(self):
+    return len(self.jobs)
+  def first_job(self):
+    jobs = [ job for job in self.jobs.itervalues() if job.is_ok() ]
+    jobs.sort( lambda x,y : cmp(x.end_delta(),y.end_delta()))
+    if len(jobs) == 0:
+      jobs = [ self.jobs[runid] for runid in self.runids ]
+    if jobs:
+      return jobs[0]
+  def get_job(self, runid=None):
+    if runid is None:
+      runid = self.runids[-1]
+    return self.jobs[runid]
+    #jobs = [ job for job in self.jobs.itervalues() if job.is_ok() ]
+    #jobs.sort( lambda x,y : cmp(x.end_delta(),y.end_delta()))
+    #if len(jobs) == 0:
+    #  jobs = [ self.jobs[runid] for runid in self.runids ]
+    #if jobs:
+    #  return jobs[-1]
+
+def delta2delay(td,out_units=None):
+  if td is None:
+    return None
+  else:
+    seconds = td.seconds + td.days*(24*3600)
+    if out_units == ':':
+      s = seconds
+      d = s//86400
+      s -= d*86400
+      h = s//3600
+      s -= h*3600
+      m = s//60
+      s -= m*60
+      if d:
+        md = '%d+' % d
+      else:
+        md = ''
+      return "%s%02d:%02d:%02d" % (md,h,m,s)
+    elif out_units == 's':
+      return seconds
+    elif out_units == 'm':
+      return round(float(seconds)/60.,2)
+    elif out_units == 'h':
+      return round(float(seconds)/3600.,2)
+    else:
+      return round(float(seconds)/86400.,2)
+
+class Trigger(object):
+  NAME = '???'
+  LEVEL = 50
+  PARAMETERS = { }
+
+  def __init__(self):
+    pass
+
+  def parameters(clss):
+    d = {
+		'LEVEL':	(int,'int','trigger level'),
+    }
+    d.update(clss.PARAMETERS)
+    return d
+  parameters = classmethod(parameters)
+
+  def __call__(self,run,job=None):
+    if job is None:
+      job = run.get_job()
+    if job is not None:
+      return self._call_job(job)
+  def __call_job(self,job):
+    raise NotImplemented
+  def description(self):
+    return "abstract trigger"
+  def __str__(self):
+    return "%s[%03d](%s)" % (self.NAME,self.LEVEL,self.description())
+
+def _str2timedelta(s):
+  i = int(s)
+  seconds = i
+  days = seconds//(24*3600)
+  seconds = seconds%(24*3600)
+  return datetime.timedelta(days,seconds)
+
+class TriggerDelay(Trigger):
+  PARAMETERS = {
+	'MAX_DELTA' :
+	(_str2timedelta,'int','maximum delay in seconds')
+  }
+  MAX_DELTA = datetime.timedelta(days=0, seconds=0)
+  def __init__(self):
+    super(TriggerDelay,self).__init__()
+
+  def _call_delta(self, delta):
+    if delta is None:
+      return False
+    elif delta >= self.MAX_DELTA:
+      return True
+    else:
+      return False
+
+  def description(self):
+    seconds = self.MAX_DELTA.seconds+(self.MAX_DELTA.days*24*3600)
+    if seconds > 3600:
+      d = '%.2f [h]' % (seconds/3600.)
+    elif seconds > 60:
+      d = '%.2f [m]' % (seconds/60.)
+    else:
+      d = '%s [s]' % seconds
+    return "delay >= %s" % d
+
+
+class Trigger_JobSubmitDelay(TriggerDelay):
+  NAME = 'JobSubmitDelay'
+  MAX_DELTA = datetime.timedelta(days=0, seconds=12*3600)
+  def __init__(self):
+    super(Trigger_JobSubmitDelay,self).__init__()
+
+  def _call_job(self,job):
+    return self._call_delta(job.submit_delta())
+
+  def description(self):
+    return "job submit " + TriggerDelay.description(self)
+    
+class Trigger_JobStartDelay(TriggerDelay):
+  NAME = 'JobStartDelay'
+  MAX_DELTA = datetime.timedelta(days=0, seconds=12*3600)
+  def __init__(self):
+    super(Trigger_JobStartDelay,self).__init__()
+
+  def _call_job(self,job):
+    return self._call_delta(job.start_delta())
+
+  def description(self):
+    return "job start " + TriggerDelay.description(self)
+    
+class Trigger_JobEndDelay(TriggerDelay):
+  NAME = 'JobEndDelay'
+  LEVEL = 100
+  MAX_DELTA = datetime.timedelta(days=1, seconds=0)
+  def __init__(self):
+    super(Trigger_JobEndDelay,self).__init__()
+
+  def _call_job(self,job):
+    return self._call_delta(job.end_delta())
+
+  def description(self):
+    return "job end " + TriggerDelay.description(self)
+    
+class TriggerFailure(Trigger):
+  def _call_failure(self, delta):
+    if delta is None:
+      return True
+    else:
+      return False
+    
+  def description(self):
+    return "failure"
+
+class Trigger_JobSubmitFailure(TriggerFailure):
+  NAME = 'JobSubmitFailure'
+  def _call_job(self, job):
+    return self._call_failure(job.submit_delta())
+
+  def description(self):
+    return "job submit " + TriggerFailure.description(self)
+
+class Trigger_JobStartFailure(TriggerFailure):
+  NAME = 'JobStartFailure'
+  def _call_job(self, job):
+    return self._call_failure(job.start_delta())
+
+  def description(self):
+    return "job start " + TriggerFailure.description(self)
+
+class Trigger_JobEndFailure(TriggerFailure):
+  NAME = 'JobEndFailure'
+  def _call_job(self, job):
+    return self._call_failure(job.end_delta())
+
+  def description(self):
+    return "job end " + TriggerFailure.description(self)
+
+class Trigger_JobsNum(Trigger):
+  PARAMETERS = { 'MAX_NUM' : (int,'int','maximum number of jobs') }
+  NAME = 'JobsNum'
+  LEVEL = 10
+  MAX_NUM = 1
+  def __init__(self):
+    super(Trigger_JobsNum,self).__init__()
+
+  def __call__(self,run,job=None):
+    if len(run) > self.MAX_NUM:
+      return True
+    else:
+      return False
+
+  def description(self):
+    return "jobs num > 1"
+    
+TRIGGERS = [
+	Trigger_JobSubmitFailure(),
+	Trigger_JobSubmitDelay(),
+	Trigger_JobStartFailure(),
+	Trigger_JobStartDelay(),
+	Trigger_JobEndFailure(),
+	Trigger_JobEndDelay(),
+	Trigger_JobsNum(),
+]
+
+def main():
+
+  def store_date(option,opt,value,parser):
+    try:
+      t = time.strptime(value,DATEFMT)
+    except (ValueError, TypeError):
+      raise optparse.OptionError("%s is not a valid YYYYMMDD date" % value,option)
+    d = datetime.date(*t[:3])
+    setattr(parser.values,option.dest,d)
+
+  opt_list = [
+		optparse.make_option(   '-f','--from',
+			dest='date_from',
+ 			type='string',
+ 			nargs=1,
+			action='callback',
+			callback=store_date,
+			default=None,
+			help='parse from date',
+		),
+		optparse.make_option(   '-t','--to',
+			dest='date_to',
+ 			type='string',
+ 			nargs=1,
+			action='callback',
+			callback=store_date,
+			default=None,
+			help='parse to date',
+		),
+		optparse.make_option(   '-u','--units',
+			dest='units',
+ 			type='choice',
+ 			choices = [ 's', 'm', 'h', 'd', ':' ],
+			default='m',
+			help='time units [s|m|h|d|:]',
+		),
+		optparse.make_option(   '-r','--refresh',
+			dest='refresh',
+			action='store_true',
+			default=False,
+			help='refresh cache if present',
+		),
+		optparse.make_option(   '-l','--min-trigger-level',
+			dest='min_trigger_level',
+			type='int',
+			default=50,
+			help='min level for triggers',
+		),
+		optparse.make_option(   '-S','--show-triggers',
+			dest='show_triggers',
+			action='store_true',
+			default=False,
+			help='show triggers',
+		),
+		optparse.make_option(   '-D','--report-dates',
+			dest='report_dates',
+			action='store_true',
+			default=False,
+			help='show a statistical report about dates',
+		),
+		optparse.make_option(   '-T','--report-triggers',
+			dest='report_triggers',
+			action='store_true',
+			default=False,
+			help='show a statistical report about triggers',
+		),
+		optparse.make_option(   '-G','--group-triggers',
+			dest='group_triggers',
+			action='store_true',
+			default=False,
+			help='with -T/--report-triggers, shows report about trigger groups',
+		),
+		optparse.make_option(	'-L', '--host-log',
+			dest='host_logdirs',
+			nargs=2,
+			action='append',
+			default=[],
+			help='add a HOST:LOGDIR item',
+		),
+		optparse.make_option(	'-s', '--skip-runid',
+			dest='skip_runids',
+			nargs=1,
+			action='append',
+			type='int',
+			default=[],
+			help='add a runid to skip',
+		),
+		optparse.make_option(	'-m', '--min-runid',
+			dest='min_runid',
+			nargs=1,
+			type='int',
+			default=None,
+			help='set the minimum runid to consider',
+		),
+		optparse.make_option(	'-M', '--max-runid',
+			dest='max_runid',
+			nargs=1,
+			type='int',
+			default=None,
+			help='set the maximum runid to consider',
+		),
+  ]
+ 
+
+  description = """
+%(progname)s -f|--from YYYYMMDD -t|--to YYYYMMDD [options]
+Esegue il parsing e l'analisi dei file di log di MIT. Attraverso le opzioni
+-f/--from YYYYMMDD, -t/--to YYYYMMDD si possono definire i run su cui operare.
+Per ciascun run selezionato, %(progname)s determina tutti i job che sono stati
+eseguiti.
+Per ciascun job, %(progname)s determina le seguenti informazioni:
+
+  + submit time
+  + preprocess start time
+  + preprocess complete time
+  + model start time
+  + model complete time
+  + postprocess start time
+  + postprocess complete time
+
+Ciascun job e' considerato COMPLETATO se per esso tutti e tre gli step
+preprocess, model e postprocess sono completati con successo (in altre parole,
+se e' sufficiente per il completamento del run).
+
+Il tempo di completamento del job coincide con il tempo di completamento
+dell'ultimo step, postprocess.
+
+Per ciascun RUN, viene selezionato un singolo job attraverso il seguente
+algoritmo:
+  - se il run e' COMPLETATO, vale a dire se esiste almeno un job COMPLETATO per
+    il run, viene selezionato il job completato che ha il minor tempo di
+    completamento
+  - se il run non e' COMPLETATO, vale a dire se nessun job e' completato per il
+    run, viene selezionato il primo job sottomesso
+
+A questo punto, ad ogni RUN e' stato associato un unico JOB.
+
+%(progname)s mostra una tabella in cui ogni rigaa e' associata ad un RUN e,
+dunque, ad un JOB. Vengono mostrate le seguenti informazioni:
+  + run date: la data del run
+  + stato: un indicatore dello stato del job, che puo' essere:
+      .		tutto bene
+      !		il run non e' completato
+  + submit delay: il ritardo della sottomissione
+  + preprocess start delay
+  + preprocess end delay
+  + model start delay
+  + model end delay
+  + postprocess start delay
+  + postprocess end delay
+  + trigger list: una lista di trigger che hanno fatto match con il run (vedi
+    nel seguito la descrizione dei TRIGGER)
+
+Tutti i ritardi sono espressi rispetto al tempo previsto per la sottomissione
+del job, vale a dire le ore 12:00 del giorno successivo alla data del run.
+
+I ritardi sono espressi per default in minuti, ma cio' puo' essere modificato
+attraverso l'opzione -u/--units (vedi -h/--help).
+
+I TRIGGER sono funzioni booleane che vengono eseguite su ciascun run per
+determinare se determinate condizioni sono soddisfatte dal run; sono utilizzati
+per individuare anomalie, come ritardi eccessivi. A ciascun trigger e' associato
+un livello, ed i trigger mostrati in output possono essere filtrati rispetto
+al valore minimo del livello con l'opzione -l/--min-trigger-level.
+
+L'elenco dei trigger definiti puo' essere visualizzato con l'opzione
+-S/--show-triggers. Questa opzione mostra anche i parametri dei trigger. Infatti
+e' possibile cambiare i parametri di ciascun trigger semplicemente aggiungendo
+a riga di comando argomenti del tipo
+	TRIGGER_NAME.PARAMETER_NAME=PARAMETER_VALUE
+
+Si noti che per default vengono mostrati solo i trigger con una piorita' >= 50.
+
+%(progname)s usa una cache per evitare di eseguire piu' volte il parsing degli
+stessi file. 
+Quando il programma viene utilizzato per la prima volta con una coppia (FROM,TO)
+(FROM e' la run date iniziale, TO quella finale), viene salvato un file
+associato ad essa. Eseguendo una richiesta con la stessa coppia (FROM,TO, verra'
+utilizzato questo file, evitando la lunga fase di parsing; solo l'analisi viene
+eseguita di nuovo.
+Per invalidare una cache esistente, si puo' usare l'opzione -r/--refresh.
+""" % {
+	'progname'	: os.path.basename(sys.argv[0]),
+}
+
+
+
+  help_formatter=optparse.IndentedHelpFormatter(max_help_position=38)
+  parser = optparse.OptionParser(option_list=opt_list,formatter=help_formatter,usage=description)
+
+  (options,args) = parser.parse_args(sys.argv[1:])
+
+  for arg in args:
+    l = arg.split('=',1)
+    if len(l) != 2:
+      sys.stderr.write("ERR: wrong argument %s: exptected format is TRIGGER.PARAMETER=VALUE\n" % arg)
+      sys.exit(2)
+    trigger_parameter,value = l[0],l[1]
+    l = trigger_parameter.split('.',2)
+    if len(l) != 2:
+      sys.stderr.write("ERR: wrong argument %s: invalid TRIGGER.PARAMETER\n" % (arg,trigger_parameter))
+      sys.exit(2)
+    trigger_name,parameter_name = l[0],l[1]
+    trigger = None
+    for t in TRIGGERS:
+      if trigger_name in ( t.NAME, t.__class__.__name__ ):
+        trigger = t
+        break
+    if trigger is None:
+      sys.stderr.write("ERR: wrong argument %s: invalid TRIGGER %s\n" % (arg,trigger_name))
+      sys.exit(2)
+    if not parameter_name in trigger.parameters():
+      sys.stderr.write("ERR: wrong argument %s: TRIGGER %s does not have a parameter %s\n" % (arg,trigger_name,parameter_name))
+      sys.exit(2)
+    try:
+      parameter_constructor,parameter_type,parameter_description = trigger.parameters()[parameter_name]
+      parameter_value = parameter_constructor(value)
+    except Exception, e:
+      sys.stderr.write("ERR: wrong argument %s: TRIGGER PARAMETER %s.%s: invalid value %s: %s: %s\n" % (arg,trigger_name,parameter_name,value,e.__class__.__name__,e))
+      sys.exit(2)
+    print trigger.NAME,parameter_name,parameter_value
+    setattr(trigger,parameter_name,parameter_value)
+      
+  if options.show_triggers:
+    triggers = []
+    for trigger in TRIGGERS:
+      triggers.append( "[%03d] %-25s %s" % (trigger.LEVEL,trigger.NAME,trigger.description()) )
+      for parameter_name,(parameter_constructor,parameter_type,parameter_description) in trigger.parameters().iteritems():
+        #parameter_value = getattr(trigger,parameter_name)
+        triggers.append( "\t+ %-16s\t%s\t%s" % (parameter_name,parameter_type,parameter_description) )
+      triggers.append( "" )
+
+    print '\n'.join(triggers)
+    #sys.exit(0)
+  
+  if 'MIT_HOME' in os.environ:
+    MIT_HOME = os.environ['MIT_HOME']
+  else:
+    MIT_HOME = None
+
+  if 'MIT_HOSTNAME' in os.environ:
+    MIT_HOSTNAME = os.environ['MIT_HOSTNAME']
+  else:
+    MIT_HOSTNAME = None
+
+  host_logdirs = []
+  
+  if options.host_logdirs:
+    host_logdirs.extend(options.host_logdirs)
+  else:
+    if MIT_HOME is None:
+      sys.stderr.write("ERR: $MIT_HOME not defined\n")
+      sys.exit(1)
+
+    if MIT_HOSTNAME is None:
+      sys.stderr.write("ERR: $MIT_HOSTNAME not defined\n")
+      sys.exit(1)
+
+#    host_logdirs = [
+#			(
+#				datetime.date(*time.strptime('20090818', DATEFMT)[:3]),
+#				datetime.date.today(),
+#				MIT_HOSTNAME,
+#				os.path.join(MIT_HOME, 'log')
+#			),
+#			(
+#				datetime.date(*time.strptime('20070410', DATEFMT)[:3]),
+#				datetime.date(*time.strptime('20090825', DATEFMT)[:3]),
+#				'sp5',
+#				os.path.join(MIT_HOME, 'log_sp5')
+#			),
+#    ]
+    host_logdirs = [
+			(
+				datetime.date(*time.strptime('20101214', DATEFMT)[:3]),
+				datetime.date.today(),
+				MIT_HOSTNAME,
+				os.path.join(MIT_HOME, 'log')
+			),
+    ]
+
+  if not 'MIT_HOME' in os.environ:
+    sys.stderr.write("WRN: $MIT_HOME not defined\n")
+    cache_dir = '.'
+  else:
+    cache_dir = os.path.join(os.environ['MIT_HOME'],'var','cache')
+    if not os.path.isdir(cache_dir):
+      os.makedirs(cache_dir)
+    
+  if options.date_from is None:
+    options.date_from = host_logdirs[-1][0]
+    sys.stderr.write("WRN: starting from %s\n" % options.date_from.strftime(DATEFMT))
+    #sys.exit(191)
+  if options.date_to is None:
+    options.date_to = host_logdirs[0][1]
+    sys.stderr.write("WRN: ending at %s\n" % options.date_to.strftime(DATEFMT))
+    #sys.stderr.write("ERR: -t/--to is mandatory\n")
+    #sys.exit(191)
+
+  source = """
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+cat <<EOFCAT
+MIT_WEEKDAYS=$MIT_WEEKDAYS
+MIT_START_HOUR_UTC=$MIT_START_HOUR_UTC
+MIT_SUBMIT_DAY_OFFSET=$MIT_SUBMIT_DAY_OFFSET
+EOFCAT
+"""
+#MIT_START_FORECAST_HOUR_UTC=$MIT_START_FORECAST_HOUR_UTC
+
+  command = "ksh -c '%s'" % source
+  #print command
+  c_stdin, c_stdout_and_stderr = os.popen4(command)
+  mit_weekdays = []
+  mit_start_hour = None
+  mit_submit_day_offset = None
+  for line in c_stdout_and_stderr:
+    #print "### %r" % line
+    l = line.split('=', 1)
+    if len(l) == 2:
+      var, val = l[0].strip(), l[1]
+      if var == 'MIT_WEEKDAYS':
+        mit_weekdays = [int(e.strip())-1 for e in val.strip().split()]
+      elif var == 'MIT_SUBMIT_DAY_OFFSET':
+        mit_submit_day_offset = int(val)
+#      elif var == 'MIT_START_FORECAST_HOUR_UTC':
+#        ll = val.split(':')
+#        if len(ll) == 1:
+#          hh, mm, ss = int(ll[0]), 0, 0
+#        elif len(ll) == 2:
+#          hh, mm, ss = int(ll[0]), int(ll[1]), 0
+#        else:
+#          hh, mm, ss = int(ll[0]), int(ll[1]), int(ll[2])
+#        mit_start_forecast_hour_utc = datetime.time(hh, mm, ss)
+      elif var == 'MIT_START_HOUR_UTC':
+        ll = val.split(':')
+        if len(ll) == 1:
+          hh, mm, ss = int(ll[0]), 0, 0
+        elif len(ll) == 2:
+          hh, mm, ss = int(ll[0]), int(ll[1]), 0
+        else:
+          hh, mm, ss = int(ll[0]), int(ll[1]), int(ll[2])
+        mit_start_hour_utc = datetime.time(hh, mm, ss)
+  mit_submit_offset = datetime.timedelta(days=mit_submit_day_offset)
+#  if options.runtype == 'forecast':
+#     mit_start_hour_utc = mit_start_forecast_hour_utc
+  #print "mit_weekdays=%s" % mit_weekdays
+  #print "mit_start_hour_utc=%s" % mit_start_hour_utc
+  #print "mit_submit_day_offset=%s" % mit_submit_day_offset
+  #print "mit_submit_offset=%s" % mit_submit_offset
+  #raw_input("...")
+  dates = []
+
+  increment = datetime.timedelta(1) 
+  #log_dir = os.path.join(os.path.sep+'meteo2', 'OGS', 'MIT-opech', 'log')
+  host = MIT_HOSTNAME
+
+  d = options.date_from
+  while d <= options.date_to:
+    dates.append(d)
+    d+=increment
+
+  date_begin = dates[0]
+  date_end = dates[-1]
+  date_begin_s = date_begin.strftime('%Y%m%d')
+  date_end_s = date_end.strftime('%Y%m%d')
+
+  cache_file_name = os.path.join(cache_dir,"cache.%s.%s_%s" % (os.path.basename(sys.argv[0]),date_begin_s,date_end_s))
+  using_cache = False
+  if os.path.exists(cache_file_name) and not options.refresh:
+    sys.stderr.write("WRN: loading cache file %s...\n" % cache_file_name)
+    try:
+      cache_file = file(cache_file_name,'rb')
+      version = pickle.load(cache_file)
+      assert version == VERSION, "version does not match: %s != %s" % (version, VERSION)
+      druns = pickle.load(cache_file)
+      cache_file.close()
+      using_cache = True
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      sys.stderr.write("ERR: cannot load from cache file %s: %s: %s\n" % (cache_file_name,e.__class__.__name__,e))
+    sys.stderr.write("WRN: loading cache file %s done.\n" % cache_file_name)
+  if not using_cache:
+    druns = {}
+    for d in dates:
+      run = Run(d, mit_start_hour_utc, mit_submit_offset)
+      sd = d.strftime(DATEFMT)
+      for start_date, end_date, host, log_dir in host_logdirs:
+        if start_date <= d <= end_date:
+          break
+      #else:
+      #  derr(sd,"missing valid log dir for date %s" % sd)
+      #  sys.exit(1)
+      date_log_dir = os.path.join(log_dir,sd)
+     # date_log_dir = os.path.join(log_dir,options.runtype,sd)
+      print date_log_dir
+      if not os.path.isdir(date_log_dir):
+        continue
+        #derr(sd,"missing log dir %s" % date_log_dir)
+        #sys.exit(1)
+      druns[d] = run
+      date_log_file = os.path.join(date_log_dir,'mit.%s.log'%host)
+      if not os.path.exists(date_log_file):
+        derr(sd,"missing log file %s" % date_log_file)
+        sys.exit(1)
+      dcmt(sd,'parsing...')
+      date_log_handle = file(date_log_file,'r')
+      for line_no,line in enumerate(date_log_handle):
+        l = line.strip().split(None,4)
+        try:
+          #if len(l) != 4:
+          #  print line
+          #  print len(l)
+          #  print sd
+          #  print date_log_file
+          assert len(l) == 5, "len does not match: %d != %d" % (len(l), 5)
+          message = l[4]
+          level = int(l[1])
+          runid = l[2].strip('()')
+          sdt = time.strptime(l[0],DATETIMEFMT)
+          dt = datetime.datetime(*sdt[:6])
+          #dcmt(sd,'(%s)->[%s]' % (dt.strftime(DATETIMEFMT),message))
+        except (AssertionError,ValueError,TypeError),e:
+          dwrn(sd,'error %s: %s' % (e.__class__.__name__,e))
+          dwrn(sd,'skipping line %d of file %s'%(line_no,date_log_file))
+          continue
+        if runid == '---':
+          if message in ('* EXIT(mit_submit.ksh) [Ok]', 'Chain has been submitted [Ok]'):
+            #print "SUBMIT"
+            run.last_submit_time = dt
+        else:
+          if not run.has_key(runid):
+            run[runid] = Job(d,run,runid)
+          djob = run[runid]
+          if message == '* START(mit_pre_wrapper.ksh)':
+            djob.Preprocess.start_time = dt
+          elif message == '* EXIT(mit_pre_wrapper.ksh) [Ok]':
+            djob.Preprocess.end_time = dt
+          elif message == '* START(mit_model_wrapper.ksh)':
+            djob.Model.start_time = dt
+          elif message == '* EXIT(mit_model.ksh) [Ok]':
+            djob.Model.end_time = dt
+          elif message == '* START(mit_post_wrapper.ksh)':
+            djob.Postprocess.start_time = dt
+          elif message == '* EXIT(mit_post_wrapper.ksh) [Ok]':
+            djob.Postprocess.end_time = dt
+    sys.stderr.write("WRN: writing cache file %s...\n" % cache_file_name)
+    try:
+      cache_file = file(cache_file_name,'wb')
+      pickle.dump(VERSION,cache_file)
+      pickle.dump(druns,cache_file)
+      cache_file.close()
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      sys.stderr.write("ERR: cannot write to cache file %s: %s: %s\n" % (cache_file_name,e.__class__.__name__,e))
+    sys.stderr.write("WRN: writing cache file %s...\n" % cache_file_name)
+        
+
+  #getDelay = lambda x : delta2delay(x,options.units)
+  def getDelay(x):
+    if x is None:
+      return None
+    else:
+      if options.units in ( 'm', 'h' ):
+        return "%.2f" % delta2delay(x,options.units)
+      else:
+        return delta2delay(x,options.units)
+
+  def getStatus(j):
+    if not j.is_ok__times():
+      return '!'
+    else:
+      return '.'
+      
+  # filter:
+  for d in dates:
+    run = druns[d]
+    run.filter_runids(skip_runids=options.skip_runids, min_runid=options.min_runid, max_runid=options.max_runid)
+
+  fmt = '%8s %3s %1s %12s %12s %12s %12s %12s %12s %12s %s'
+  print fmt % (
+			'DATE',
+			'RID',
+			'S',
+			'SUBMIT',
+			#'START',
+			#'END',
+			'PRE START',
+			'PRE END',
+			'MOD START',
+			'MOD END',
+			'POST START',
+			'POST END',
+			'TRIGGERS',
+  )
+  trigger_matches = dict( [ (trigger, []) for trigger in TRIGGERS ] )
+  run_triggers = dict( [ (date, []) for date in dates ] )
+  #print [str(d) for d in druns.keys()]
+  for d in dates:
+    sd = d.strftime('%Y%m%d')
+    if not d in druns:
+      print fmt % (
+			sd, 
+			'-',
+			'-',
+			'-',
+			#'-',
+			#'-',
+			'-',
+			'-',
+			'-',
+			'-',
+			'-',
+			'-',
+			'-',
+      )
+      continue
+    run = druns[d]
+
+
+    for runid in run.runids:
+      djob = run.get_job(runid)
+      triggers = []
+      for trigger in TRIGGERS:
+        if trigger.LEVEL >= options.min_trigger_level and trigger(run,djob):
+          triggers.append(trigger)
+          trigger_matches[trigger].append(d)
+          run_triggers[d].append(trigger)
+  
+      #for runid,djob in run.iteritems():
+      print fmt % (
+			sd,
+			djob.runid,
+			getStatus(djob),
+			getDelay(djob.submit_delta()),
+			#getDelay(djob.start_delta()),
+			#getDelay(djob.end_delta()),
+			getDelay(djob.Preprocess.start_delta()),
+			getDelay(djob.Preprocess.end_delta()),
+			getDelay(djob.Model.start_delta()),
+			getDelay(djob.Model.end_delta()),
+			getDelay(djob.Postprocess.start_delta()),
+			getDelay(djob.Postprocess.end_delta()),
+			','.join( [ trigger.__class__.NAME for trigger in triggers ] )
+      )
+
+  if options.report_triggers:
+    if options.group_triggers:
+      group_trigger_matches = {}
+      for date in dates:
+        triggers = run_triggers[date]
+        triggers.sort()
+        t_triggers = tuple(triggers)
+        if not t_triggers in group_trigger_matches:
+          group_trigger_matches[t_triggers] = []
+        group_trigger_matches[t_triggers].append(date)
+    else:
+      group_trigger_matches = dict([ ((trigger,),dlist) for trigger,dlist in trigger_matches.iteritems() ])
+    
+    trigger_tuples = []
+    for trigger in TRIGGERS:
+      t_trigger = (trigger,)
+      if t_trigger in group_trigger_matches:
+        trigger_tuples.append( t_trigger )
+    trigger_tuples.extend( [t_trigger for t_trigger in group_trigger_matches.iterkeys() if len(t_trigger)>1] )
+    print
+    lines = []
+    lines.append( ( "TRIGGER GROUPS", "NUM", "TOT", "PERCENTAGE" ) )
+    for t_trigger in trigger_tuples:
+      matches = group_trigger_matches[t_trigger]
+      if len(matches) > 0:
+        ave = float(len(matches))/len(dates)
+        s_ave = "%8.02f%%" % (ave*100.0)
+        for trigger in t_trigger[:-1]:
+          lines.append( ("%s,"%trigger, " ", " ", " ") )
+        lines.append( ("%s:"%t_trigger[-1], len(matches), len(dates), s_ave) )
+        if options.group_triggers:
+          lines.append( ( "", "", "", "" ) )
+    col_print(lines)
+
+  if options.report_dates:
+    print
+    lines = []
+    lines.append( ( "RUN-DATE", "NUM", "TRIGGERS" ) )
+    for date in dates:
+      triggers = run_triggers[date]
+      if len(triggers) > 0:
+        lines.append( (date, len(triggers), ','.join([trigger.NAME for trigger in triggers])) )
+    col_print(lines)
+  
+if __name__ == '__main__':
+  main()
+

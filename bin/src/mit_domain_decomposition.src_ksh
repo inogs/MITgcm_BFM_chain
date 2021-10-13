@@ -1,0 +1,247 @@
+#!/bin/ksh
+# This command creates the Opa Domain Decomposition files (static data)
+
+# Load common profile
+. @@(I:OPA_HOME)/bin/opa_profile.inc
+
+. @@(I:OPA_HOME)/bin/opa_lists.inc
+
+MAX_DIGITS='8'
+
+function print_help {
+  cat <<EofHlp
+Usage: $OPA_PROGNAME [action] [options]
+[options]
+	--set-procs|-s	PL	set procs list
+				[DEFAULT: ${procs}]
+	--add-procs|-p	P	add procs to procs list
+	--alpha|-a A		factor for land points (*)
+				[DEFAULT: ${ALPHA}]
+	--ny|-y	Y		number of latitudes
+				[DEFAULT: ${NY}]
+	--nz|-z	Z		number of vertical levels
+				[DEFAULT: ${NZ}]
+	--max-procs|-p P	number of latitudes
+				[DEFAULT: ${max_procs}]
+	--override|-o		override ODD files
+				[DEFAULT: ${override}]
+	--keep|-k		keep tmpdir
+				[DEFAULT: ${keep}]
+	--help|-h		show this help
+
+(*) The 'alpha' factor is used to compute 
+
+  array_increment = $NY * $NZ * $ALPHA = $(calc_array_increment)
+
+which is an increment given to each element of the input array, before
+to optimize with 'odd'. Indeed,
+
+  total_time = time_s + time_ls
+
+where time_s is the time spent in computations that applies only to sea points,
+while time_l is the time spent in computations that applies to both sea and
+land points.
+
+Experimentally, alpha='${ALPHA}' has been computed using the odd_guess_alpha
+program.
+EofHlp
+}
+
+function calc_array_increment {
+  set_precision $(echo "$NY * $NZ * $ALPHA / 1.0" | bc -l)
+}
+
+function set_precision {
+  typeset _value="$1"
+  typeset _max_digits="${2:-$MAX_DIGITS}"
+  #echo "$0 : value=$_value _max_digits=$_max_digits" 1>&2
+  typeset _pvalue=$(echo "scale = $_max_digits; $_value / 1.0" | bc -l | sed -e 's%^\.%0\.%' -e 's%\(\.[^0]*\)0*$%\1%g' -e 's%\.$%\.0%g')
+  if [[ $_pvalue != *.* ]] ; then
+    _pvalue="${_pvalue}.0"
+  fi
+  echo "$_pvalue"
+}
+
+typeset -i default_nx=0
+typeset -i default_ny=0
+typeset -i default_nz=0
+meshmask="$OPA_ETCDIR/static-data/MED872_cut/MASK/meshmask.nc"
+data=$($OPA_BINDIR/ncdump -h "$meshmask" |$OPA_BINDIR/grep $'^[ \t]*[xyz][ \t]*=[ \t]*' | awk '{print "default_n"$1"="$3}') && {
+  #echo "<$data>"
+  eval "$data"
+}
+
+typeset -i NX=$default_nx
+typeset -i NY=$default_ny
+typeset -i NZ=$default_nz
+
+use_default_nx=true
+use_default_ny=true
+use_default_nz=true
+
+typeset -i max_procs=128
+ALPHA=$(set_precision ${OPA_ODD_ALPHA:-0.75})
+#default_array_increment=$(calc_array_increment)
+#if [[ "$default_array_increment" != "$OPA_ODD_INCR" ]] ; then
+#  echo "ERR: internal error: OPA_ODD_INCR='${OPA_ODD_INCR}' != '${NY}*${NZ}*${ALPHA}'='$default_array_increment'" 1>&2
+#  exit 1
+#fi
+override=false
+keep=false
+procs_lst="$EMPTY_LIST"
+while [[ ${#@} -ne 0 ]] ; do
+  arg="$1"
+  shift 1
+  case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    --set-procs|-s)
+      for procs in $1 ; do
+        procs_lst=$(list_append_u "$procs_lst" "$procs")
+      done
+      shift 1
+      ;;
+    --add-procs|-p)
+      procs_lst=$(list_append_u "$procs_lst" "$1")
+      shift 1
+      ;;
+    --ny|-y)
+      NY="$1"
+      shift 1
+      use_default_ny=true
+      ;;
+    --nz|-z)
+      NZ="$1"
+      use_default_nz=true
+      shift 1
+      ;;
+    --override|-o)
+      override=true
+      ;;
+    --keep|-k)
+      keep=true
+      ;;
+    --alpha|-a)
+      ALPHA=$(set_precision "$1")
+      shift 1
+      ;;
+    *)
+      echo "ERR: invalid argument '$arg'" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+typeset -i errors=0
+if [[ $default_nx -eq 0 ]] ; then
+  default_nx=362
+  echo "WRN: cannot obtain default_nx: using default value ${default_nx}" 1>&2
+fi
+if [[ $default_ny -eq 0 ]] ; then
+  default_ny=128
+  if $use_default_ny ; then
+    msgtype="ERR"
+    errors=$(( $errors + 1 ))
+  else
+    msgtype="WRN"
+  fi
+  echo "${msgtype}: cannot obtain default_ny: using default value ${default_ny}" 1>&2
+fi
+if [[ $default_nz -eq 0 ]] ; then
+  default_nz=72
+  if $use_default_nz ; then
+    msgtype="ERR"
+    errors=$(( $errors + 1 ))
+  else
+    msgtype="WRN"
+  fi
+  echo "${msgtype}: cannot obtain default_nz: using default value ${default_nz}" 1>&2
+fi
+
+if $use_default_nx ; then
+  NX=$default_nx
+fi
+if $use_default_ny ; then
+  NY=$default_ny
+fi
+if $use_default_nz ; then
+  NZ=$default_nz
+fi
+
+array_increment=$(calc_array_increment)
+
+cat <<EOFCAT
+================================================================================
+NX .................... $NX
+NY .................... $NY
+NZ .................... $NZ
+ALPHA ................. $ALPHA
+array_increment ....... $array_increment
+================================================================================
+EOFCAT
+#read a
+
+if [[ $errors -ne 0 ]] ; then
+  echo "ERR: found $errors errors" 1>&2
+  #exit 1
+fi
+
+if [[ "$procs_lst" == "$EMPTY_LIST" ]] ; then
+  typeset -i i=2
+  while [[ $i -le $max_procs ]] ; do
+    procs_lst=$(list_append "$procs_lst" $i)
+    i=$(( $i * 2 ))
+  done
+  
+  typeset -i i=12
+  while [[ $i -le $max_procs ]] ; do
+    procs_lst=$(list_append "$procs_lst" $i)
+    i=$(( $i + 12 ))
+  done
+fi
+
+echo "<$procs_lst>"
+
+basetmpdir=$OPA_TMPDIR/OPA_DOMAIN_DECOMPOSITION
+typeset -i i=0
+si=''
+while [[ -d ${tmpdir:=$basetmpdir$si} ]] ; do
+  unset tmpdir
+  si=".$i"
+  i=$(( $i + 1 ))
+done
+
+echo "$tmpdir"
+echo "$procs_lst"
+
+domaindir="$OPA_ETCDIR/static-data/DOMAIN"
+wpfile="$domaindir/WetPointsPerLongitude.in"
+alphadir="$domaindir/$ALPHA"
+[[ -d $alphadir ]] || opa_mkdir "$alphadir"
+
+for procs in $procs_lst ; do
+  opa_prex "time $OPA_SCRDIR/odd -i='$wpfile' -p=$procs -I='$array_increment' -S --output-root-filename="$tmpdir/opa-${procs}" --do-not-load-db --do-not-dump-db" || {
+    echo "ERR: command 'odd' failed" 1>&2
+    exit 1
+  }
+  opa_prex "$OPA_SCRDIR/odd_verify -a '$wpfile' -o '$tmpdir/opa-${procs}.odd' --dom-dec-i '$tmpdir/Dom_Dec_jpi.ascii.{nprocs}x1' --dom-dec-j '$tmpdir/Dom_Dec_jpj.ascii.{nprocs}x1' --dump" || {
+    echo "ERR: command 'odd_verify' failed" 1>&2
+    exit 1
+  }
+  if $override ; then
+    opa_prex "mv '$tmpdir/Dom_Dec_jpi.ascii.${procs}x1' '$alphadir'"
+    opa_prex "mv '$tmpdir/Dom_Dec_jpj.ascii.${procs}x1' '$alphadir'"
+  fi
+done
+  
+if $override ; then
+  echo "ODD files have been substituted"
+else
+  echo "ODD files have *NOT* been substituted"
+fi
+
+if ! $keep ; then
+  opa_prex "rm -rf $tmpdir"
+fi

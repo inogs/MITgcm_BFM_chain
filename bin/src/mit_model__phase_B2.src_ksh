@@ -1,0 +1,32 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Load MPI profile:
+. $MIT_SCRDIR/mit_mpi.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+wrkdir=$MIT_WRKDIR/MODEL/run
+
+### MODEL
+mit_log 0 "model execution on [${RM_NUM_NODES}] nodes <${RM_NODES}>, using [${RM_NUM_PROCS}] processors"
+
+mit_prex "cd $wrkdir"
+# mit_prex "ulimit -s 1024000"
+mit_mpi_run "$MIT_BINDIR/mitgcmuv_95" || {
+  mit_log 0 "ERR: model failed"
+  errors=$(( $errors + 1 ))
+}
+
+mit_exit "$errors"
+
+
+

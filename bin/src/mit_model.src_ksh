@@ -1,0 +1,30 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+
+# ### Setup of namelists and initial conditions
+mit_step_has_phase model B1 && {
+  mit_exec_and_log mit_model__phase_B1 || errors=$(( $errors + 1 ))
+}
+
+
+# ### Model execution
+mit_step_has_phase model B2 && {
+  mit_exec_and_log mit_model__phase_B2 || errors=$(( $errors + 1 ))
+}
+
+
+
+mit_exit "$errors"
+
+

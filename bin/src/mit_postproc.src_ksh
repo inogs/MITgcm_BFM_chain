@@ -1,0 +1,25 @@
+#!/bin/ksh
+# This script executes the postprocess
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+typeset -i errors=0
+
+
+### Phase C1 - creation of grads files and images
+ mit_step_has_phase post C1 && {
+   mit_exec_and_log mit_postproc__phase_C1 || errors=$(( $errors + 1 ))
+ }
+
+
+
+mit_log 0 "postprocess done [$(mit_exitcode $errors)]"
+
+mit_exit "$errors"

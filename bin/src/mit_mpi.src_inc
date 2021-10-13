@@ -1,0 +1,33 @@
+if [[ $__MIT_MPI_IS_DEFINED__ == '' ]] ; then
+  __MIT_MPI_IS_DEFINED__='__defined__'
+
+
+# This script is a wrapper to include the specific script for $MIT_MPI;
+# the MPI-specific script must define these functions:
+# 1) mit_mpi_run
+#    load the specified MPI command requiring $MIT_TASKS tasks,
+#    to be used only inside a batch job!
+	
+
+function _mit_mpi_args_to_string {
+  # This function is used internally by the MPI-specific implementations
+  # of mit_mpi_run; it returns a string quoting all the arguments
+  typeset _arg
+  typeset _string=' '
+  for _arg in "$@" ; do
+    _string="${_string}'$_arg' "
+  done
+  echo "$_string"
+}
+
+mpi_inc_file="$MIT_SCRDIR/mit_mpi__${MIT_MPI}.inc"
+if [[ ! -f $mpi_inc_file ]] ; then
+  echo "ERROR: there is no inc file for MPI library [${MIT_MPI}]!" 1>&2
+  exit 1
+fi
+
+# Load the mpi-specific include file
+. "$mpi_inc_file"
+
+# end of include guard:
+fi

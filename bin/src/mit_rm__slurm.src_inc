@@ -1,0 +1,117 @@
+if [[ $__MIT_RM_LL_IS_DEFINED__ == '' ]] ; then
+  __MIT_RM_LL_IS_DEFINED__='__defined__'
+
+MIT_RM_EO_FILENAME_PART=""
+
+function mit_rm_wall_clock_limit {
+  # convert wall clock limit from standard MIT format (hh:mm:ss) to
+  # resource manager format
+  echo "$1"
+}
+
+function mit_rm_mpi_tasks {
+  typeset -i _tasks="$1"
+  typeset -i _full_nodes=$(( $_tasks / $MIT_CORES_PER_NODE ))
+  typeset -i _part_cores=$(( $_tasks - ( $_full_nodes * $MIT_CORES_PER_NODE ) ))
+#   typeset -i _part_mem=$(( _part_cores * $MIT_DEFAULT_MEM / $MIT_CORES_PER_NODE ))
+  typeset    _sep=''
+  typeset    _res=''
+  #echo "::: $* ::: tasks=$_tasks -> full_nodes=${_full_nodes}x${MIT_CORES_PER_NODE} + part_cores=${_part_cores}" 1>&2
+  if [[ $_full_nodes -ne 0 ]] ; then
+    _res="${_full_nodes} -n ${_tasks} --mem=${MIT_DEFAULT_MEM}"
+    _sep='+'
+  fi
+  if [[ $_part_cores -ne 0 ]] ; then
+    _res="$_res${_sep}1:ncpus=${_part_cores}:mpiprocs=${_part_cores}:ompthreads=1:mem=${MIT_DEFAULT_MEM}"
+  fi
+  printf "${_res}"
+}
+
+function mit_rm_submit {
+  # submit a job command file, and sets JOBID and QUEUE of the submitted job
+  typeset _sbatch_stdout
+  typeset -i _sbatch_ec
+  _sbatch_stdout=$(sbatch $1 2>&1) ; _sbatch_ec=$?
+  if [[ $_sbatch_ec -eq 0 ]] ; then
+    # get jobid and queue from sbatch's standard output;
+    # here is an example of the sbatch's standard output:
+    # Submitted batch job 1695
+    typeset _jobid 
+    typeset _jobid_queue_line=$( echo -n "$_sbatch_stdout" | cut -d ' ' -f4 )
+    #typeset _jobid_queue_line=$( echo "$_sbatch_stdout" | $MIT_BINDIR/grep '^job <' )
+    MIT_RM_SUBMIT_JOBID="$_jobid_queue_line"
+    
+  else
+    echo "Submission failed:"
+    echo "COMMAND: sbatch $1"
+    echo "================================================================================"
+    echo "FAIL: $_sbatch_stdout"
+    echo "================================================================================"
+  fi
+  #echo "DBG: ================================================================================"
+  #echo "DBG: $_sbatch_stdout"
+  #echo "DBG: ================================================================================"
+  printf "$_sbatch_stdout"
+}
+
+function mit_rm_job_stat {
+  _mit_rm_wrap_command "sacct -u $USER $*"
+}
+
+function mit_rm_job_stat_formatted {
+  typeset _jobid
+  typeset _user
+  typeset _queue
+  typeset _jobname
+  typeset _sessionid
+  typeset _nds
+  typeset _tsk
+  typeset _mem
+  typeset _time
+  typeset _status
+  typeset _elapsed
+  echo "================================================================================"
+  mit_rm_job_stat_header
+  qstat -w -x -u $USER "$@" | grep "$USER" | while read _jobid _user _queue _jobname _sessionid _nds _tsk _mem _time _status _elapsed ; do
+    case "$_status" in
+      R|B)
+	_rm_status="$MIT_RM_STATUS_RUNNING"
+        ;;
+      E)
+	_rm_status="$MIT_RM_STATUS_EXITING"
+        ;;
+      S)
+	_rm_status="$MIT_RM_STATUS_SUSPENDED"
+        ;;
+      H)
+	_rm_status="$MIT_RM_STATUS_HELD"
+        ;;
+      F|X)
+	_rm_status="$MIT_RM_STATUS_FINISHED"
+        ;;
+      Q|W)
+	_rm_status="$MIT_RM_STATUS_QUEUED"
+        ;;
+      M|T|U)
+	_rm_status="$MIT_RM_STATUS_UNKNOWN"
+        ;;
+      *)
+	_rm_status="$MIT_RM_STATUS_UNKNOWN"
+        ;;
+    esac
+    mit_rm_job_stat_formatter "$_jobid" "$_rm_status"
+  done
+  echo "================================================================================"
+}
+
+function mit_rm_job_del {
+  _mit_rm_wrap_command "scancel $*"
+}
+
+function mit_rm_select_job {
+  _mit_job=$(squeue -u $USER -o %A)
+  printf "$_mit_job"
+}
+
+# end of include guard:
+fi

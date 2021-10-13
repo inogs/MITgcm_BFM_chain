@@ -1,0 +1,21 @@
+if [[ $__OPA_WRAPPER_FUNCTIONS_IS_DEFINED__ == '' ]] ; then
+  __OPA_WRAPPER_FUNCTIONS_IS_DEFINED__='__defined__'
+
+
+function opa_exec_and_log {
+  # Exec the opa script $1  with arguments $2...,
+  #  and redirect standard output and standard error on a log file
+  # The opa script $1 must be given without path and trailing .ksh!!!
+  typeset _command="$1"
+  shift 1
+  typeset _arg
+  typeset _args=""
+  for _arg in "$@" ; do
+    _args="${_args}'$_arg' "
+  done
+  typeset _logfile="$OPA_RUNLOGDIR/opa.${I_OPA_HOSTNAME}.${OPA_RUNID}.${_command}.out"
+  opa_prex "$OPA_SCRDIR/${_command}.ksh $_args 1>$_logfile 2>&1" ; return $_ec
+}
+
+#end of include guard:
+fi
