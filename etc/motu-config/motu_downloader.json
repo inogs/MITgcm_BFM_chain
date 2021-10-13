@@ -1,0 +1,50 @@
+{
+	"motu_user": "MED_OGS_TRIESTE_IT",
+	"motu_password": "NEdifupa",
+	"domain_lat_min": 43.47265625,
+	"domain_lat_max": 45.81640625,
+	"domain_lon_min": 12.22265625,
+	"domain_lon_max": 16.08203125,
+        "domain_depth_min": 0.0,
+        "domain_depth_max": 300.0,
+	"days_before": 7,
+	"days_after": 3,
+	"motu_server": "http://nrt.cmems-du.eu/motu-web/Motu",
+	"services": [
+		{
+			"name": "MEDSEA_ANALYSISFORECAST_PHY_006_013",
+			"products": [
+				{
+					"name": "med-cmcc-cur-an-fc-d",
+					"variables": ["uo", "vo"]
+				},
+				{
+					"name": "med-cmcc-sal-an-fc-d",
+					"variables": ["so"]
+				},
+				{
+					"name": "med-cmcc-tem-an-fc-d",
+					"variables": ["thetao"]
+				}
+			]
+		},
+		{
+			"name": "MEDSEA_ANALYSISFORECAST_BGC_006_014",
+			"products": [
+				{
+					"name": "med-ogs-nut-an-fc-d",
+					"variables": ["no3", "po4","nh4", "si"]
+				},
+				{
+					"name": "med-ogs-bio-an-fc-d",
+					"variables": ["o2"]
+				},
+				{
+					"name": "med-ogs-car-an-fc-d",
+					"variables": ["dissic","talk"]
+				}
+			]
+		}
+	]
+}
+
