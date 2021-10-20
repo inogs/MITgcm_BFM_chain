@@ -20,7 +20,7 @@ C  and "diagSt_size" (statistics-diags) since values here are deliberately small
       INTEGER    numDiags
       INTEGER    nRegions, sizRegMsk, nStats
       INTEGER    diagSt_size
-      PARAMETER( ndiagMax = 1500 ) ! CGP increase from 500 to 1000 -> to 1100 con checkpoint66j -> to 1200 con Chioggia -> to 1500 per V5
+      PARAMETER( ndiagMax = 1500 ) ! CGP increase from 500 to 1000 -> to 1100 with checkpoint66j -> to 1500 with V5
       PARAMETER( numlists = 150, numperlist = 150, numLevels=2*Nr ) ! CSQ increase from 100 to 150 (EXF wind)
       PARAMETER( numDiags = 150*Nr ) ! CSQ increase from 100 to 150 (EXF wind)
       PARAMETER( nRegions = 0 , sizRegMsk = 1 , nStats = 4 )
