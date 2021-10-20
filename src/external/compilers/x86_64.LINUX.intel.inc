@@ -31,11 +31,11 @@ else
     PROCF=-xHost
 fi
 
-FFLAGS="$FFLAGS -m64 -fPIC -assume byterecl -mcmodel=large -shared-intel -extend_source "
+FFLAGS="$FFLAGS -m64 -fPIC -assume byterecl -mcmodel=large -shared-intel -extend-source "
 
 
 if test "x$IEEE" = x ; then     #- with optimisation:
-  FOPTIM="-O2 -align -ip -qopt-streaming-stores auto $PROCF" 
+  FOPTIM="-O2 -align -ip -qopt-streaming-stores auto $PROCF"
 else
   if test "x$DEVEL" = x ; then  #- no optimisation + IEEE :
     FOPTIM="-O0 -fp-model source -noalign $PROCF"
@@ -56,7 +56,7 @@ CFLAGS="-O0 -ip -m64 -fPIC $PROCF"
 NETCDF_ROOT=$NETCDFF_HOME
 NETCDF_HOME=$NETCDFF_HOME
 NETCDF_INCDIR=$NETCDFF_INC
-MPI_INC_DIR=$INTELMPI_HOME/include64
+MPI_INC_DIR=$INTELMPI_HOME/include
 
 
 if [ -n "$MPI_INC_DIR" -a "x$MPI" = xtrue ] ; then
@@ -66,6 +66,8 @@ if [ -n "$MPI_INC_DIR" -a "x$MPI" = xtrue ] ; then
     MPI_HEADER_FILES='mpif.h mpiof.h netcdf.inc pnetcdf.inc'
 fi
 
+export GSL_INC=/g100_work/PROJECTS/spack/v0.16/install/0.16.2/linux-centos8-cascadelake/oneapi-2021.2.0-ifort/gsl-2.5-njgjs7375paa7neoe3hrhlkaf7qbaqcm/include
+export GSL_LIB=/g100_work/PROJECTS/spack/v0.16/install/0.16.2/linux-centos8-cascadelake/oneapi-2021.2.0-ifort/gsl-2.5-njgjs7375paa7neoe3hrhlkaf7qbaqcm/lib
 export INCLUDEDIRS="$INCLUDEDIRS $BFM_INC $GSL_INC"
 export INCLUDES="$INCLUDES -I$BFM_INC -I$GSL_INC"
 export LIBS="$LIBS -L$BFM_LIB -lbfm -L$GSL_LIB -lgsl -lgslcblas -L$NETCDFF_LIB -lnetcdff "
