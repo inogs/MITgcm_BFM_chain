@@ -106,6 +106,8 @@ echo "start MITgcm compiling ..."
 rm -rf $BUILD_DIR $LOGDIR
 mkdir -p  $BUILD_DIR $LOGDIR
 
+cp ${BFM_INC}/api_bfm.mod $BUILD_DIR
+
 echo "launching MITgcm genmake2 with customized code in $MYCODE and build_options $MITGCM_OF ..."
 cd $BUILD_DIR
 

@@ -13,6 +13,7 @@ OGSTM_HOME=$PWD
 git clone https://github.com/CMCC-Foundation/BiogeochemicalFluxModel.git bfm
 #git clone git@github.com:CMCC-Foundation/BiogeochemicalFluxModel.git bfm
 #maranicineca Rk3tfe181085
+#Github token: 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
 cd bfm
 git checkout -b $BFM_BRANCH origin/$BFM_BRANCH
 

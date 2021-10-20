@@ -16,7 +16,7 @@ C  and is set here (default 1)
 C
 C     Number of tracers
       INTEGER PTRACERS_num
-      PARAMETER(PTRACERS_num = 51 + 12) ! 51 BFM + 12 Chioggia
+      PARAMETER(PTRACERS_num = 51) ! 51 BFM
 
 #ifdef ALLOW_AUTODIFF_TAMC
       INTEGER    iptrkey

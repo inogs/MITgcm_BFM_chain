@@ -14,9 +14,7 @@ CEOP
 C---  RBCS Parameters:
 C     maskLEN :: number of mask to read
       INTEGER maskLEN
-C Relax for Chioggia (12 sources)
-C      PARAMETER( maskLEN = 65 )
-C No relax for Chioggia
+C T, S + BFM
       PARAMETER( maskLEN = 53 )
 
 #endif /* ALLOW_RBCS */
