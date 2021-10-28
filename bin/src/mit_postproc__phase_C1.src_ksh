@@ -66,8 +66,8 @@ mit_prex_or_die "rm -rf $MIT_ARCDIR_ROOT/current/products_old/"
 
 MONTH=$( date --date="$MIT_RUNDATE" +%m )
 case $MONTH in
-  05|06|07|08|09|10 ) PLOTLISTFILE=$MEDEAF_DIR/Plotlist_summer.xml ;;
-  * ) PLOTLISTFILE=$MEDEAF_DIR/Plotlist.xml ;;
+  05|06|07|08|09|10 ) PLOTLISTFILE=$MIT_POSTPROCDIR/Plotlist_summer.xml ;;
+  * ) PLOTLISTFILE=$MIT_POSTPROCDIR/Plotlist.xml ;;
 esac
 
 
