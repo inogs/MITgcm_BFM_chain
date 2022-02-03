@@ -14,7 +14,7 @@ I_MIT_HOSTNAME="@@(I:MIT_HOSTNAME)"				# Symbolic name of the execution host
 I_MIT_MODULE="@@(I:MIT_MODULE)"					# Opa module name
 
 I_MIT_STAGE="@@(I:MIT_STAGE)"					# Stage (currently: prod|devel)
-
+MIT_ACCOUNT="@@(I:MIT_ACCOUNT)"                                 # Account for running
 I_MIT_BACKUP="@@(I:MIT_BACKUP)"					# Is backup? (true|false)
 I_MIT_EXTENSION="@@(I:MIT_EXTENSION)"				# suffix for directories
 I_MIT_VERSION_NUMBER="@@(I:MIT_VERSION_NUMBER)"			# Version number (currently: 0|1|2|3)

@@ -2,6 +2,7 @@
 
 sed	-e "s%@@(I:MIT_HOME)%${MIT_HOME}%g"			\
 	-e "s%@@(I:MIT_MODULE)%${MIT_MODULE}%g"			\
+        -e "s%@@(I:MIT_ACCOUNT)%${MIT_ACCOUNT}%g"               \
 	-e "s%@@(I:MIT_HOSTNAME)%${MIT_HOSTNAME}%g"		\
 	-e "s%@@(I:MIT_WORKDIR)%${MIT_WORKDIR}%g"		\
 	-e "s%@@(I:MIT_BACKUP)%${MIT_BACKUP}%g"			\
