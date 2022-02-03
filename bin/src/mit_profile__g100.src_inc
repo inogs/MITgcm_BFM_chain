@@ -6,6 +6,11 @@ if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
 . /etc/profile.d/modules.sh
 . /etc/profile.d/slurm.sh
 
+
+MIT_RM=slurm
+MIT_MPI=intelmpi
+
+
 MIT_GRADS_HOME="$MIT_HOSTDIR"
 MIT_GRADS_GADDIR="${MIT_GRADS_HOME}/etc/grads/data"
 

@@ -88,30 +88,6 @@ MIT_DOWNLOAD_HOUR_UTC="03:00:00"
 
 
 
-# I_MIT_HOSTNAME, MIT_RM and MIT_MPI are set based on hostname
-case "$I_MIT_HOSTNAME" in
-  clx|bcc|bcx|xc3|xc2|a3k)
-    MIT_RM=lsf
-    MIT_MPI=mpich
-    ;;
-  sp5|sp6)
-    MIT_RM=ll
-    MIT_MPI=poe
-    ;;
-  plx)
-    MIT_RM=pbs
-    MIT_MPI=openmpi
-    ;;
-  pico|galileo|marconi|g100)
-    MIT_RM=slurm
-    MIT_MPI=intelmpi
-    ;;
-  $MIT_UNDEFINED)
-    echo "ERROR: I_MIT_HOSTNAME [${I_MIT_HOSTNAME}] is not supported" 1>&2
-    echo "Only [clx|bcc|xc3|xc2|a3k|sp5|sp6] are supported." 1>&2
-    exit 1
-    ;;
-esac
 
 
 MIT_HOSTDIR=$I_MIT_HOME/HOST/$I_MIT_HOSTNAME
