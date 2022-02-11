@@ -520,6 +520,7 @@ function sed_tpl {
 	-e "s%@@(S:MIT_SIMULATE_TRANSFER)%${mit_simulate_transfer}%g"			\
 	-e "s%@@(S:MIT_RECOVERY_MODE)%${mit_recovery_mode}%g"				\
 	-e "s%@@(S:MIT_ODD_ALPHA)%${mit_odd_alpha}%g"					\
+        -e "s%@@(S:MIT_ACCOUNT)%${MIT_ACCOUNT}%g"                                       \
 	-e "s%@@(S:MIT_STEPS)%${mit_steps}%g"
 }
 
