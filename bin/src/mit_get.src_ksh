@@ -52,4 +52,12 @@ mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -
 mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
 
 
+DATE_RIVERSTART=$( date -d "${MIT_RUNDATE}  -  10 days " +%Y-%m-%d )
+DATE_RIVER__END=$( date -d "${MIT_RUNDATE}  " +%Y-%m-%d )
+URL="https://larissa.ogs.it/erddap/tabledap/Pontelagoscuro_TS.csv?time%2Criver_discharge&time%3E=${DATE_RIVERSTART}T00%3A00%3A00Z&time%3C=${DATE_RIVER__END}T00%3A00%3A00Z"
+
+mit_prex "curl \"$URL\" > ${MIT_WRKDIR}/Po.dat "
+
+
+
 mit_exit "$errors"

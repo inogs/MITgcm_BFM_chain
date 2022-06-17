@@ -43,6 +43,9 @@ typeset -i exit_code=0
 
 export RIVERDATA RIVERMETEODIR
 
+
+mit_prex "python $MIT_BC_IC_FROM_OGSTM_DIR/riverdata_converter.py -i $RIVERMETEODIR/Po.dat > $RIVERMETEODIR/Po.txt "
+
 echo ${MIT_OUTPUT_VARIABLES} | sed --regexp-extended -e 's/ +/ /g' | tr ' ' '\n' > ${MODEL_VARS};
 
 for D in $(mit_days); do echo "$D-12:00:00" ; done > $TIMES_DAILY
