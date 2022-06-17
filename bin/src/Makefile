@@ -29,6 +29,7 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_preproc.ksh					\
 		mit_preproc__phase_A1.ksh			\
 		mit_preproc__phase_A2.ksh			\
+                mit_preproc__phase_A3.ksh                       \ 
 		mit_profile.inc					\
 		mit_profile__g100.inc				\
 		mit_rm.inc					\

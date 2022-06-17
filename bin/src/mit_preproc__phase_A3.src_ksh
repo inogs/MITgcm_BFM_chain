@@ -1,0 +1,30 @@
+#!/bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+mit_prex "source $MIT_VENV_1/bin/activate"
+PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
+
+DATESTART=$( date -d "${MIT_RUNDATE}  -  7 days  " +%Y%m%d-%H:%M:%S )
+DATE__END=$( date -d "${MIT_RUNDATE}  + 72 hours " +%Y%m%d-%H:%M:%S )
+
+MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc
+opa_prex "cd $MIT_BITSEA/Sat"
+DAILY_CHECKED=/gss/gss_work/DRES_OGS_BiGe/Observations/TIME_RAW_DATA/ONLINE_V8C/SAT/CHL/MULTISENSOR/1Km/NRT/DAILY/CHECKED
+DAILY_128=$MIT_INPDIR/SAT/
+mkdir -p ${DAILY_128}
+
+mit_prex "python interpolator.py -i ${DAILY_CHECKED} -o ${DAILY_128} -m $MASKFILE --inmesh SAT1km_mesh "
+
+
+
+mit_exit "$errors"
+
+
+
