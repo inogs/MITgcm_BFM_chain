@@ -32,7 +32,7 @@ mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END --day
 CONFIG_FILE=$MIT_ETCDIR/nc-config/.aladin.ncconfig
 for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
   FILENAME=asogsasc_${YYYYMMDD}00.tar.gz
-  mit_prex_or_die "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $LOCALDIR /ALADIN_SI/$FILENAME"
+  mit_prex "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $LOCALDIR /ALADIN_SI/$FILENAME"
 done
 
 
