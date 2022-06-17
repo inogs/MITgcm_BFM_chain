@@ -38,7 +38,7 @@ typeset -i exit_code=0
        PRODUCT_TABLE=$MIT_WRKDIR/BC_IC/product_table.txt
           MODEL_VARS=$MIT_WRKDIR/bfm_state_vars.txt
 
-           RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_N2.xlsx
+           RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_BFMv5_coastal.xlsx
        RIVERMETEODIR=$MIT_WRKDIR
 
 export RIVERDATA RIVERMETEODIR

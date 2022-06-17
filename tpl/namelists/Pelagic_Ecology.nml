@@ -149,13 +149,13 @@
 !                     P1         P2         P3         P4         
     p_q10          =  2.0        2.0        2.0        2.0        
     p_temp         =  0.0        0.0        0.75       0.0        
-    p_sum          =  2.5        3.0        3.5        1.5        
+    p_sum          =  2.5        3.0        3.5        3.0
     p_srs          =  0.1        0.05       0.1        0.1        
     p_sdmo         =  0.0        0.0        0.0        0.0        
     p_thdo         =  0.0        0.0        0.0        0.0        
     p_seo          =  0.0        0.0        0.0        0.0        
     p_sheo         =  0.0        0.0        0.0        100.0      
-    p_pu_ea        =  0.05       0.1        0.1        0.15       
+    p_pu_ea        =  0.05       0.1        0.1        0.12
     p_pu_ra        =  0.1        0.1        0.2        0.1        
     p_switchDOC    =  2          2          2          2          
     p_netgrowth    =  .TRUE.     .TRUE.     .TRUE.     .TRUE.     
@@ -181,7 +181,7 @@
     p_switchChl    =  2          2          2          2          
     p_sdchl        =  0.2        0.2        0.2        0.2        
     p_alpha_chl    =  1.38e-5    0.46e-5    1.52e-5    0.68e-5    
-    p_qlcPPY       =  0.02       0.02       0.02       0.02       
+    p_qlcPPY       =  0.06       0.06       0.06       0.06
     p_epsChla      =  0.03       0.03       0.03       0.03       
     p_EpEk_or      =  0.0        0.0        0.0        0.0        
     p_tochl_relt   =  0.0        0.0        0.0        0.0        
