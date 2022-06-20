@@ -15,16 +15,16 @@ DATESTART=$( date -d "${MIT_RUNDATE}  -  7 days  " +%Y%m%d-%H:%M:%S )
 DATE__END=$( date -d "${MIT_RUNDATE}  + 72 hours " +%Y%m%d-%H:%M:%S )
 
 MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc
-opa_prex "cd $MIT_BITSEA/Sat"
+mit_prex "cd $MIT_BITSEA/Sat"
 DAILY_CHECKED=/gss/gss_work/DRES_OGS_BiGe/Observations/TIME_RAW_DATA/ONLINE_V8C/SAT/CHL/MULTISENSOR/1Km/NRT/DAILY/CHECKED
-DAILY_128=$MIT_INPDIR/SAT/
-mkdir -p ${DAILY_128}
+DAILY_CHLSAT_INTERP=$MIT_INPDIR_ROOT/SAT/
+mkdir -p ${DAILY_CHLSAT_INTERP}
 
-mit_prex "python interpolator.py -i ${DAILY_CHECKED} -o ${DAILY_128} -m $MASKFILE --inmesh SAT1km_mesh "
+mit_prex "python interpolator.py -i ${DAILY_CHECKED} -o ${DAILY_CHLSAT_INTERP} -m $MASKFILE --inmesh SAT1km_mesh "
 
 
 
-mit_exit "$errors"
+mit_exit
 
 
 
