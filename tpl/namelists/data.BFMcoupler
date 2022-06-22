@@ -30,7 +30,7 @@
  BFMcoupler_N3nBotForcFile  = '../input/binaries/N_bottom_fluxes_V4_x2.dat',
  BFMcoupler_O2oBotForcFile  = '../input/binaries/O_bottom_fluxes_V3_bis.dat',
  BFMcoupler_forcingPeriod = 86400.,
- BFMcoupler_forcingCycle  = 31536000.,
+ BFMcoupler_forcingCycle  = 950400.,
 # BFMcoupler_forcingPeriod = 2628000.,
 # BFMcoupler_forcingCycle  = 257544000.,
 # 12 months * 8 years of 30.41677 days + 2 frame at the end

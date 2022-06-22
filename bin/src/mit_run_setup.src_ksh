@@ -36,6 +36,7 @@ BC_IC_DIRS='BC_IC
 MODEL_DIRS='MODEL
             MODEL/input/
             MODEL/input/binaries
+            MODEL/input/binaries365
             MODEL/input/binaries/ICs
             MODEL/input/binaries/ICs/PHYS
             MODEL/input/binaries/ICs/BIO            
