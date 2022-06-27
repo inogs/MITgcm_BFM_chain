@@ -79,7 +79,7 @@
  exf_inscal_uwind   =  1.0,
  exf_inscal_vwind   =  1.0,
  exf_inscal_swflux   =  0.9,
- exf_inscal_lwflux   =  1.2,
+ exf_inscal_lwflux   =  0.8,
 # output scaling factors
  &END
 
