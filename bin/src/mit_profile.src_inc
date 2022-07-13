@@ -131,6 +131,8 @@ function mit_date {
   date +'%Y%m%d-%H:%M:%S'
 }
 
+
+
 # function mit_prex {
 #   # PRint a command and EXecutes it;
 #   # after the command has been executed, mit_prex prints its exit_code and returns the same value
@@ -218,6 +220,13 @@ function mit_batch_prex {
     eval "$@" ; return $?
   fi
 }
+
+function symlink_if_not_present {
+        if [[ ! -L $2 ]] ; then
+                ln -s $1 $2 ; return $?
+	fi
+}
+
 
 . @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
 MIT_WRKDIR_ROOT="$MIT_BASE_WRKDIR/$MIT_VERSION/$I_MIT_STAGE/wrkdir"
@@ -536,6 +545,7 @@ while [[ ${#@} -ne 0 ]] ; do
    shift 1
 done
 }
+
 
 function mit_get_proddate {
   typeset _mit_rundate="${1:-$MIT_RUNDATE}"
@@ -1109,7 +1119,6 @@ function mit_setup_template {
   fi
   return 0
 }
-
 
 function set_spec_data {
   # definisce le variabili globali dipendenti da rundate
