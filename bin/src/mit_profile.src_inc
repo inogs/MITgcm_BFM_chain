@@ -104,6 +104,13 @@ MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/MITgcm_BC_IC		# Directory for BC,IC from C
 MIT_TMPDIR=$MIT_VARDIR/tmp					# Directory for:
 MIT_NAME='mit_chain'						# This is the name of the last dir in $I_MIT_HOME
 
+MIT_BITSEA_REPO="git@github.com:inogs/bit.sea.git"
+MIT_BITSEA_BRANCH="python3"
+MIT_POSTPROC_REPO="git@github.com:inogs/MITgcm_BFM_postproc.git"
+MIT_POSTPROC_BRANCH="main"
+MIT_BC_IC_REPO="git@github.com:inogs/MITgcm_BC_IC.git"
+MIT_BC_IC_BRANCH="main"
+
 MIT_LOGDIR=$I_MIT_HOME/log					# Directory for logs
 
 MIT_DEFAULT_WALL_CLOCK_LIMIT="$MIT_UNDEFINED"			# Default wall clock limit [[hh:]mm:]ss
@@ -227,6 +234,18 @@ function symlink_if_not_present {
 	fi
 }
 
+function clone_or_update {
+	if [[ ! -d $2 ]] ; then
+		git clone $1 $2 --branch=$3 ; return $?
+#	else
+#		git -C "$2" checkout $3
+#		if [[ $? -eq 0 ]] ; then
+#			git pull $1 ; return $?
+#		else
+#			return 1
+#		fi
+	fi
+}
 
 . @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
 MIT_WRKDIR_ROOT="$MIT_BASE_WRKDIR/$MIT_VERSION/$I_MIT_STAGE/wrkdir"
