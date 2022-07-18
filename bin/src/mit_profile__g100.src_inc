@@ -37,7 +37,7 @@ MIT_DATE_PATH="/usr/bin/date"
 MIT_NCKS_PATH="/g100_work/PROJECTS/spack/v0.16/install/0.16.2/linux-centos8-cascadelake/oneapi-2021.2.0-ifort/nco-4.9.3-bclelr2oxmjfbrtzsoqqu6qfej6sp4io/bin/ncks"
 MIT_NCFTPGET_PATH="/g100_work/PROJECTS/spack/v0.16/install/0.16.2/linux-centos8-skylake_avx512/gcc-8.3.1/ncftp-3.2.6-5pytmnyrt3gczy52mx2exeid5t24hpdp/bin/ncftpget"
 MITGCMUV_PATH="/g100_scratch/userexternal/mpoggi00/ModelBuild/MITGCM_BUILD/mitgcmuv"
-
+MOTUCLIENT_UNPACK_DIR="$MIT_BINDIR/motuclient"
 
 mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
 mit_batch_prex "symlink_if_not_present $MIT_DATE_PATH $MIT_BINDIR/date"
@@ -48,6 +48,9 @@ mit_batch_prex "symlink_if_not_present $MITGCMUV_PATH $MIT_BINDIR/mitgcmuv"
 mit_batch_prex "clone_or_update $MIT_BITSEA_REPO $MIT_BITSEA $MIT_BITSEA_BRANCH"
 mit_batch_prex "clone_or_update $MIT_POSTPROC_REPO $MIT_POSTPROCDIR $MIT_POSTPROC_BRANCH"
 mit_batch_prex "clone_or_update $MIT_BC_IC_REPO $MIT_BC_IC_FROM_OGSTM_DIR $MIT_BC_IC_BRANCH"
+
+mit_batch_prex "download_and_unpack $MIT_MOTUCLIENT_URL $MIT_BINDIR motuclient.tar.gz $MOTUCLIENT_UNPACK_DIR"
+mit_batch_prex "symlink_if_not_present $MOTUCLIENT_UNPACK_DIR/src/python $MIT_BINDIR/motuclient-python"
 
 mit_batch_prex ". /cineca/prod/opt/environment/module/4.7.0/none/init/ksh"
 mit_batch_prex "module load autoload"

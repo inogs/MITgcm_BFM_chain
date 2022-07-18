@@ -110,6 +110,7 @@ MIT_POSTPROC_REPO="git@github.com:inogs/MITgcm_BFM_postproc.git"
 MIT_POSTPROC_BRANCH="main"
 MIT_BC_IC_REPO="git@github.com:inogs/MITgcm_BC_IC.git"
 MIT_BC_IC_BRANCH="main"
+MIT_MOTUCLIENT_URL="https://files.pythonhosted.org/packages/fe/93/2d8c8dd1fc0537340dda6e8f998c8a7b588566c04bec6cf188fecbbbf2ec/motuclient-1.8.8.tar.gz"
 
 MIT_LOGDIR=$I_MIT_HOME/log					# Directory for logs
 
@@ -245,6 +246,14 @@ function clone_or_update {
 #			return 1
 #		fi
 	fi
+}
+
+# download_and_unapack <url> <path> <filename> <extraction dir>
+function download_and_unpack {
+	wget -O $2/$3 $1
+	if [[ $? -ne 0 ]] ; then return $? ; fi
+
+	tar -xzf $2/$3 --one-top-level=$4 --strip-components=1 ; return $?	
 }
 
 . @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
