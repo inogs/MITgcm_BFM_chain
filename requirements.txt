@@ -1,0 +1,11 @@
+configparser
+netcdf4
+ipython
+python-dateutil
+seawater
+matplotlib
+xlrd
+scipy
+pathlib
+openpyxl
+mpi4py

@@ -57,6 +57,8 @@ mit_batch_prex "module load autoload"
 mit_batch_prex "module load intelmpi/oneapi-2021--binary"
 mit_batch_prex "module load mkl/oneapi-2021--binary"
 
+mit_batch_prex "set_python_envinronment $MIT_HOME/requirements.txt"
+
 mit_batch_prex "module load netcdf/4.7.4--intelmpi--oneapi-2021--binary"
 mit_batch_prex "module load netcdff/4.5.3--intelmpi--oneapi-2021--binary"
 mit_batch_prex "module load gsl/2.5--oneapi--2021.2.0-ifort"

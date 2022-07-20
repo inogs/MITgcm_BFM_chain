@@ -112,6 +112,7 @@ MIT_BC_IC_REPO="git@github.com:inogs/MITgcm_BC_IC.git"
 MIT_BC_IC_BRANCH="main"
 MIT_MOTUCLIENT_URL="https://files.pythonhosted.org/packages/fe/93/2d8c8dd1fc0537340dda6e8f998c8a7b588566c04bec6cf188fecbbbf2ec/motuclient-1.8.8.tar.gz"
 
+
 MIT_LOGDIR=$I_MIT_HOME/log					# Directory for logs
 
 MIT_DEFAULT_WALL_CLOCK_LIMIT="$MIT_UNDEFINED"			# Default wall clock limit [[hh:]mm:]ss
@@ -254,6 +255,16 @@ function download_and_unpack {
 	if [[ $? -ne 0 ]] ; then return $? ; fi
 
 	tar -xzf $2/$3 --one-top-level=$4 --strip-components=1 ; return $?	
+}
+
+function set_python_envinronment {
+	python3 -m venv $MIT_VENV_1
+	source $MIT_VENV_1/bin/activate
+	if [[ $? -ne 0 ]] ; then return $? ; fi
+
+	pip install --upgrade pip
+	pip install -r $1
+	deactivate
 }
 
 . @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
