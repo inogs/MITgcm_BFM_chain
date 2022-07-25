@@ -257,7 +257,7 @@ function download_and_unpack {
 	tar -xzf $2/$3 --one-top-level=$4 --strip-components=1 ; return $?	
 }
 
-function set_python_envinronment {
+function set_python_environment {
 	python3 -m venv $MIT_VENV_1
 	source $MIT_VENV_1/bin/activate
 	if [[ $? -ne 0 ]] ; then return $? ; fi

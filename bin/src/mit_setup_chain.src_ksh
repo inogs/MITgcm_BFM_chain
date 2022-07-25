@@ -1,0 +1,7 @@
+#!/bin/ksh
+# This command submits an MIT-offline operational chain
+# for a specific rundate.
+# It is thought to be run using crontab.
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc

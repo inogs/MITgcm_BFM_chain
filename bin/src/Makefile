@@ -62,7 +62,8 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_check_remote_cron.ksh			\
 	mit_cmems_downloader.ksh             \
         mit_clim_downloader.ksh              \
-	mit_profile__g100.inc 
+	mit_profile__g100.inc		     \
+	mit_setup_chain.ksh 
 
 
 default:	compile
