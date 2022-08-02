@@ -267,6 +267,23 @@ function set_python_environment {
 	deactivate
 }
 
+
+function mit_mkdir {
+#mkdir che da'status KO se la directory non viene creata
+  mkdir -p $1
+  typeset -i _er
+  typeset _status
+  if [[ ! -d $1 ]]; then
+    _status="KO"
+    _er=1
+  else
+    _status="Ok"
+    _er=0
+  fi
+  printf "PrEx $(mit_date) < mkdir %s [%s]\n" "$*" "$_status"
+  return $_er
+}
+
 . @@(I:MIT_HOME)/bin/mit_profile__@@(I:MIT_HOSTNAME).inc		# Host-specific paths and hostnames
 MIT_WRKDIR_ROOT="$MIT_BASE_WRKDIR/$MIT_VERSION/$I_MIT_STAGE/wrkdir"
 MIT_WRKDIR_ROOT_LINK="$I_MIT_HOME/wrkdir"
@@ -430,21 +447,6 @@ function mit_last_rundate {
 }
 
 
-function mit_mkdir {
-#mkdir che da'status KO se la directory non viene creata
-  mkdir -p $1
-  typeset -i _er
-  typeset _status
-  if [[ ! -d $1 ]]; then
-    _status="KO"
-    _er=1
-  else
-    _status="Ok"
-    _er=0
-  fi
-  printf "PrEx $(mit_date) < mkdir %s [%s]\n" "$*" "$_status"
-  return $_er
-}
 
 function mit_scp {
 #scp che da'status KO se la copia non viene eseguita
