@@ -30,10 +30,40 @@ MIT_DEFAULT_QUEUE_PAR="g100_meteo_prod"                                  # Defau
 MIT_DEFAULT_QUEUE_SER="g100_meteo_ser"                                  # Default queue ser
 MIT_DEFAULT_QOS="qos_meteo"
 MIT_DEFAULT_MEM="350gb"
+
+MIT_NETCDF_PATH="/usr/local/intel/lib"
+MIT_DATE_PATH="/usr/bin/date"
+MIT_NCKS_PATH="/usr/bin/ncks"
+MIT_NCFTPGET_PATH="/usr/bin/ncftpget"
+MITGCMUV_PATH="/share/scratch/exactlab/ModelBuild/MITGCM_BUILD/mitgcmuv"
+MOTUCLIENT_UNPACK_DIR="$MIT_BINDIR/motuclient"
+PYTHON3_PATH="/share/scratch/gbolzon/PYTHON3/Python-3.8.6/python"
+
+mit_batch_prex "module load modules"
+mit_batch_prex "module load intel-MITgcm"
 mit_batch_prex "module load openmpi-x86_64"
 
-mit_batch_prex "ulimit -s unlimited"
+mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
+mit_batch_prex "mit_mkdir $MIT_BINDIR"
+mit_batch_prex "symlink_if_not_present $MIT_DATE_PATH $MIT_BINDIR/date"
+mit_batch_prex "symlink_if_not_present $MIT_NCKS_PATH $MIT_BINDIR/ncks"
+mit_batch_prex "symlink_if_not_present $MIT_NCFTPGET_PATH $MIT_BINDIR/ncftpget"
+mit_batch_prex "symlink_if_not_present $MITGCMUV_PATH $MIT_BINDIR/mitgcmuv"
 
+mit_batch_prex "clone_or_update $MIT_BITSEA_REPO $MIT_BITSEA $MIT_BITSEA_BRANCH"
+mit_batch_prex "clone_or_update $MIT_POSTPROC_REPO $MIT_POSTPROCDIR $MIT_POSTPROC_BRANCH"
+mit_batch_prex "clone_or_update $MIT_BC_IC_REPO $MIT_BC_IC_FROM_OGSTM_DIR $MIT_BC_IC_BRANCH"
+
+mit_batch_prex "download_and_unpack $MIT_MOTUCLIENT_URL $MIT_BINDIR motuclient.tar.gz $MOTUCLIENT_UNPACK_DIR"
+mit_batch_prex "symlink_if_not_present $MOTUCLIENT_UNPACK_DIR/src/python $MIT_BINDIR/motuclient-python"
+
+mit_batch_prex "module load MITgcm"
+#mit_batch_prex "module load intel-MITgcm"
+#mit_batch_prex "module load openmpi-x86_64"
+
+mit_batch_prex "set_python_environment $PYTHON3_PATH $MIT_HOME/requirements.txt"
+
+mit_batch_prex "ulimit -s unlimited"
 
 function mit_is_login_node {
 #   ksh /cineca/scripts/ha_login.select ; return $?

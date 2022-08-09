@@ -232,7 +232,11 @@ function mit_batch_prex {
 
 function symlink_if_not_present {
         if [[ ! -L $2 ]] ; then
-                ln -s $1 $2 ; return $?
+		if [[ -f $1 ]] ; then
+                	ln -s $1 $2 ; return $?
+		else
+			return 1
+		fi
 	fi
 }
 
@@ -254,16 +258,17 @@ function download_and_unpack {
 	wget -O $2/$3 $1
 	if [[ $? -ne 0 ]] ; then return $? ; fi
 
-	tar -xzf $2/$3 --one-top-level=$4 --strip-components=1 ; return $?	
+	#tar -xzf $2/$3 --one-top-level=$4 --strip-components=1 ; return $?	
+	mkdir -p $4 && tar -xzf $2/$3 -C $4 --strip-components=1 ; return $?	
 }
 
 function set_python_environment {
-	python3 -m venv $MIT_VENV_1
+	$1 -m venv $MIT_VENV_1
 	source $MIT_VENV_1/bin/activate
 	if [[ $? -ne 0 ]] ; then return $? ; fi
 
 	pip install --upgrade pip
-	pip install -r $1
+	pip install -r $2
 	deactivate
 }
 
