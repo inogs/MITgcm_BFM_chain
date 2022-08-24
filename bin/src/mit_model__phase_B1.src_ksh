@@ -85,9 +85,9 @@ mit_stage_in "$wrkdir/input/binaries365/" \
              "$MIT_ETCDIR/static-data/MODEL/Kext_CADEAU_365.dat"        \
              "$MIT_ETCDIR/static-data/MODEL/N1p_surface_fluxes_V3.dat"  \
              "$MIT_ETCDIR/static-data/MODEL/N3n_surface_fluxes_V3.dat"  \
-             "$MIT_ETCDIR/static-data/MODEL/N_bottom_fluxes_V4_x2.dat"  \
+             "$MIT_ETCDIR/static-data/MODEL/N_bottom_fluxes_V5_x2.dat"  \
              "$MIT_ETCDIR/static-data/MODEL/O_bottom_fluxes_V3_bis.dat" \
-             "$MIT_ETCDIR/static-data/MODEL/P_bottom_fluxes_V4_x3.dat"   || {
+             "$MIT_ETCDIR/static-data/MODEL/P_bottom_fluxes_V5_x3.dat"   || {
 errors=$(( $errors + $? ))
 }
 
