@@ -42,6 +42,7 @@ PYTHON3_PATH="/share/scratch/gbolzon/PYTHON3/Python-3.8.6/python"
 mit_batch_prex "module load modules"
 mit_batch_prex "module load intel-MITgcm"
 mit_batch_prex "module load openmpi-x86_64"
+mit_batch_prex "module load intel"
 
 mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
 mit_batch_prex "mit_mkdir $MIT_BINDIR"
