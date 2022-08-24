@@ -1,0 +1,80 @@
+if [[ $__MIT_PROFILE_galileo_IS_DEFINED__ == '' ]] ; then
+  __MIT_PROFILE_galileo_IS_DEFINED__='__defined__'
+
+# Load environment for pbs, modules:
+#. /etc/profile.d/modules.sh
+#. /etc/profile.d/slurm.sh
+    MIT_RM=slurm
+    MIT_MPI=intelmpi
+
+MIT_HOST_PRIMARY_LOGIN_NODE='login04-ext.galileo.cineca.it'
+MIT_HOST_SECONDARY_LOGIN_NODE='login05-ext.galileo.cineca.it'
+
+MIT_HOST_PRIMARY_HOSTNAME='login04'
+MIT_HOST_SECONDARY_HOSTNAME='login05'
+
+
+NODENAME=$(hostname)                    # nome del nodo
+NODE=$( echo "$NODENAME"| cut -d: -f1 ) # prima parte del nome del nodo
+
+MIT_HOST_LOGIN_NODES="$MIT_HOST_PRIMARY_LOGIN_NODE $MIT_HOST_SECONDARY_LOGIN_NODE"
+
+MIT_CORES_PER_NODE=48
+
+MIT_DEFAULT_WALL_CLOCK_LIMIT=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_SER=04:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_WALL_CLOCK_LIMIT_PAR=06:00:00			# Default wall clock limit [[hh:]mm:]ss
+MIT_DEFAULT_TASKS=96					# Default tasks' number WARNING: 1 node is not enough
+MIT_DEFAULT_QUEUE="g100_meteo_prod"                                      # Default queue
+MIT_DEFAULT_QUEUE_PAR="g100_meteo_prod"                                  # Default queue par
+#MIT_DEFAULT_QUEUE_SER="serial"                                 # Default queue ser
+MIT_DEFAULT_QUEUE_SER="g100_meteo_ser"                                  # Default queue ser
+MIT_DEFAULT_QOS="qos_meteo"
+MIT_DEFAULT_MEM="350gb"
+
+MIT_NETCDF_PATH="/opt/software/linux-centos7-ivybridge/intel/19.1.1.217/netcdf-c/4.7.3-z2mhimbd5mgizjaulumzwxan5ftxo7t4/lib"
+MIT_DATE_PATH="/usr/bin/date"
+MIT_NCKS_PATH="/opt/software/linux-centos7-ivybridge/intel/19.1.1.217/nco/4.7.9-azxk4mhekqzdv72ukhwmaeqkf4u3x4yy/bin/ncks"
+MIT_NCFTPGET_PATH="/usr/bin/ncftpget"
+MITGCMUV_PATH="/u/exact/mpoggi/MITgcm_BFM/ModelBuild/MITGCM_BUILD/mitgcmuv"
+MOTUCLIENT_UNPACK_DIR="$MIT_BINDIR/motuclient"
+PYTHON3_PATH="/usr/bin/python3"
+
+mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
+mit_batch_prex "mit_mkdir $MIT_BINDIR"
+mit_batch_prex "symlink_if_not_present $MIT_DATE_PATH $MIT_BINDIR/date"
+mit_batch_prex "symlink_if_not_present $MIT_NCKS_PATH $MIT_BINDIR/ncks"
+mit_batch_prex "symlink_if_not_present $MIT_NCFTPGET_PATH $MIT_BINDIR/ncftpget"
+mit_batch_prex "symlink_if_not_present $MITGCMUV_PATH $MIT_BINDIR/mitgcmuv"
+
+mit_batch_prex "clone_or_update $MIT_BITSEA_REPO $MIT_BITSEA $MIT_BITSEA_BRANCH"
+mit_batch_prex "clone_or_update $MIT_POSTPROC_REPO $MIT_POSTPROCDIR $MIT_POSTPROC_BRANCH"
+mit_batch_prex "clone_or_update $MIT_BC_IC_REPO $MIT_BC_IC_FROM_OGSTM_DIR $MIT_BC_IC_BRANCH"
+
+mit_batch_prex "download_and_unpack $MIT_MOTUCLIENT_URL $MIT_BINDIR motuclient.tar.gz $MOTUCLIENT_UNPACK_DIR"
+mit_batch_prex "symlink_if_not_present $MOTUCLIENT_UNPACK_DIR/src/python $MIT_BINDIR/motuclient-python"
+
+#mit_batch_prex ". /cineca/prod/opt/environment/module/4.7.0/none/init/ksh"
+mit_batch_prex "module load openmpi/4.0.1/gcc/4.8.5-tbtuimb"
+#mit_batch_prex "module load intelmpi/oneapi-2021--binary"
+#mit_batch_prex "module load mkl/oneapi-2021--binary"
+
+mit_batch_prex "set_python_environment $PYTHON3_PATH $MIT_HOME/requirements.txt"
+
+#mit_batch_prex "module load netcdf/4.7.4--intelmpi--oneapi-2021--binary"
+#mit_batch_prex "module load netcdff/4.5.3--intelmpi--oneapi-2021--binary"
+#mit_batch_prex "module load gsl/2.5--oneapi--2021.2.0-ifort"
+#mit_batch_prex "module load profile/advanced"
+#mit_batch_prex "module load jq/1.6--gcc--10.2.0"
+
+mit_batch_prex "ulimit -s unlimited"
+
+
+function mit_is_login_node {
+#   ksh /cineca/scripts/ha_login.select ; return $?
+    return 0
+}
+
+
+# end of include guard:
+fi
