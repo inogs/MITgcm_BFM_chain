@@ -13,8 +13,8 @@ export PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 #mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR"
 typeset -i exit_code=0
 
-    DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
-    DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
+    DATESTART=$( date -d "${MIT_RUNDATE}  -  ${MIT_DAYS_BEFORE}  days " +%Y%m%d )   # <--- IC
+    DATE__END=$( date -d "${MIT_RUNDATE}  +  ${MIT_DAYS_AFTER}  days " +%Y%m%d-%H:%M:%S )   # all period
 
 
 

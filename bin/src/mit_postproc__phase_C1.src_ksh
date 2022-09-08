@@ -48,8 +48,8 @@ mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/netcdf4_compress.py -i $TMPDIR -
 
 SM_DAYS="$MIT_WRKDIR/POSTPROC/sm_days.txt"
 FC_DAYS="$MIT_WRKDIR/POSTPROC/fc_days.txt"
-mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | head -7 > $SM_DAYS "
-mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | tail -4 | head -3  > $FC_DAYS "
+mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | head -n ${MIT_DAYS_BEFORE} > $SM_DAYS "
+mit_prex_or_die "cat $MIT_WRKDIR/daily.txt | cut -c -8 | tail -n $((${MIT_DAYS_AFTER} + 1)) | head -n ${MIT_DAYS_AFTER}  > $FC_DAYS "
 
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/prodotti_bio.py -i $NETCDF_DIR -o $PRODUCTS -d sm -b $MIT_RUNDATE -m $MASKFILE -t $SM_DAYS"
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/prodotti_bio.py -i $NETCDF_DIR -o $PRODUCTS -d fc -b $MIT_RUNDATE -m $MASKFILE -t $FC_DAYS"
