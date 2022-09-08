@@ -46,6 +46,7 @@ mit_batch_prex "module load intel"
 
 mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
 mit_batch_prex "mit_mkdir $MIT_BINDIR"
+mit_batch_prex "mit_compile_data"
 mit_batch_prex "symlink_if_not_present $MIT_DATE_PATH $MIT_BINDIR/date"
 mit_batch_prex "symlink_if_not_present $MIT_NCKS_PATH $MIT_BINDIR/ncks"
 mit_batch_prex "symlink_if_not_present $MIT_NCFTPGET_PATH $MIT_BINDIR/ncftpget"

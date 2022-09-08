@@ -32,8 +32,11 @@ case "$MIT_VERSION" in
     ;;
 esac
 
+MIT_DAYS_BEFORE=7
+MIT_DAYS_AFTER=3
 
-MIT_DAYS=11
+MIT_DAYS=$((MIT_DAYS_BEFORE + MIT_DAYS_AFTER + 1))
+
 
 function mit_days {
 
@@ -94,6 +97,7 @@ MIT_LIBDIR=$MIT_HOSTDIR/lib					# Directory for libraries
 MIT_SCRDIR=$I_MIT_HOME/bin					# Directory for scripts
 MIT_ETCDIR=$I_MIT_HOME/etc					# Directory for configuration files and static data
 MIT_TPLDIR=$I_MIT_HOME/tpl					# Directory for templates
+MIT_NLDIR=$MIT_TPLDIR/namelists					# Directory for namelists
 MIT_VARDIR=$I_MIT_HOME/var					# Directory for MIT_VARDIR/out : standard output of cron commands
 MIT_BASE_WRKDIR="@@(I:MIT_WORKDIR)"                             # Directory for Workdir, depends on the module
 MIT_BASE_ARCDIR="@@(I:MIT_WORKDIR)"				# Directory for Arcdir, depends on the module
@@ -134,6 +138,13 @@ if [[ "$I_MIT_STAGE" == "prod" ]]; then
 else
   MIT_SIMULATE_TRANSFER=${RT_MIT_SIMULATE_TRANSFER:-true}
 fi
+
+MIT_NL_DATA_TPL_FILE=$MIT_NLDIR/data.tpl
+MIT_NL_DATA_FILE=$MIT_NLDIR/data
+
+function mit_compile_data {
+   sed -e "s%@@DURATION_SECS@@%$(((MIT_DAYS - 1) * 86400)).%g" $MIT_NL_DATA_TPL_FILE > $MIT_NL_DATA_FILE
+}
 
 function mit_date {
   # print the date in the forma used by mit_log
