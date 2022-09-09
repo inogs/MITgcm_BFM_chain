@@ -15,8 +15,8 @@ typeset -i _errors=0
 mit_prex "source $MIT_VENV_1/bin/activate"
 export PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
-DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
-DOWNSTART=$( date -d "${MIT_RUNDATE}  -  8  days " +%Y%m%d-%H:%M:%S )
+# DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
+DOWNSTART=$( date -d "${MIT_RUNDATE}  -  $((${MIT_DAYS_BEFORE} + 1))  days " +%Y%m%d-%H:%M:%S )
 DOWN__END=$( date -d "${MIT_RUNDATE}             " +%Y%m%d-%H:%M:%S )
 
 LOCALDIR=$MIT_WRKDIR/METEO/DOWNLOAD
