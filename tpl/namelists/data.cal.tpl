@@ -5,8 +5,8 @@
 #
  &CAL_NML
  TheCalendar='gregorian',
- startDate_1=@@START_DATE@@,
-# startDate_1=20200820,
-# startDate_2=@@START_TIME@@,
- startDate_2=000000,
+# startDate_1=YYYYMMDD,
+startDate_1=@@START_DATE@@,
+# startDate_2=hhmmss,
+startDate_2=@@START_TIME@@,
  &END

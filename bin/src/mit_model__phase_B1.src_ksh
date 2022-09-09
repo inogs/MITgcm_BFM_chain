@@ -115,10 +115,11 @@ errors=$(( $errors + $? ))
 
 START_DATE=$( date -d "${MIT_RUNDATE}  -  ${MIT_DAYS_BEFORE}  days " +%Y%m%d ) 
 
-sed -e "s%@@START_DATE@@%${START_DATE}%g" $nml_dir/data.cal.tpl > $wrkdir/run/data.cal
+sed -e "s%@@START_DATE@@%${START_DATE}%g" \
+    -e "s%@@START_TIME@@%${START_TIME}%g" $nml_dir/data.cal.tpl > $wrkdir/run/data.cal
 
-sed -e "s%@@START_DATE@@%${START_DATE}%g" $nml_dir/data.exf.tpl > $wrkdir/run/data.exf
-
+sed -e "s%@@START_DATE@@%${START_DATE}%g" \
+    -e "s%@@START_TIME@@%${START_TIME}%g" $nml_dir/data.exf.tpl > $wrkdir/run/data.exf
 
 BATHY=$MIT_WRKDIR/BC_IC/bathy.bin
 cd $wrkdir/run/

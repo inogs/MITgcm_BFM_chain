@@ -15,42 +15,42 @@
  &EXF_NML_02
  atempstartdate1   = @@START_DATE@@,
 # atempstartdate1   = 20200820,
-# atempstartdate2   = @@START_TIME@@,
- atempstartdate2   = 000000,
+atempstartdate2   = @@START_TIME@@,
+# atempstartdate2   = 000000,
  atempperiod       = 3600.0,
 
  aqhstartdate1     = @@START_DATE@@,
- aqhstartdate2     = 000000,
+ aqhstartdate2     = @@START_TIME@@,
  aqhperiod         = 3600.0,        
 
  uwindstartdate1   = @@START_DATE@@,
- uwindstartdate2   = 000000,
+ uwindstartdate2   = @@START_TIME@@,
  uwindperiod       = 3600.0,
 
  vwindstartdate1   = @@START_DATE@@,
- vwindstartdate2   = 000000,
+ vwindstartdate2   = @@START_TIME@@,
  vwindperiod       = 3600.0,
 
  swfluxstartdate1  = @@START_DATE@@,
- swfluxstartdate2  = 000000,
+ swfluxstartdate2  = @@START_TIME@@,
  swfluxperiod      = 3600.0,
 
  lwfluxstartdate1  = @@START_DATE@@,
- lwfluxstartdate2  = 000000,
+ lwfluxstartdate2  = @@START_TIME@@,
  lwfluxperiod      = 3600.0,
 
  apressurestartdate1  = @@START_DATE@@,
- apressurestartdate2  = 000000,
+ apressurestartdate2  = @@START_TIME@@,
  apressureperiod      = 3600.0,
 
  precipstartdate1  = @@START_DATE@@,
- precipstartdate2  = 000000,
+ precipstartdate2  = @@START_TIME@@,
  precipperiod      = 3600.0,
 
 ## runoffstartdate1  = @@START_DATE@@,
 # runoffstartdate1  = 20200820,
 ## runoffstartdate2  = @@START_TIME@@,
-# runoffstartdate2  = 000000,
+# runoffstartdate2  = @@START_TIME@@,
 # runoffperiod      = 3600.0,
 #
 #
