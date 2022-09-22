@@ -59,7 +59,7 @@ mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/prodotti_bio.py -i $NETCDF_DIR -
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/prodotti_phys.py -i $NETCDF_DIR -o $PRODUCTS -d sm -b $MIT_RUNDATE -m $MASKFILE -t $SM_DAYS"
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/prodotti_phys.py -i $NETCDF_DIR -o $PRODUCTS -d fc -b $MIT_RUNDATE -m $MASKFILE -t $FC_DAYS"
 
-mit_date > $PRODUCTS/timestamp
+date --utc +'%Y-%m-%dT%H:%M:%SZ'  > $PRODUCTS/timestamp
 
 mit_prex_or_die "mv $MIT_ARCDIR_ROOT/current/products $MIT_ARCDIR_ROOT/current/products_old/"
 mit_prex_or_die "mv $PRODUCTS $MIT_ARCDIR_ROOT/current/products "
