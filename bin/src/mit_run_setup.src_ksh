@@ -15,24 +15,23 @@ mit_start
 typeset -i errors=0
 
 
-METEODIRS="METEO METEO/DOWNLOAD"
+METEODIRS='METEO
+           METEO/DOWNLOAD
+           METEO/ORIG
+           METEO/BC'
 
 BC_IC_DIRS='BC_IC
-            BC_IC/BIO/ZIPPED/AVE/DAILY
-            BC_IC/BIO/UNZIPPED/AVE/DAILY
-            BC_IC/BIO/UNZIPPED/AVE/WEEKLY
-            BC_IC/PHYS/UNZIPPED
-            BC_IC/PHYS/IC
-            BC_IC/PHYS/IC/CUT_3D
+            BC_IC/BIO/AVE/DAILY_FROM_CLIM
+            BC_IC/BIO/AVE/DAILY_FROM_PROD
+            BC_IC/BIO/AVE/DAILY
+            BC_IC/PHYS
             BC_IC/IC/PHYS
             BC_IC/IC/BIO
-            BC_IC/BIO/IC
-            BC_IC/BIO/IC/CUT_3D
-            BC_IC/PHYS/CUTTED_SLICES
-            BC_IC/PHYS/CUTTED_SLICES/SOUTH
-            BC_IC/BIO/CUTTED_SLICES
-            BC_IC/BIO/CUTTED_SLICES/SOUTH' 
-            
+            BC_IC/BC/PHYS/CUTTED_SLICES
+            BC_IC/BC/PHYS/CUTTED_SLICES/SOUTH
+            BC_IC/BC/BIO/CUTTED_SLICES
+            BC_IC/BC/BIO/CUTTED_SLICES/SOUTH'
+
 MODEL_DIRS='MODEL
             MODEL/input/
             MODEL/input/binaries
@@ -49,8 +48,14 @@ MODEL_DIRS='MODEL
             MODEL/run
             MODEL/results_merged'
 
+POSTPROC_DIRS='POSTPROC
+               POSTPROC/AVE
+               POSTPROC/TMP
+               POSTPROC/IMG'
 
-wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS MARINE_COPERNICUS"
+
+
+wrk_subdirs="$METEODIRS $BC_IC_DIRS $MODEL_DIRS MARINE_COPERNICUS $POSTPROC_DIRS"
 
 # reset input directories
 for subdir in $wrk_subdirs ; do

@@ -37,8 +37,8 @@ done
 ### Step 2 -- Boundary conditions --
 
 cd $wrkdir/input/binaries/OBCs/BIO
-BIO_BC_DIR=${MIT_WRKDIR}/BC/BIO
-PHYS_BC_DIR=${MIT_WRKDIR}/BC/PHYS
+BIO_BC_DIR=${MIT_WRKDIR}/BC_IC/BC/BIO
+PHYS_BC_DIR=${MIT_WRKDIR}/BC_IC/BC/PHYS
 
 for var in $MIT_OUTPUT_VARIABLES; do
   for side in N S E W ; do
