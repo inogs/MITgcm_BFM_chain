@@ -51,7 +51,10 @@ pip install python-dateutil
 pip install seawater
 pip install matplotlib
 pip install xlrd
-pip install git+https://github.com/matplotlib/basemap.git
+pip install basemap-data
+pip install basemap-data-hires
+pip install basemap
+#pip install git+https://github.com/matplotlib/basemap.git
 pip install scipy
 pip install mpi4py
 pip install pathlib

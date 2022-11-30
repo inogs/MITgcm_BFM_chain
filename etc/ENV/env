@@ -1,10 +1,10 @@
-export PATH="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/HOST/galileo/bin:/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/bin:${PATH}"
-export LD_LIBRARY_PATH="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/HOST/galileo/lib:${LD_LIBRARY_PATH}"
-_src_host="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/src/ENV/galileo"
+export PATH="/g100/home/usera07ogs/a07ogs00/MIT/V1M/HOST/g100/bin:/g100/home/usera07ogs/a07ogs00/MIT/V1M/bin:${PATH}"
+export LD_LIBRARY_PATH="/g100/home/usera07ogs/a07ogs00/MIT/V1M/HOST/g100/lib:${LD_LIBRARY_PATH}"
+_src_host="/g100/home/usera07ogs/a07ogs00/MIT/V1M/src/ENV/g100"
 if [[ -f "$_src_host" ]] ; then
   . "$_src_host"
 fi
-_env_host="/galileo/home/usera07ogs/a07ogs00/MIT/V1-prod/etc/ENV/env.galileo"
+_env_host="/g100/home/usera07ogs/a07ogs00/MIT/V1M/etc/ENV/env.g100"
 if [[ -f "$_env_host" ]] ; then
   . "$_env_host"
 fi
