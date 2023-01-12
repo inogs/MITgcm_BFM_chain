@@ -81,13 +81,13 @@ mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK
 JSON=${MIT_ETCDIR}/motu-config/motu_downloader.json
 jq '.services[].products[] | .name as $name | .variables[] | $name + " " + .' $JSON | cut -d "\"" -f 2 > $PRODUCT_TABLE
 
-grep cmcc $PRODUCT_TABLE | while read dataset var ; do
+grep cmems_mod_med_phy $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
    mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_PHYS_DIR -m $MASK_006_014_RED"
 done
 
 
-grep ogs $PRODUCT_TABLE | while read dataset var ; do
+grep cmems_mod_med_bgc $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
    mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_BGC_PROD_DIR -m $MASK_006_014_RED"
 done
