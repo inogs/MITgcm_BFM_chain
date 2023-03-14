@@ -278,8 +278,12 @@ function set_python_environment {
 	source $MIT_VENV_1/bin/activate
 	if [[ $? -ne 0 ]] ; then return $? ; fi
 
-	pip install --upgrade pip
-	pip install -r $2
+	pip3 install --upgrade pip
+	if [ $# -lt 3 ]; then 
+  	   pip3 install -r $2
+	else
+	   pip3 install -r $2 $3
+	fi
 	deactivate
 }
 
