@@ -20,7 +20,7 @@ DAILY_CHECKED=/gss/gss_work/DRES_OGS_BiGe/Observations/TIME_RAW_DATA/ONLINE_V9C/
 DAILY_CHLSAT_INTERP=$MIT_INPDIR_ROOT/SAT/
 mkdir -p ${DAILY_CHLSAT_INTERP}
 
-mit_prex "python interpolator.py -i ${DAILY_CHECKED} -o ${DAILY_CHLSAT_INTERP} -m $MASKFILE --inmesh SAT1km_mesh "
+mit_prex "python interpolator.py -i ${DAILY_CHECKED} -o ${DAILY_CHLSAT_INTERP} -m $MASKFILE --inmesh SAT1km_mesh -v CHL"
 
 
 
