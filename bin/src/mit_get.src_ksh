@@ -27,13 +27,21 @@ DOWNTIMELISTFILE=$METEODIR/to_download_timelist.txt
 
 mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR "
 
-# download Arso files
+# new routine to download (grib) files from meteoHub and convert them to asc
 mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END --days 1 --dateformat %Y%m%d  > $DOWNTIMELISTFILE "
-CONFIG_FILE=$MIT_ETCDIR/nc-config/.aladin.ncconfig
+
+eXactFolder="${I_MIT_HOME}/HOST/g100/eXact"
+
+# store the pwd go to the eXactFolder folder
+cwd="$( pwd )"
+cd $eXactFolder 
+
+script="${eXactFolder}/downloader/download.sh"
 for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
-  FILENAME=asogsasc_${YYYYMMDD}00.tar.gz
-  mit_prex "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $LOCALDIR /ALADIN_SI/$FILENAME"
-done
+  mit_prex "${script} ${YYYYMMDD} ${LOCALDIR}"
+done 
+cd $cwd # go back where we started and clen-up vars not needed anymore
+unset cwd eXactFolder script
 
 
 # download Copernicus static data

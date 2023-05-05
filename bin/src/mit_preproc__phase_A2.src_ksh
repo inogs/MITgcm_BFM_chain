@@ -12,7 +12,7 @@ mit_prex "source $MIT_VENV_1/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
 DATESTART=$( date -d "${MIT_RUNDATE}  -  7 days  " +%Y%m%d-%H:%M:%S )
-DATE__END=$( date -d "${MIT_RUNDATE}  + 72 hours " +%Y%m%d-%H:%M:%S )
+DATE__END=$( date -d "${MIT_RUNDATE}  + 48 hours " +%Y%m%d-%H:%M:%S )
 
 MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc
 
@@ -23,10 +23,12 @@ BC_METEO=$MIT_WRKDIR/METEO/BC
 
 TIMELISTFILE=$MIT_WRKDIR/METEO/meteo_timelist.txt
 
-MASK_ARSO=$MIT_WRKDIR/METEO/mask.arso.nc
-mit_prex_or_die "gzip -cd $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/METEO/mask.nc.gz > $MASK_ARSO "
+#MASK_ARSO=$MIT_WRKDIR/METEO/mask.arso.nc
+#mit_prex_or_die "gzip -cd $MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/METEO/mask.nc.gz > $MASK_ARSO "
 
-for I in `ls $DOWNLOADED_METEO/*gz `; do mit_prex_or_die "tar -xzf $I -C $ORIG_METEO "; done
+#for I in `ls $DOWNLOADED_METEO/*gz `; do mit_prex_or_die "tar -xzf $I -C $ORIG_METEO "; done
+#mv $DOWNLOADED_METEO/*.asc $ORIG_METEO
+mit_prex_or_die "cp -n $DOWNLOADED_METEO/*.asc $ORIG_METEO"
 
 ##################################################################
 
@@ -35,7 +37,7 @@ for I in `ls $DOWNLOADED_METEO/*gz `; do mit_prex_or_die "tar -xzf $I -C $ORIG_M
 ### Step 3. Space Interpolation   ###############################
 
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --hours 1 > $TIMELISTFILE "
-mit_prex_or_die " mpirun -np 1 python $MIT_BC_IC_FROM_OGSTM_DIR/meteo_generator.py -i $ORIG_METEO -o $BC_METEO -m $MASKFILE --nativemask $MASK_ARSO -t $TIMELISTFILE "
+mit_prex_or_die " mpirun -np 1 python $MIT_BC_IC_FROM_OGSTM_DIR/meteo_generator.py -i $ORIG_METEO -o $BC_METEO -m $MASKFILE --nativemask $MASKFILE -t $TIMELISTFILE "
 
 ##################################################################
 
