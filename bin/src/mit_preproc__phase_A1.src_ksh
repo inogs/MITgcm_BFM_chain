@@ -14,7 +14,7 @@ PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 typeset -i exit_code=0
 
     DATESTART=$( date -d "${MIT_RUNDATE}  -  7  days " +%Y%m%d )   # <--- IC
-    DATE__END=$( date -d "${MIT_RUNDATE}  +  3  days " +%Y%m%d-%H:%M:%S )   # all period
+    DATE__END=$( date -d "${MIT_RUNDATE}  +  2  days " +%Y%m%d-%H:%M:%S )   # all period
 
 
 

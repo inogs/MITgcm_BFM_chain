@@ -82,10 +82,10 @@
  &PARM03
  deltaT=200.,
  startTime=0.,
- endTime=864000.,
- chkPtFreq=86400.,
+ endTime=777600.,
+ chkPtFreq=77760.,
  dumpFreq=0.,
- pChkPtFreq=86400.,
+ pChkPtFreq=77760.,
  periodicExternalForcing=.FALSE.,
  monitorFreq=3600.,
  tauThetaClimRelax=0.,
