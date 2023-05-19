@@ -7,8 +7,8 @@
  &EXF_NML_01
  useExfCheckRange   = .FALSE.
 # useExfZenAlbedo    = .TRUE. # not in a namelist!
-# select_ZenAlbedo   = 3
-# useExfZenIncoming  = .FALSE.
+ select_ZenAlbedo   = 3
+ useExfZenIncoming  = .FALSE.
  exf_albedo=0.08,
  &END
 
@@ -31,13 +31,13 @@
  vwindstartdate2   = 000000,
  vwindperiod       = 3600.0,
 
- swfluxstartdate1  = @@START_DATE@@,
- swfluxstartdate2  = 000000,
- swfluxperiod      = 3600.0,
+ swdownstartdate1  = @@START_DATE@@,
+ swdownstartdate2  = 000000,
+ swdownperiod      = 3600.0,
 
- lwfluxstartdate1  = @@START_DATE@@,
- lwfluxstartdate2  = 000000,
- lwfluxperiod      = 3600.0,
+ lwdownstartdate1  = @@START_DATE@@,
+ lwdownstartdate2  = 000000,
+ lwdownperiod      = 3600.0,
 
  apressurestartdate1  = @@START_DATE@@,
  apressurestartdate2  = 000000,
@@ -58,8 +58,8 @@
  aqhfile       = '../input/binaries/meteo/BC_aqh',
  uwindfile     = '../input/binaries/meteo/BC_uwind',
  vwindfile     = '../input/binaries/meteo/BC_vwind',
- swfluxfile    = '../input/binaries/meteo/BC_swflux',
- lwfluxfile    = '../input/binaries/meteo/BC_lwflux',
+ swdownfile    = '../input/binaries/meteo/BC_swdown',
+ lwdownfile    = '../input/binaries/meteo/BC_lwdown',
  apressurefile = '../input/binaries/meteo/BC_apress',
  precipfile    = '../input/binaries/meteo/BC_precip',
 # runofffile    = '../input/binaries/...',
@@ -78,8 +78,8 @@
 # exf_inscal_runoff   =  1.0,
  exf_inscal_uwind   =  1.0,
  exf_inscal_vwind   =  1.0,
- exf_inscal_swflux   =  1.0,
- exf_inscal_lwflux   =  1.0,
+ exf_inscal_swdown   =  1.1,
+ exf_inscal_lwdown   =  1.2,
 # output scaling factors
  &END
 
@@ -112,19 +112,19 @@
 # vwind_nlon=226,
 # vwind_nlat=151,
 ##
-# swflux_lon0=12.0,
-# swflux_lon_inc=0.02,
-# swflux_lat0=43.0,
-# swflux_lat_inc=151*0.02,
-# swflux_nlon=226,
-# swflux_nlat=151,
+# swdown_lon0=12.0,
+# swdown_lon_inc=0.02,
+# swdown_lat0=43.0,
+# swdown_lat_inc=151*0.02,
+# swdown_nlon=226,
+# swdown_nlat=151,
 ##
-# lwflux_lon0=12.0,
-# lwflux_lon_inc=0.02,
-# lwflux_lat0=43.0,
-# lwflux_lat_inc=151*0.02,
-# lwflux_nlon=226,
-# lwflux_nlat=151,
+# lwdown_lon0=12.0,
+# lwdown_lon_inc=0.02,
+# lwdown_lat0=43.0,
+# lwdown_lat_inc=151*0.02,
+# lwdown_nlon=226,
+# lwdown_nlat=151,
 ##
 # apressure_lon0=12.0,
 # apressure_lon_inc=0.02,
