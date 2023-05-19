@@ -80,7 +80,7 @@ I_MIT_COMPILER="@@(I:MIT_COMPILER)"				# Compiler
 MIT_MPI="$MIT_UNDEFINED"					# type of the MPI library
 
 
-MIT_START_HOUR_UTC="04:00:00"					# UTC time for chain submission
+MIT_START_HOUR_UTC="05:30:00"					# UTC time for chain submission
 MIT_GET_ADVANCE_MIN="90"					# minutes for advance execution of mit_get
 MIT_GET_TARGET_TIME="07:30:00"
 MIT_TEST=false
