@@ -168,7 +168,7 @@ C   =======================================================================
 C-  Bulk formulae related flags.
 #define ALLOW_ATM_TEMP
 #define ALLOW_ATM_WIND
-#undef ALLOW_DOWNWARD_RADIATION
+#define ALLOW_DOWNWARD_RADIATION
 #ifdef ALLOW_ATM_TEMP
 C Note: To use ALLOW_BULKFORMULAE or EXF_READ_EVAP, needs #define ALLOW_ATM_TEMP
 # define ALLOW_BULKFORMULAE
