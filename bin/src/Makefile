@@ -24,7 +24,7 @@ SCRIPTS=	cvs_check.ksh					\
 		mit_post_wrapper.ksh				\
 		mit_postproc.ksh				\
 		mit_postproc__phase_C1.ksh			\
-		mit_postproc__phase_C2.ksh			\
+		mit_postproc__phase_C4.ksh			\
 		mit_pre_wrapper.ksh				\
 		mit_preproc.ksh					\
 		mit_preproc__phase_A1.ksh			\
