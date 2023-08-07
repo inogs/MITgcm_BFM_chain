@@ -1,6 +1,5 @@
 # ignore dirs used by the setup and running of the chain
 log/
-src/
 
 # these are not dirs but symlinks to dirs
 archive
