@@ -1,0 +1,29 @@
+#!/bin/ksh
+# This script executes the archiving
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+
+typeset -i errors=0
+
+ec=0 ; errors=$(( $errors + $ec ))
+
+ARCHIVE_DIR=$MIT_HOME/archive/$MIT_RUNDATE
+mkdir -p $ARCHIVE_DIR
+
+mit_cp "$MIT_HOME/archive/current/products/${MIT_RUNDATE}_h-OGS--PFTC-MITgcmBFM-pilot8-b${MIT_RUNDATE}_fc-v01.nc" "$ARCHIVE_DIR"
+mit_cp "$MIT_HOME/archive/current/products/${MIT_RUNDATE}_h-OGS--TEMP-MITgcmBFM-pilot8-b${MIT_RUNDATE}_fc-v01.nc" "$ARCHIVE_DIR"
+
+mit_log 0 "postprocess_C4 done [$(mit_exitcode $errors)]"
+
+mit_exit "$errors"
+
+
+
