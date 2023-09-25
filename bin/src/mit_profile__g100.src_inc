@@ -39,6 +39,8 @@ MITGCMUV_PATH="/g100_scratch/userexternal/mpoggi00/ModelBuild/MITGCM_BUILD/mitgc
 MOTUCLIENT_UNPACK_DIR="$MIT_BINDIR/motuclient"
 PYTHON3_PATH="python3"
 
+MIT_METEOHUB_CONFIG=""
+
 mit_batch_prex "export LD_LIBRARY_PATH=${MIT_LIBDIR}:${MIT_NETCDF_PATH}:${LD_LIBRARY_PATH}"
 mit_batch_prex "mit_mkdir $MIT_BINDIR"
 mit_batch_prex "mit_compile_data"
@@ -50,11 +52,11 @@ mit_batch_prex "symlink_if_not_present $MITGCMUV_PATH $MIT_BINDIR/mitgcmuv"
 mit_batch_prex "clone_or_update $MIT_BITSEA_REPO $MIT_BITSEA $MIT_BITSEA_BRANCH"
 mit_batch_prex "clone_or_update $MIT_POSTPROC_REPO $MIT_POSTPROCDIR $MIT_POSTPROC_BRANCH"
 mit_batch_prex "clone_or_update $MIT_BC_IC_REPO $MIT_BC_IC_FROM_OGSTM_DIR $MIT_BC_IC_BRANCH"
+mit_batch_prex "clone_or_update $MIT_METEOHUBCLI_REPO $MIT_METEOHUBCLI_DIR $MIT_METEOHUBCLI_BRANCH"
 
 mit_batch_prex "download_and_unpack $MIT_MOTUCLIENT_URL $MIT_BINDIR motuclient.tar.gz $MOTUCLIENT_UNPACK_DIR"
 mit_batch_prex "symlink_if_not_present $MOTUCLIENT_UNPACK_DIR/src/python $MIT_BINDIR/motuclient-python"
 
-MIT_METEOHUB_CONFIG="" 					# insert here config location
 mit_batch_prex ". /cineca/prod/opt/environment/module/4.7.0/none/init/ksh"
 mit_batch_prex "module load autoload"
 mit_batch_prex "module load profile/advanced"

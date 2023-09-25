@@ -3,10 +3,6 @@
 . @@(I:MIT_HOME)/bin/profile.inc
 
 
-# TODO transform into a ksh script
-source profile
-
-set -e
 
 filesListDownload()
 {
@@ -14,7 +10,7 @@ filesListDownload()
   local filesList="$2"
 
   python \
-    "${meteoHubDir}/app.py" \
+    "${MIT_METEOHUBCLI_DIR}/app.py" \
       --configfile $MIT_METEOHUB_CONFIG \
       --notoken \
       "${request}ls" 1>$filesList || exit 1
@@ -34,7 +30,7 @@ fileDownload()
   printf "downloading ${src} to ${dst} ... "
 
   python \
-    "${meteoHubDir}/app.py" \
+    "${MIT_METEOHUBCLI_DIR}/app.py" \
       --configfile $MIT_METEOHUB_CONFIG \
       --notoken \
       --output $dst \
@@ -151,8 +147,6 @@ downloadFolder="$2" # where to put the downloaded files
 
 
 myFolder="$( realpath $(dirname "$0") )"
-meteoHubDir="${MIT_HOSTDIR}/meteo-hub-cli"
-
 
 gribsFolder="${downloadFolder}/gribs"
 

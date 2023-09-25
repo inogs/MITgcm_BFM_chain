@@ -103,6 +103,7 @@ MIT_BASE_WRKDIR="@@(I:MIT_WORKDIR)"                             # Directory for 
 MIT_BASE_ARCDIR="@@(I:MIT_WORKDIR)"				# Directory for Arcdir, depends on the module
 MIT_VENV_1=$MIT_HOSTDIR/venvs/venv1				# Directory for maps virtualenv
 MIT_BITSEA=$MIT_HOSTDIR/bitsea					# Directory for bit.sea
+MIT_METEOHUBCLI_DIR=$MIT_HOSTDIR/meteohubcli
 MIT_POSTPROCDIR=$MIT_HOSTDIR/MITgcm_BFM_postproc
 MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/MITgcm_BC_IC		# Directory for BC,IC from COPERNICUS chain
 MIT_TMPDIR=$MIT_VARDIR/tmp					# Directory for:
@@ -116,6 +117,8 @@ MIT_BC_IC_REPO="git@github.com:inogs/MITgcm_BC_IC.git"
 MIT_BC_IC_BRANCH="main"
 MIT_MOTUCLIENT_URL="https://files.pythonhosted.org/packages/fe/93/2d8c8dd1fc0537340dda6e8f998c8a7b588566c04bec6cf188fecbbbf2ec/motuclient-1.8.8.tar.gz"
 
+MIT_METEOHUBCLI_REPO="https://gitlab.hpc.cineca.it/mistral/meteo-hub-cli"
+MIT_METEOHUBCLI_BRANC="master"
 
 MIT_LOGDIR=$I_MIT_HOME/log					# Directory for logs
 
