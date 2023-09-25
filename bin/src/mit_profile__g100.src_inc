@@ -31,7 +31,6 @@ MIT_DEFAULT_QUEUE_PAR="g100_meteo_prod"                                  # Defau
 MIT_DEFAULT_QUEUE_SER="g100_meteo_ser"                                  # Default queue ser
 MIT_DEFAULT_QOS="qos_meteo"
 MIT_DEFAULT_MEM="350gb"
-
 MIT_NETCDF_PATH="/g100_work/PROJECTS/spack/v0.17/prod/0.17.1/install/0.17/linux-centos8-cascadelake/intel-2021.4.0/netcdf-fortran-4.5.3-hgihkj5hjewlyz2qy3egwy3hfgeqzm4l/lib"
 MIT_DATE_PATH="/usr/bin/date"
 MIT_NCKS_PATH="/g100_work/PROJECTS/spack/v0.16/install/0.16.2/linux-centos8-cascadelake/oneapi-2021.2.0-ifort/nco-4.9.3-bclelr2oxmjfbrtzsoqqu6qfej6sp4io/bin/ncks"
@@ -55,6 +54,7 @@ mit_batch_prex "clone_or_update $MIT_BC_IC_REPO $MIT_BC_IC_FROM_OGSTM_DIR $MIT_B
 mit_batch_prex "download_and_unpack $MIT_MOTUCLIENT_URL $MIT_BINDIR motuclient.tar.gz $MOTUCLIENT_UNPACK_DIR"
 mit_batch_prex "symlink_if_not_present $MOTUCLIENT_UNPACK_DIR/src/python $MIT_BINDIR/motuclient-python"
 
+MIT_METEOHUB_CONFIG="" 					# insert here config location
 mit_batch_prex ". /cineca/prod/opt/environment/module/4.7.0/none/init/ksh"
 mit_batch_prex "module load autoload"
 mit_batch_prex "module load profile/advanced"
