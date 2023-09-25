@@ -31,6 +31,7 @@ MIT_DEFAULT_QUEUE_PAR="g100_meteo_prod"                                  # Defau
 MIT_DEFAULT_QUEUE_SER="g100_meteo_ser"                                  # Default queue ser
 MIT_DEFAULT_QOS="qos_meteo"
 MIT_DEFAULT_MEM="350gb"
+MIT_METEOHUB_CONFIG="" 					# insert here config location
 mit_batch_prex ". /cineca/prod/opt/environment/module/4.7.0/none/init/ksh"
 mit_batch_prex "module load autoload"
 mit_batch_prex "module load intelmpi/oneapi-2021--binary"

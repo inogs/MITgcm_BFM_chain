@@ -36,8 +36,15 @@ for I in `ls $DOWNLOADED_METEO/*gz `; do mit_prex_or_die "tar -xzf $I -C $ORIG_M
 
 ### Step 3. Space Interpolation   ###############################
 
+# set here the meteo generator scritp:
+## for ASC files use meteo_generator.py
+## for BINARY files use grib_meteo_generator.py
+if [ -z $METEO_GENERATOR_SCRIPT ]; then
+	METEO_GENERATOR_SCRIPT=grib_meteo_generator.py
+fi
+
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --hours 1 > $TIMELISTFILE "
-mit_prex_or_die " mpirun -np 1 python $MIT_BC_IC_FROM_OGSTM_DIR/meteo_generator.py -i $ORIG_METEO -o $BC_METEO -m $MASKFILE --nativemask $MASK_ARSO -t $TIMELISTFILE "
+mit_prex_or_die " mpirun -np 1 python $MIT_BC_IC_FROM_OGSTM_DIR/$METEO_GENERATOR_SCRIPT -i $ORIG_METEO -o $BC_METEO -m $MASKFILE --nativemask $MASK_ARSO -t $TIMELISTFILE "
 
 ##################################################################
 

@@ -13,7 +13,8 @@ mit_start
 
 typeset -i _errors=0
 mit_prex "source $MIT_VENV_1/bin/activate"
-export PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
+PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
+
 
 DATE__END=$( date -d "${MIT_RUNDATE}  + 36 hours " +%Y%m%d-%H:%M:%S )
 DOWNSTART=$( date -d "${MIT_RUNDATE}  -  8  days " +%Y%m%d-%H:%M:%S )
@@ -26,14 +27,15 @@ DOWNTIMELISTFILE=$METEODIR/to_download_timelist.txt
 
 mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR "
 
-# download Arso files
+# new routine to download (grib) files from meteoHub and convert them to asc
 mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END --days 1 --dateformat %Y%m%d  > $DOWNTIMELISTFILE "
-mit_prex "cd $LOCALDIR "
 
+script="$MIT_HOME/downloader/download.sh"
 for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
-  FILENAME=asogsasc_${YYYYMMDD}00.tar.gz
-  mit_prex_or_die "wget --no-check-certificate https://dsecho.inogs.it/datastore/northern_Adriatic_benchmark/meteo/ALADIN_SI/$FILENAME"
-done
+  mit_prex_or_die "${script} ${YYYYMMDD} ${LOCALDIR}"
+done 
+cd $cwd # go back where we started and clen-up vars not needed anymore
+
 
 # download Copernicus static data
 CONFIG_FILE=$MIT_ETCDIR/nc-config/.cmems.ncconfig
@@ -49,6 +51,14 @@ mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -
 
 # download dsecho data
 mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
+
+
+DATE_RIVERSTART=$( date -d "${MIT_RUNDATE}  -  10 days " +%Y-%m-%d )
+DATE_RIVER__END=$( date -d "${MIT_RUNDATE}  " +%Y-%m-%d )
+URL="https://larissa.ogs.it/erddap/tabledap/Pontelagoscuro_TS.csv?time%2Criver_discharge&time%3E=${DATE_RIVERSTART}T00%3A00%3A00Z&time%3C=${DATE_RIVER__END}T00%3A00%3A00Z"
+
+mit_prex "curl \"$URL\" > ${MIT_WRKDIR}/Po.dat "
+
 
 
 mit_exit "$errors"

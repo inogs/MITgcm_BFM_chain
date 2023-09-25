@@ -1,0 +1,163 @@
+#! /bin/ksh 
+
+. @@(I:MIT_HOME)/bin/profile.inc
+
+
+# TODO transform into a ksh script
+source profile
+
+set -e
+
+filesListDownload()
+{
+  local request="$1"
+  local filesList="$2"
+
+  python \
+    "${meteoHubDir}/app.py" \
+      --configfile $MIT_METEOHUB_CONFIG \
+      --notoken \
+      "${request}ls" 1>$filesList || exit 1
+}
+
+
+fileDownload()
+{
+  local scr="$1"
+  local dst="$2"
+  
+  # if the file exists, do nothing
+  [ -e $dst ] && return 
+
+  mkdir -p "$( dirname $dst )"
+
+  printf "downloading ${src} to ${dst} ... "
+
+  python \
+    "${meteoHubDir}/app.py" \
+      --configfile $MIT_METEOHUB_CONFIG \
+      --notoken \
+      --output $dst \
+      data $src || exit 1
+
+  printf "done \n"
+}
+
+
+gribChangeCenter() 
+{
+  local folder="$1"
+  local center="$3"
+
+  [ -z $folder ] && exit 1
+
+  [ -z $center ] && center=78 
+
+  mit_prex_or_die module load eccodes # for the command grib_set 
+
+  for grib in $(find $folder -name '*.grib'); do
+    dst="$( dirname $grib )/grib${center}.grib"
+    [ -e $dst ] && continue # if the file exist do not regerate
+
+    mit_prex_or_die "grib_set -s centre=${center} ${grib} ${dst}" 
+  done 
+
+  mit_prex_or_die "module unload eccodes"
+}
+
+
+dailyDownload()
+{
+  local YYYYMMDD="$1"
+  local ofolder="$2"
+
+  [ -z $YYYYMMDD ] && exit 1
+  [ -z $ofolder ] && exit 1
+
+  # skip everything if the files are already in place
+  kinds="ave inst acc"
+  found=0
+  for kind in $kinds; do
+      dst="${ofolder}/${YYYYMMDD}00/${kind}/grib78.grib"
+      [ -e $dst ] && found="$(( found + 1 ))"
+  done
+  [ $found -eq 3 ] && return 
+
+  request='sched'
+  filesList="${request}.list"
+
+  filesListDownload "$request" "$filesList"
+
+  for kind in 'ave' 'inst' 'acc'; do
+    pattern="daily_${kind}_sched"
+
+    grep "$pattern" "$filesList" |while read line; do
+      date="$( echo $line |cut -d '|' -f 4 )"
+      [ $date != "${YYYYMMDD}0000" ] && continue 
+      
+
+      src="$( echo $line |cut -d '|' -f 3 )"
+      dst="${ofolder}/${YYYYMMDD}00/${kind}/${src}"
+
+      mit_prex_or_die "fileDownload "$src" "$dst""
+    done
+  done
+  
+  mit_prex_or_die "gribChangeCenter "${ofolder}/${YYYYMMDD}00" '78'"
+}
+
+
+lsmDownload()
+{
+  local ofolder="$1"
+  [ -z $ofolder ] && exit 1
+  
+  kind='lsm'
+
+  # skip everything if the files are already in place
+  dst="${ofolder}/${kind}/grib78.grib"
+  [ -e $dst ] && return
+
+  # request='req'
+  # change from 'req' to 'sched': sched.list and req.list files contain up to 100 elements overall,
+  # so the "old" 'land_sea_mask' request is no longer in the 'req' list!
+  request='sched'
+  filesList="${request}.list"
+
+  filesListDownload "$request" "$filesList"
+
+  pattern='land_sea_mask'
+
+  grep "$pattern" "$filesList" |while read line; do
+    src="$( echo $line |cut -d '|' -f 3 )"
+    echo $line
+
+    dst="${ofolder}/${kind}/${src}"
+
+    fileDownload "$src" "$dst"
+  done
+
+  gribChangeCenter "${ofolder}/${kind}" '78'
+}
+
+
+
+YYYYMMDD="$1" # the date we are interested in 
+downloadFolder="$2" # where to put the downloaded files
+
+# both the variables are mandatory 
+[ -z $YYYYMMDD ] && exit 1
+[ -z $downloadFolder ] && exit 1
+
+
+myFolder="$( realpath $(dirname "$0") )"
+meteoHubDir="${MIT_HOSTDIR}/meteo-hub-cli"
+
+
+gribsFolder="${downloadFolder}/gribs"
+
+
+lsmDownload "$gribsFolder"
+dailyDownload "$YYYYMMDD" "$gribsFolder"
+
+exit 0
