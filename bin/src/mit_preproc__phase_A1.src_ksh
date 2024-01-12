@@ -34,7 +34,7 @@ typeset -i exit_code=0
 
             MASKFILE=$MIT_WRKDIR/BC_IC/mask.nc              # to be generated
         MASK_006_014=$MIT_WRKDIR/BC_IC/meshmask_006_014.nc  # to be generated
-    MASK_006_014_RED=$MIT_WRKDIR/BC_IC/mask_006_014_reduced.nc
+         MASK_INPUTS=$MIT_WRKDIR/BC_IC/mask_006_014_reduced.nc
        PRODUCT_TABLE=$MIT_WRKDIR/BC_IC/product_table.txt
           MODEL_VARS=$MIT_WRKDIR/bfm_state_vars.txt
 
@@ -69,9 +69,9 @@ mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_
 
 source $MIT_WRKDIR/BC_IC/set_cut_indexes_006_014_vs_local.sh
 # getting OGSTM mask reduced on local
-mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1)) -d z,1,$Index_B $MASK_006_014 -O $MASK_006_014_RED"
+mit_prex_or_die "$MIT_BINDIR/ncks -F -d x,$((Index_W+1)),$((Index_E+1)) -d y,$((Index_S+1)),$((Index_N+1)) -d z,1,$Index_B $MASK_006_014 -O $MASK_INPUTS"
 
-mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_006_014_RED -f $MASK_006_014_RED > $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK_INPUTS -f $MASK_INPUTS > $MIT_WRKDIR/BC_IC/set_cut_indexes_local_itself.sh "
 
 
 ##################################################################
@@ -83,13 +83,13 @@ jq '.services[].products[] | .name as $name | .variables[] | $name + " " + .' $J
 
 grep cmems_mod_med_phy $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
-   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_PHYS_DIR -m $MASK_006_014_RED"
+   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_PHYS_DIR -m $MASK_INPUTS"
 done
 
 
 grep cmems_mod_med_bgc $PRODUCT_TABLE | while read dataset var ; do
    INPUTFILE=$MIT_WRKDIR/MARINE_COPERNICUS/${dataset}-$MIT_RUNDATE.nc
-   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_BGC_PROD_DIR -m $MASK_006_014_RED"
+   mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/products_converter.py -v $var -i $INPUTFILE -o $DAILY_BGC_PROD_DIR -m $MASK_INPUTS"
 done
 
 # gathering all ave files in AVE_DAILY_DIR
@@ -107,9 +107,9 @@ for I in `ls ${DAILY_BGC_PROD_DIR}/*nc `; do ln -fs $I ; done
 echo "${DATESTART}-12:00:00" > $TIMELIST_START
 
 #phys
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED  -i $DAILY_PHYS_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_INPUTS  -i $DAILY_PHYS_DIR -o $PHYSIC_DIR -t $TIMELIST_START "
 ## bio ##
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_006_014_RED -i $DAILY_BGC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE --nativemask $MASK_INPUTS -i $DAILY_BGC_DIR -o $BIO_IC_DIR  -t $TIMELIST_START -v $MODEL_VARS"
 
 ##################################################################
 
@@ -123,17 +123,17 @@ mit_prex_or_die "$MIT_BC_IC_FROM_OGSTM_DIR/cutter.sh -i $DAILY_PHYS_DIR -o $PHYS
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s E -o $PHYS_BC_DIR"
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s N -o $PHYS_BC_DIR"
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s W -o $PHYS_BC_DIR"
-mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE --nativemask $MASK_006_014_RED -s S -i $PHYSCUT_BC_DIR/SOUTH  -o $PHYS_BC_DIR"
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE --nativemask $MASK_INPUTS -s S -i $PHYSCUT_BC_DIR/SOUTH  -o $PHYS_BC_DIR"
 
 ## bio ##
 
 # South Boundary
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py  --loncut $Index_W,$Index_E --latcut $Index_S,$Index_S -i $DAILY_BGC_DIR --datatype ave -o ${BIOCUT_BC_DIR}/SOUTH -v $MODEL_VARS -t $TIMES_DAILY -m $MASK_006_014_RED"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py -i $DAILY_BGC_DIR --datatype ave -o ${BIOCUT_BC_DIR}/SOUTH -v $MODEL_VARS -t $TIMES_DAILY -m $MASKFILE -M $MASK_INPUTS"
 
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s N -o $BIO_BC_DIR"
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s E -o $BIO_BC_DIR"
 mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE -s W -o $BIO_BC_DIR"
-mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE --nativemask $MASK_006_014_RED -s S -o $BIO_BC_DIR  -i ${BIOCUT_BC_DIR}/SOUTH"
+mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py -t $TIMES_DAILY -v $MODEL_VARS -m $MASKFILE --nativemask $MASK_INPUTS -s S -o $BIO_BC_DIR  -i ${BIOCUT_BC_DIR}/SOUTH"
 
 mit_exit "$exit_code"
 
