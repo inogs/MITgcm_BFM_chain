@@ -67,7 +67,7 @@ mit_batch_prex "module load netcdff/4.5.3--intelmpi--oneapi-2021--binary"
 mit_batch_prex "module load gsl/2.5--oneapi--2021.2.0-ifort"
 mit_batch_prex "module load profile/advanced"
 mit_batch_prex "module load jq/1.6--gcc--10.2.0"
-
+mit_batch_prex "module load python/3.11.7--gcc--10.2.0"
 #mit_batch_prex "module list"
 mit_batch_prex "ulimit -s unlimited"
 

@@ -8,7 +8,7 @@ mit_set_run
 
 # start
 mit_start
-mit_prex "source $MIT_VENV_1/bin/activate"
+mit_prex "source $MIT_VENV_2/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 #mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR"
 typeset -i exit_code=0
@@ -38,7 +38,7 @@ typeset -i exit_code=0
        PRODUCT_TABLE=$MIT_WRKDIR/BC_IC/product_table.txt
           MODEL_VARS=$MIT_WRKDIR/bfm_state_vars.txt
 
-           RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_BFMv5_coastal.xlsx
+           RIVERDATA=$MIT_BC_IC_FROM_OGSTM_DIR/static-data/masks/CADEAU/discharges_CADEAU_BFMv5_coastal.csv
        RIVERMETEODIR=$MIT_WRKDIR
 
 export RIVERDATA RIVERMETEODIR

@@ -100,6 +100,7 @@ MIT_VARDIR=$I_MIT_HOME/var					# Directory for MIT_VARDIR/out : standard output 
 MIT_BASE_WRKDIR="@@(I:MIT_WORKDIR)"                             # Directory for Workdir, depends on the module
 MIT_BASE_ARCDIR="@@(I:MIT_WORKDIR)"				# Directory for Arcdir, depends on the module
 MIT_VENV_1=$MIT_HOSTDIR/venvs/venv1				# Directory for maps virtualenv
+MIT_VENV_2=$MIT_HOSTDIR/venvs/venv2
 MIT_BITSEA=$MIT_HOSTDIR/bitsea					# Directory for bit.sea
 MIT_POSTPROCDIR=$MIT_HOSTDIR/MITgcm_BFM_postproc
 MIT_BC_IC_FROM_OGSTM_DIR=$MIT_HOSTDIR/MITgcm_BC_IC		# Directory for BC,IC from COPERNICUS chain
