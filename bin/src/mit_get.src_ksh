@@ -12,7 +12,7 @@ mit_start
 
 
 typeset -i _errors=0
-mit_prex "source $MIT_VENV_1/bin/activate"
+mit_prex "source $MIT_VENV_2/bin/activate"
 PYTHONPATH=$PYTHONPATH:$MIT_BITSEA
 
 
@@ -46,7 +46,7 @@ done
 
 # download Copernicus data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
-mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR} -m ${MIT_BINDIR}/motuclient-python"
+mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
 
 # download dsecho data
 mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
