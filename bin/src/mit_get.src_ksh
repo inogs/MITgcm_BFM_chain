@@ -45,12 +45,11 @@ unset cwd eXactFolder script
 
 
 # download Copernicus static data
-CONFIG_FILE=$MIT_ETCDIR/nc-config/.cmems.ncconfig
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
-REMOTEDIR=/Core/MEDSEA_ANALYSISFORECAST_BGC_006_014/cmems_mod_med_bgc_anfc_4.2km_static
-for filename in MED_MFC_006_014_coordinates.nc MED_MFC_006_014_mask_bathy.nc; do
-   mit_prex_or_die "$MIT_BINDIR/ncftpget -f $CONFIG_FILE $COPERNICUSDIR ${REMOTEDIR}/${filename}"
-done
+
+COMMONS="-s files --show-outputnames --dataset-version 202211 --overwrite --force-download"
+mit_prex_or_die "copernicusmarine get -i cmems_mod_med_bgc_anfc_4.2km_static -o $COPERNICUSDIR --dataset-part coords $COMMONS"
+mit_prex_or_die "copernicusmarine get -i cmems_mod_med_bgc_anfc_4.2km_static -o $COPERNICUSDIR --dataset-part bathy  $COMMONS"
 
 # download Copernicus data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
