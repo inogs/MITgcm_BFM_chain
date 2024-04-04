@@ -78,7 +78,7 @@ mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/get_cut_Locations.py -c $MASK
 
 ### Step 1.  FROM PRODUCTS TO AVE CUTTED #########################
 
-JSON=${MIT_ETCDIR}/motu-config/motu_downloader.json
+JSON=${MIT_ETCDIR}/config/motu-config/motu_downloader.json
 jq '.services[].products[] | .name as $name | .variables[] | $name + " " + .' $JSON | cut -d "\"" -f 2 > $PRODUCT_TABLE
 
 grep cmems_mod_med_phy $PRODUCT_TABLE | while read dataset var ; do

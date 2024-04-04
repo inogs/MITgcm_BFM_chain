@@ -2,6 +2,8 @@ SHELL		= /bin/ksh
 include CONFIG/Make.config
 
 SCRIPTS=	cvs_check.ksh					\
+		download_grib.ksh                               \
+		mit_download_grib.ksh                           \
 		mit_archive.ksh					\
 		mit_check_input_files.ksh			\
 		mit_get.ksh					\

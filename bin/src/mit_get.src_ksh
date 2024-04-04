@@ -36,9 +36,9 @@ eXactFolder="${I_MIT_HOME}/HOST/g100/eXact"
 cwd="$( pwd )"
 cd $eXactFolder 
 
-script="${eXactFolder}/downloader/download.sh"
+grib_downloader="@@(I:MIT_HOME)/bin/download_grib.ksh"
 for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
-  mit_prex "${script} ${YYYYMMDD} ${LOCALDIR}"
+  mit_prex "${grib_downloader} ${YYYYMMDD} ${LOCALDIR}"
 done 
 cd $cwd # go back where we started and clen-up vars not needed anymore
 unset cwd eXactFolder script
@@ -54,10 +54,10 @@ done
 
 # download Copernicus data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS
-mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
+mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_cmems_downloader.ksh -d ${MIT_RUNDATE} -c ${MIT_ETCDIR}/config/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
 
 # download dsecho data
-mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
+mit_prex_or_die "@@(I:MIT_HOME)/bin/mit_clim_downloader.ksh  -c ${MIT_ETCDIR}/config/motu-config/motu_downloader.json -o ${COPERNICUSDIR}"
 
 
 DATE_RIVERSTART=$( date -d "${MIT_RUNDATE}  -  10 days " +%Y-%m-%d )
