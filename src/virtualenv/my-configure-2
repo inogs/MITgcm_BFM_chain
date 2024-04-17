@@ -46,4 +46,5 @@ pip install mpi4py
 pip install pathlib
 pip install openpyxl
 pip install copernicusmarine
+pip install cmocean
 #installare Pillow per concludere la configurazione di venv1
