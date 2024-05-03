@@ -30,19 +30,8 @@ mit_prex "cd $MIT_BC_IC_FROM_OGSTM_DIR "
 # new routine to download (grib) files from meteoHub and convert them to asc
 mit_prex_or_die " python TimeList_generator.py -s $DOWNSTART -e $DOWN__END --days 1 --dateformat %Y%m%d  > $DOWNTIMELISTFILE "
 
-eXactFolder="${I_MIT_HOME}/HOST/g100/eXact"
-
-# store the pwd go to the eXactFolder folder
-cwd="$( pwd )"
-cd $eXactFolder 
-
-grib_downloader="@@(I:MIT_HOME)/bin/download_grib.ksh"
-for YYYYMMDD in `cat $DOWNTIMELISTFILE`; do
-  mit_prex "${grib_downloader} ${YYYYMMDD} ${LOCALDIR}"
-done 
-cd $cwd # go back where we started and clen-up vars not needed anymore
-unset cwd eXactFolder script
-
+grib_downloader="@@(I:MIT_HOME)/bin/mit_download_grib.ksh"
+mit_prex "${grib_downloader} ${DOWNTIMELISTFILE} ${LOCALDIR}"
 
 # download Copernicus static data
 COPERNICUSDIR=${MIT_WRKDIR}/MARINE_COPERNICUS

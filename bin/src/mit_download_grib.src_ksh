@@ -1,0 +1,208 @@
+#! /bin/ksh
+
+# Load common profile
+. @@(I:MIT_HOME)/bin/mit_profile.inc
+# Rundate definition
+mit_set_run
+
+# start
+mit_start
+
+
+set -e
+
+filesListDownload()
+{
+  request="$1"
+  filesList="$2"
+
+  mit_prex "meteo-hub-cli  --configfile $meteoHubConfig --notoken \"${request}ls\" | grep -v '||'  1>$filesList "
+}
+
+
+fileDownload()
+{
+  scr="$1"
+  dst="$2"
+
+  # if the file exists, do nothing
+  if [ -e $dst ]; then
+      echo "File $src will not be downloaded into $dst, because this path already exists"
+      return
+  fi
+
+  mkdir -p "$( dirname $dst )"
+
+  mit_prex "meteo-hub-cli --configfile $meteoHubConfig  --notoken --output $dst data $src"
+
+}
+
+
+gribChangeCenter()
+{
+  folder="$1"
+  center="$3"
+
+  [ -z $folder ] && exit 1
+
+  [ -z $center ] && center=78
+
+  module load eccodes # for the command grib_set
+
+  for grib in $(find $folder -name '*.grib'); do
+    dst="$( dirname $grib )/grib${center}.grib"
+    [ -e $dst ] && continue # if the file exist do not regerate
+
+    mit_prex "grib_set -s centre=$center $grib $dst"
+  done
+
+  module unload eccodes
+}
+
+
+dailyDownload()
+{
+  YYYYMMDD="$1"
+  ofolder="$2"
+  filesList="$3"
+
+  [ -z $YYYYMMDD ] && exit 1
+  [ -z $ofolder ] && exit 1
+  [ -z $filesList ] && exit 1
+
+  # skip everything if the files are already in place
+  kinds="ave inst acc"
+  found=0
+  for kind in $kinds; do
+      dst="${ofolder}/${YYYYMMDD}00/${kind}/grib78.grib"
+      [ -e $dst ] && found="$(( found + 1 ))"
+  done
+  if [ $found -eq 3 ]; then
+    echo "All files for date ${YYYYMMDD} have been already downloaded durign a previous run"
+    return
+  fi
+
+  for kind in 'ave' 'inst' 'acc'; do
+    pattern="daily_${kind}_sched"
+
+    downloaded_file=1
+
+    grep "$pattern" "$filesList" |while read line; do
+      date="$( echo $line |cut -d '|' -f 4 )"
+      [ $date != "${YYYYMMDD}0000" ] && continue
+
+      src="$( echo $line |cut -d '|' -f 3 )"
+      if [ -z $src ] ; then
+          echo "Missformatted line: $line"
+      fi
+      dst="${ofolder}/${YYYYMMDD}00/${kind}/${src}"
+
+      fileDownload "$src" "$dst"
+      downloaded_file=0
+      break;
+    done
+
+  if [ $downloaded_file -eq 1 ]; then
+    echo "ERROR: GRIB file of kind $kind for date $YYYYMMDD not found! [KO]"
+    exit 1
+  fi
+  done
+
+  gribChangeCenter "${ofolder}/${YYYYMMDD}00" '78'
+}
+
+
+lsmDownload()
+{
+  ofolder="$1"
+  [ -z $ofolder ] && exit 1
+
+  filesList="$2"
+  [ -z $filesList ] && exit 1
+
+  kind='lsm'
+
+  # skip everything if the files are already in place
+  dst="${ofolder}/${kind}/grib78.grib"
+  if [ -e $dst ]; then
+    echo "lsm file $dst already downloaded!"
+    return
+  fi
+
+  pattern='land_sea_mask'
+
+  # Try to download the most recent file available; if something
+  # went wrong, try another file. If a download is ok, break the loop
+  grep "$pattern" "$filesList" | sort -r | while read line; do
+    echo "Trying to download the following land_sea_mask file: $line"
+    src="$( echo $line |cut -d '|' -f 3 )"
+    dst="${ofolder}/${kind}/${src}"
+
+    fileDownload "$src" "$dst" && break || continue
+  done
+
+  if ! [ -e $dst ]; then
+    echo "ERROR: No lsm file has been downloaded [KO]" && exit 1
+  fi
+
+  gribChangeCenter "${ofolder}/${kind}" '78'
+}
+
+
+ascGenerate()
+{
+  gribsFolder="$1"
+  YYYYMMDD="$2"
+  outFolder="$3"
+
+  [ -z $gribsFolder ] && exit 1
+  [ -z $YYYYMMDD ] && exit 1
+  [ -z $outFolder ] && exit 1
+
+  controlFile="${outFolder}/.exported${YYYYMMDD}"
+  if [ -e $controlFile ]; then
+    echo "Control file $controlFile already exists! ASC will not be generated"
+    return
+  fi
+
+  echo "generating ASC for ${YYYYMMDD} in ${outFolder} ... "
+
+  grib2asc="${MIT_HOME}/HOST/g100/eXact/ogs-interpolator/grib2asc.py"
+  outMesh="${MIT_HOME}/HOST/g100/eXact/outMesh.nc"
+  mit_prex "python ${grib2asc} $gribsFolder $YYYYMMDD ${outMesh} $outFolder" || exit 1
+
+  mit_prex "touch $controlFile"
+  echo "generation of ASC done"
+}
+
+
+
+timelistfile="$1" # A file with the output produced by the TimeList_generator.py
+downloadFolder="$2" # where to put the downloaded files
+
+# both the variables are mandatory
+[ -z $timelistfile ] && exit 1
+[ -z $downloadFolder ] && exit 1
+
+
+meteoHubConfig="${MIT_HOME}/etc/config.mistral"
+gribsFolder="${downloadFolder}/gribs"
+
+# Download a list with all the downloadable files
+request='sched'
+filesList="${downloadFolder}/${request}.list"
+
+filesListDownload "$request" "$filesList"
+
+# Download the lsm files
+echo "Downloading land_sea_mask files..."
+lsmDownload "$gribsFolder" "$filesList"
+
+for YYYYMMDD in `cat $timelistfile`; do
+  echo "Download gribs for date $YYYYMMDD..."
+  mit_prex "dailyDownload $YYYYMMDD $gribsFolder $filesList"
+  ascGenerate "$gribsFolder" "$YYYYMMDD" "$downloadFolder"
+done
+
+
+exit 0
