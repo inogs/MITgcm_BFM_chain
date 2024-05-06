@@ -185,7 +185,7 @@ downloadFolder="$2" # where to put the downloaded files
 [ -z $downloadFolder ] && exit 1
 
 
-meteoHubConfig="${MIT_HOME}/etc/config.mistral"
+meteoHubConfig="${MIT_HOME}/etc/config/mistral"
 gribsFolder="${downloadFolder}/gribs"
 
 # Download a list with all the downloadable files

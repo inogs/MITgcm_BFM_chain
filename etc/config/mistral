@@ -1,0 +1,16 @@
+[DEFAULT]
+
+[AMQP]
+host = localhost
+port = 5672
+username = squerin@ogs.it
+password = ?M1str2l!
+exchange = user-data
+routing_key =
+queue = guest
+ssl_enabled = False
+
+[Meteohub]
+url = https://meteohub.mistralportal.it/
+username = squerin@ogs.it
+password = ?M1str2l!
