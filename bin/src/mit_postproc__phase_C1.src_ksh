@@ -37,7 +37,7 @@ mit_mkdir $PRODUCTS
 OUTPUTDIR=$MIT_POSTPROC/IMG
 
 DATESTART=$( date -d "${MIT_RUNDATE}  -  7 days  " +%Y%m%d-%H:%M:%S )
-DATE__END=$( date -d "${MIT_RUNDATE}  + 71 hours " +%Y%m%d-%H:%M:%S )
+DATE__END=$( date -d "${MIT_RUNDATE}  + 47 hours " +%Y%m%d-%H:%M:%S )
 HF_TIMELIST=$MIT_WRKDIR/POSTPROC/hr_timelist.txt
 LF_TIMELIST=$MIT_WRKDIR/POSTPROC/daily_timelist.txt
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --hours 1 > $HF_TIMELIST "
