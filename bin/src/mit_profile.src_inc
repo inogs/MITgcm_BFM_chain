@@ -34,6 +34,7 @@ esac
 
 
 MIT_DAYS=11
+MIT_TIMESTEP=200 # seconds
 
 function mit_days {
 
