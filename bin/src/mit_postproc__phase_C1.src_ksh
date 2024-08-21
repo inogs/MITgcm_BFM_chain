@@ -41,7 +41,7 @@ DATE__END=$( date -d "${MIT_RUNDATE}  + 71 hours " +%Y%m%d-%H:%M:%S )
 HF_TIMELIST=$MIT_WRKDIR/POSTPROC/hr_timelist.txt
 LF_TIMELIST=$MIT_WRKDIR/POSTPROC/daily_timelist.txt
 mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --hours 1 > $HF_TIMELIST "
-mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --days  1 > $L_FTIMELIST "
+mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/TimeList_generator.py -s $DATESTART -e $DATE__END --days  1 > $LF_TIMELIST "
 
 MASKFILE=$MIT_WRKDIR/POSTPROC/meshmask.nc
 mit_prex_or_die "mpirun -np 1 python $MIT_POSTPROCDIR/mask_gen.py -i $MIT_WRKDIR/MODEL/run -m $MIT_WRKDIR/BC_IC/mask.nc -o $MASKFILE"
@@ -50,7 +50,7 @@ VARLIST=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist
 VARLIST_DAILY=$MIT_ETCDIR/static-data/POSTPROC/merging_varlist_daily
 VARDESCRIPTOR=$MIT_ETCDIR/static-data/POSTPROC/VarDescriptor.xml
 
-mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -t $MIT_TIMESTEP -m $MASKFILE --timelist $LF_TIMELIST -v $VARLIST_DAILY-f daily"
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -t $MIT_TIMESTEP -m $MASKFILE --timelist $LF_TIMELIST -v $VARLIST_DAILY -f daily"
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/netcdf_convert.py -i $RUNDIR -o $NETCDF_DIR -t $MIT_TIMESTEP -m $MASKFILE --timelist $HF_TIMELIST -v $VARLIST -f hourly"
 mit_prex_or_die_with_tries "mpirun -np 24 python $MIT_POSTPROCDIR/var_aggregator.py -l ave*N1p.nc -i $NETCDF_DIR -t $TMPDIR -m $MASKFILE -d $VARDESCRIPTOR"
 mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/netcdf4_compress.py -i $TMPDIR -o $NETCDF_DIR -l '*nc' "
