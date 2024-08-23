@@ -80,7 +80,7 @@ case $MONTH in
 esac
 
 MAP_CONFIG_FILE=$MIT_POSTPROCDIR/map_config.xml
-mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/build_layer_map.py -i $NETCDF_DIR -o $OUTPUTDIR -g 'ave*N1p.nc' -m $MASKFILE -p $PLOTLISTFILE -f $MAP_CONFIG_FILE"
+mit_prex_or_die "mpirun python $MIT_POSTPROCDIR/build_layer_map.py -i $NETCDF_DIR -o $OUTPUTDIR -g 'ave*N1p.nc' -m $MASKFILE -p $PLOTLISTFILE -f $MAP_CONFIG_FILE --ignore-before ${MIT_RUNDATE}"
 
 mit_prex_or_die "echo $MIT_RUNDATE > $OUTPUTDIR/last"
 
