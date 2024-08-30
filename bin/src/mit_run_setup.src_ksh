@@ -24,13 +24,11 @@ BC_IC_DIRS='BC_IC
             BC_IC/BIO/AVE/DAILY_FROM_CLIM
             BC_IC/BIO/AVE/DAILY_FROM_PROD
             BC_IC/BIO/AVE/DAILY
-            BC_IC/PHYS
-            BC_IC/IC/PHYS
-            BC_IC/IC/BIO
-            BC_IC/BC/PHYS/CUTTED_SLICES
-            BC_IC/BC/PHYS/CUTTED_SLICES/SOUTH
-            BC_IC/BC/BIO/CUTTED_SLICES
-            BC_IC/BC/BIO/CUTTED_SLICES/SOUTH'
+            BC_IC/IC/
+            BC_IC/BC/
+            BC_IC/BC/BIO
+            BC_IC/BC/PHYS
+            BC_IC/BC/CUTTED_SLICES'
 
 MODEL_DIRS='MODEL
             MODEL/input/

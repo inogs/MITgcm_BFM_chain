@@ -21,17 +21,16 @@ typeset -i errors=0
 wrkdir=$MIT_WRKDIR/MODEL
 
 #### Step 1 -- Initial Conditions --
-BIO_IC_DIR=$MIT_WRKDIR/BC_IC/IC/BIO
-PHYS_ICDIR=$MIT_WRKDIR/BC_IC/IC/PHYS
+IC_DIR=$MIT_WRKDIR/BC_IC/IC/
 
 cd $wrkdir/input/binaries/ICs/BIO
 for var in $MIT_OUTPUT_VARIABLES; do
-  mit_prex_or_die "ln -fs $BIO_IC_DIR/IC_${var}.dat"
+  mit_prex_or_die "ln -fs $IC_DIR/IC_${var}.dat"
 done  
 
 cd $wrkdir/input/binaries/ICs/PHYS
 for var in U V T S ; do 
-   mit_prex_or_die "ln -fs $PHYS_ICDIR/IC_${var}.dat"
+   mit_prex_or_die "ln -fs $IC_DIR/IC_${var}.dat"
 done
 
 ### Step 2 -- Boundary conditions --

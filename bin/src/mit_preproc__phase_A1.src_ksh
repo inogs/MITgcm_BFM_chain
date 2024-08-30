@@ -41,7 +41,7 @@ typeset -i exit_code=0
 
 export RIVERDATA RIVERMETEODIR
 
-mit_mkdir "$CUT_BC_DIR"
+
 mit_prex "python $MIT_BC_IC_FROM_OGSTM_DIR/riverdata_converter.py -i $RIVERMETEODIR/Po.dat > $RIVERMETEODIR/Po.txt "
 
 echo ${MIT_OUTPUT_VARIABLES} | sed --regexp-extended -e 's/ +/ /g' | tr ' ' '\n' > ${MODEL_VARS}
@@ -50,7 +50,6 @@ echo ${MIT_OUTPUT_VARIABLES} U V T S  | sed --regexp-extended -e 's/ +/ /g' | tr
 for D in $(mit_days); do echo "$D-12:00:00" ; done > $TIMES_DAILY
 
 
-#mkdir -p $DAILY_BGC_CLIM_DIR $DAILY_BGC_PROD_DIR $DAILY_BGC_DIR
 
 for var in $MIT_OUTPUT_VARIABLES ; do
    mit_prex_or_die "mit_climatologies_linker $MIT_WRKDIR/MARINE_COPERNICUS/${var}.nc $DAILY_BGC_CLIM_DIR "
