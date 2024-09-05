@@ -98,18 +98,22 @@ mit_prex_or_die "python $MIT_BC_IC_FROM_OGSTM_DIR/IC_files_gen.py -m $MASKFILE -
 
 ### Step 4. BOUNDARY CONDITIONS ##################################
 
-Open_Boundaries="S"      # South Boundary
+Open_Boundaries_sea="S"      # South Boundary
+Open_Boundaries_riv="E W N"
 
 for side in E W S N ; do
 
-   if echo $Open_Boundaries | grep -q $side ; then    # if side in Open_Boundaries
+   if echo $Open_Boundaries_sea | grep -q $side ; then    # if side in Open_Boundaries_sea
 
       mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/ogstm_cutter.py -i $DAILY_BGC_DIR --datatype ave --side ${side} -o ${CUT_BC_DIR}/${side} -v $ALL_VARS -t $TIMES_DAILY -m $MASKFILE -M $MASK_INPUTS"
       mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE --nativemask $MASK_INPUTS -s ${side} -i $CUT_BC_DIR/${side} -o $PHYS_BC_DIR"
       mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py      -t $TIMES_DAILY -m $MASKFILE --nativemask $MASK_INPUTS -s ${side} -i $CUT_BC_DIR/${side} -o $BIO_BC_DIR  -v $MODEL_VARS"
    else
-      mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s ${side} -o $PHYS_BC_DIR"
-      mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py      -t $TIMES_DAILY -m $MASKFILE -s ${side} -o $BIO_BC_DIR -v $MODEL_VARS "
+
+      if echo $Open_Boundaries_riv | grep -q $side ; then    # if side in Open_Boundaries_riv
+         mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen_PHYS.py -t $TIMES_DAILY -m $MASKFILE -s ${side} -o $PHYS_BC_DIR"
+         mit_prex_or_die " python $MIT_BC_IC_FROM_OGSTM_DIR/BC_files_gen.py      -t $TIMES_DAILY -m $MASKFILE -s ${side} -o $BIO_BC_DIR -v $MODEL_VARS "
+      fi
    fi
 done
 
